@@ -87,7 +87,7 @@ The airline operates hubs in UAE (Sharjah, Abu Dhabi, Ras Al Khaimah), Morocco, 
         ]
         est_date = "2003"
         
-    else: 
+    elif "ETISALAT" in query or "E&" in query:
         ticker = "EAND"
         exchange = "ADX"
         name = "Etisalat Group (e&)"
@@ -111,6 +111,20 @@ Headquartered in Abu Dhabi, **e&** was established over four decades ago as the 
             {"Name": "Public / Free Float", "Type": "Public", "%": "40.0%"}
         ]
         est_date = "1976"
+
+    else: 
+        # Generic Fallback
+        ticker = "UNKNOWN"
+        exchange = "ADX/DFM"
+        name = query.title()
+        sector = "Diversified"
+        profile_type = "GENERIC"
+        desc = f"**{name}** is being analyzed by the Corporate Intelligence Agent. Real-time data will be populated shortly from exchange filings and public records."
+        
+        website = ""
+        socials = {}
+        shareholders = []
+        est_date = ""
 
     # --- 2. Generate Dynamic Data ---
     

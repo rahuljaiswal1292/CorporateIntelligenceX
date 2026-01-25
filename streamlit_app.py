@@ -92,19 +92,36 @@ def run_investigation(query):
             time.sleep(0.3) # Interactive Delay
             
         # 4. Update Data with Real Intelligence
+        # 4. Update Data with Real Intelligence
         if final_state.get("financial_data"):
-             real_fin = final_state["financial_data"]
-             # Update Base Data with Real Values
-             if "revenue" in real_fin:
-                 # Format nicely
-                 rev_val = real_fin['revenue']
-                 rev_fmt = f"AED {rev_val/1_000_000_000:.1f}B" if rev_val > 1_000_000 else f"AED {rev_val:,.0f}"
-                 st.session_state.data["financials"]["current"]["rev"] = rev_fmt
-                 
-             if "profit" in real_fin:
-                 prof_val = real_fin['profit']
-                 prof_fmt = f"AED {prof_val/1_000_000_000:.1f}B" if prof_val > 1_000_000 else f"AED {prof_val:,.0f}"
-                 st.session_state.data["financials"]["current"]["profit"] = prof_fmt
+             real_data = final_state["financial_data"]
+             
+             # A. Update Financials
+             if "financials" in real_data:
+                 real_fin = real_data["financials"]
+                 # Map Revenue
+                 if "revenue" in real_fin:
+                     val = real_fin['revenue']
+                     st.session_state.data["financials"]["current"]["rev"] = f"AED {val/1_000_000_000:.1f}B" if val > 1e9 else f"AED {val:,.0f}"
+                 # Map Profit
+                 if "net_income" in real_fin: # Scrapers might use net_income
+                     val = real_fin['net_income']
+                     st.session_state.data["financials"]["current"]["profit"] = f"AED {val/1_000_000_000:.1f}B" if val > 1e9 else f"AED {val:,.0f}"
+
+             # B. Update Profile (if Wiki scraped)
+             if "profile" in real_data:
+                 prof = real_data["profile"]
+                 if "profile" not in st.session_state.data:
+                     st.session_state.data["profile"] = {} # Initialize if missing
+                     
+                 if "description" in prof:
+                     st.session_state.data["profile"]["description"] = prof["description"]
+                 if "sector" in prof:
+                     st.session_state.data["profile"]["sector"] = prof["sector"]
+
+             # C. Update Sources
+             if "sources" in real_data:
+                 st.session_state.data["sources"] = real_data["sources"]
 
         if final_state.get("insights"):
             st.session_state.data["insights"] = final_state["insights"]

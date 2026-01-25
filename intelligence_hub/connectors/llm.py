@@ -1,7 +1,7 @@
 import os
 import logging
 import json
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from langchain_core.messages import HumanMessage, SystemMessage
 from typing import List, Dict, Any, Optional
 
@@ -12,10 +12,10 @@ logger = logging.getLogger(__name__)
 class LLMConnector:
     """
     Connector for Google Gemini 1.5 Pro with Mock Mode.
-    Generates strategic banking insights.
+    Generates strategic banking insights and embeddings.
     """
     def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or os.getenv("GOOGLE_API_KEY") or os.getenv("OPENAI_API_KEY") # Fallback pattern
+        self.api_key = api_key or os.getenv("GOOGLE_API_KEY")
         
         if self.api_key and "mock" not in self.api_key.lower():
             self.llm = ChatGoogleGenerativeAI(
@@ -23,11 +23,27 @@ class LLMConnector:
                 google_api_key=self.api_key,
                 temperature=0.3
             )
+            self.embeddings = GoogleGenerativeAIEmbeddings(
+                model="models/embedding-001",
+                google_api_key=self.api_key
+            )
             self.mode = "LIVE"
         else:
             self.llm = None
+            self.embeddings = None
             self.mode = "MOCK"
             logger.warning("GOOGLE_API_KEY not found. Running in MOCK MODE.")
+
+    def embed(self, text: str) -> List[float]:
+        """Generates a vector embedding for the given text."""
+        if self.mode == "LIVE":
+            try:
+                return self.embeddings.embed_query(text)
+            except Exception as e:
+                logger.error(f"Embedding failed: {e}")
+                return [0.0] * 768 # Fallback
+        else:
+            return [0.1] * 768 # Mock vector
 
     def analyze(self, prompt: str) -> str:
         """

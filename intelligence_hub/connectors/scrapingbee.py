@@ -1,8 +1,10 @@
+import asyncio
 import os
 import logging
 import requests
 from scrapingbee import ScrapingBeeClient
 from typing import Optional, Dict
+from intelligence_hub.config.settings import config
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -14,27 +16,29 @@ class ScrapingBeeConnector:
     Allows the agent to function even without active API keys by simulating responses.
     """
     def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or os.getenv("SCRAPINGBEE_API_KEY")
+        self.api_key = api_key or config.SCRAPINGBEE_API_KEY
         if self.api_key:
-            self.client = ScrapingBeeClient(api_key=self.api_key)
-            self.mode = "LIVE"
+            try:
+                self.client = ScrapingBeeClient(api_key=self.api_key)
+                self.mode = "LIVE"
+            except Exception as e:
+                logger.error(f"Failed to initialize ScrapingBeeClient: {e}")
+                self.mode = "MOCK"
         else:
             self.client = None
             self.mode = "MOCK"
             logger.warning("SCRAPINGBEE_API_KEY not found. Running in MOCK MODE.")
 
+    async def scrape_async(self, url: str, render_js: bool = True, wait_for: str = None, js_scenario: dict = None) -> str:
+        """
+        Asynchronously scrapes a URL using run_in_executor.
+        """
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self.scrape, url, render_js, wait_for, js_scenario)
+
     def scrape(self, url: str, render_js: bool = True, wait_for: str = None, js_scenario: dict = None) -> str:
         """
         Scrapes a URL.
-        
-        Args:
-            url (str): The URL to scrape.
-            render_js (bool): Whether to use a headless browser to render JS.
-            wait_for (str): CSS selector to wait for before returning.
-            js_scenario (dict): ScrapingBee JS scenario instructions.
-            
-        Returns:
-            str: The HTML content of the page (or mock HTML).
         """
         logger.info(f"[{self.mode}] Scraping URL: {url}")
         

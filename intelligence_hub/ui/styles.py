@@ -68,6 +68,22 @@ def get_custom_css():
             margin-bottom: 6px;
         }
 
+        /* --- Search Bar & Inputs --- */
+        div[data-testid="stTextInput"] input {
+            background-color: #FFFFFF !important;
+            color: #0F172A !important; /* Black/Dark Slate */
+            caret-color: #0F172A !important; /* Cursor color */
+            border: 1px solid #CBD5E1 !important;
+        }
+        /* Fix hidden 'X' clear button in text input */
+        div[data-testid="stTextInput"] button[aria-label="Clear"] {
+             color: #0F172A !important; /* Black X */
+             fill: #0F172A !important;
+        }
+        div[data-testid="stTextInput"] {
+            color: #0F172A !important;
+        }
+
         /* --- Buttons --- */
         /* Primary Search Button (Navy Background with White Text) */
         div.stButton > button[kind="primary"] {

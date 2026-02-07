@@ -48,6 +48,13 @@ def add_log(agent_name, action):
 
 # --- Wrapper to Simulate/Fetch Data ---
 # --- Main App Logic ---
+# --- Main App Logic ---
+
+# Cache the Agent Graph to avoid re-initialization overhead (DB connections etc)
+@st.cache_resource
+def get_cached_graph():
+    return create_graph()
+
 def run_investigation(query):
     # Reset State
     st.session_state.logs = []
@@ -55,44 +62,53 @@ def run_investigation(query):
     st.session_state.progress_stage = 0
     
     # 1. Initialize Baseline (Hybrid Approach)
-    # We fetch the mock structure to ensure charts/competitors tables have data structure
-    # The Agents will then OVERRIDE the specifics (Financials, Insights).
     base_data = get_company_data(query) 
     st.session_state.data = base_data
     
     # 2. Run Real-Time Graph
-    graph = create_graph()
+    graph = get_cached_graph()
     
     with st.status("🚀 Orchestrating Intelligent Agents...", expanded=True) as status:
         st.write("🔌 Connecting to Agent Graph...")
         
-        # Invoke Graph (Synchronous for now)
-        final_state = graph.invoke({"query": query, "logs": []})
+        # Stream the Graph execution for instant feedback
+        stream = graph.stream({"query": query, "logs": []})
         
-        # 3. Process Result & Logs from Graph
-        for log in final_state.get("logs", []):
-            if "Resolved" in log:
-                add_log("Resolver", log)
-                st.session_state.progress_stage = 1
-                st.write(f"✅ {log}")
-            elif "Scraping" in log:
-                 add_log("Scraper", log)
-                 st.session_state.progress_stage = 2
-                 st.write(f"🕸️ {log}")
-            elif "Vectorizer" in log:
-                 add_log("Vectorizer", log)
-                 st.session_state.progress_stage = 3
-                 st.write(f"🧠 {log}")
-            elif "Analyst" in log:
-                 add_log("Analyst", log)
-                 st.session_state.progress_stage = 4
-                 st.write(f"📊 {log}")
-            else:
-                 add_log("System", log)
-            time.sleep(0.3) # Interactive Delay
+        final_state = {}
+        processed_logs = set() # Track unique logs to avoid dupes in UI
+
+        for event in stream:
+            # Event corresponds to a node finishing
+            for node, state in event.items():
+                final_state = state # Keep updating final state
+                
+                # Check for new logs
+                current_logs = state.get("logs", [])
+                for log in current_logs:
+                    if log not in processed_logs:
+                        processed_logs.add(log)
+                        
+                        # UI Logic for Logs and Progress
+                        if "Resolved" in log:
+                            add_log("Resolver", log)
+                            st.session_state.progress_stage = 1
+                            st.write(f"✅ {log}")
+                        elif "Scraping" in log:
+                            add_log("Scraper", log)
+                            st.session_state.progress_stage = 2
+                            st.write(f"🕸️ {log}")
+                        elif "Vectorizer" in log:
+                            add_log("Vectorizer", log)
+                            st.session_state.progress_stage = 3
+                            st.write(f"🧠 {log}")
+                        elif "Analyst" in log:
+                            add_log("Analyst", log)
+                            st.session_state.progress_stage = 4
+                            st.write(f"📊 {log}")
+                        else:
+                            add_log("System", log)
             
-        # 4. Update Data with Real Intelligence
-        # 4. Update Data with Real Intelligence
+        # 4. Update Data with Real Intelligence (Using final state)
         if final_state.get("financial_data"):
              real_data = final_state["financial_data"]
              

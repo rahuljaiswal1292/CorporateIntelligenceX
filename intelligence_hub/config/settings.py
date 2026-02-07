@@ -27,7 +27,8 @@ class Settings:
         "lulu": {"ticker": "LULU", "exchange": "ADX", "name": "Lulu Retail Holdings"},
         "mashreq": {"ticker": "MASQ", "exchange": "DFM", "name": "Mashreq Bank"},
         "nbd": {"ticker": "ENBD", "exchange": "DFM", "name": "Emirates NBD"},
-        "e&": {"ticker": "EAND", "exchange": "ADX", "name": "e& (Etisalat)"}
+        "e&": {"ticker": "EAND", "exchange": "ADX", "name": "e& (Etisalat)"},
+        "ajman": {"ticker": "AJMANBANK", "exchange": "DFM", "name": "Ajman Bank"}
     }
 
     def validate(self):

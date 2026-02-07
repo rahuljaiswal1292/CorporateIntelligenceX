@@ -31,6 +31,26 @@ class StorageManager:
         return filepath
 
     @staticmethod
+    def save_document(content: bytes, source: str, ticker: str, category: str, filename: str) -> str:
+        """
+        Saves a downloaded document (PDF, DOCX, etc.) to a categorized folder.
+        Structure: ./data/{source}/{ticker}/{category}/{filename}
+        """
+        # Santize filename
+        filename = "".join([c for c in filename if c.isalpha() or c.isdigit() or c in (' ', '.', '_', '-')]).rstrip()
+        
+        directory = os.path.join(config.DATA_DIR, source, ticker, category)
+        os.makedirs(directory, exist_ok=True)
+        
+        filepath = os.path.join(directory, filename)
+        
+        with open(filepath, "wb") as f:
+            f.write(content)
+            
+        logger.info(f"Saved document to {filepath}")
+        return filepath
+
+    @staticmethod
     def save_structured(data: dict, source: str, ticker: str) -> str:
         """
         Saves parsed data (Structured JSON).

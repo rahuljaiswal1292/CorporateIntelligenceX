@@ -69,7 +69,7 @@ CorporateIntelligenceX/
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| SCRAPINGBEE_API_KEY | Web scraping API key | Required |
+| SCRAPER_API_KEY | Web scraping API key | Required |
 | MARKET_DATA_TTL | Cache TTL in hours | 24 |
 | LLM_MODEL | AI model (gpt-4o/gemini-2.0-flash) | gpt-4o |
 | VECTOR_DB_PATH | ChromaDB path | ./data/chroma_store |

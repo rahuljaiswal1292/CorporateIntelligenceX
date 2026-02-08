@@ -6,7 +6,7 @@ load_dotenv()
 
 class Settings:
     # API Keys
-    SCRAPINGBEE_API_KEY = os.getenv("SCRAPINGBEE_API_KEY", "")
+    SCRAPER_API_KEY = os.getenv("SCRAPER_API_KEY", "")
     PINECONE_API_KEY = os.getenv("PINECONE_API_KEY", "")
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
     
@@ -33,8 +33,8 @@ class Settings:
 
     def validate(self):
         """Validates critical configuration."""
-        if not self.SCRAPINGBEE_API_KEY:
-            print("⚠️ Warning: SCRAPINGBEE_API_KEY not found. Scrapers will run in Mock Mode.")
+        if not self.SCRAPER_API_KEY:
+            print("⚠️ Warning: SCRAPER_API_KEY not found. Scrapers will run in Mock Mode.")
         if not self.PINECONE_API_KEY:
              print("⚠️ Warning: PINECONE_API_KEY not found. Vector DB will run in Mock Mode.")
 

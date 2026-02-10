@@ -24,8 +24,9 @@ def run_enrichment_node(state: AgentState):
 
     try:
         # Initialize dependencies
-        chroma_client = chromadb.PersistentClient(path=CHROMADB_PERSIST_DIRECTORY)
-        store = CorporateProfileStore(chroma_client)
+        # Initialize dependencies
+        # Use default persist directory from config, consistently with other agents
+        store = CorporateProfileStore()
         llm_connector = LLMConnector()
 
         # Initialize Master Agent with LLMConnector

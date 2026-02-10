@@ -170,10 +170,28 @@ def run_investigation(query):
 
 # --- Sidebar ---
 with st.sidebar:
-    st.markdown("## 🏦 CorporateIntelligenceX")
-    st.caption("AI-Powered Banking Profiler")
+    st.markdown(
+        """
+        <h3 style='text-align: center; padding-bottom: 5px;'>
+            CorporateIntelligenceX
+        </h3>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        """
+    <div style="text-align: center; color: rgba(250, 250, 250, 0.6); font-size: 1rem; line-height: 1.5;">
+        📡 Agent Pulse
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        "<div style='display: flex; justify-content: center; width: 100%;'><a id='lang_smith_link' href='https://smith.langchain.com/o/161479c6-ccc7-4a79-ab5b-8142f6f7ffa0/projects/p/c3f23a4a-4ff5-4202-b429-75fcc1fc0bff?timeModel=%7B%22duration%22%3A%227d%22%7D'>Live Agent Trace</a></div>",
+        unsafe_allow_html=True,
+    )
 
-    st.markdown("### 📡 Live Agent Trace")
+    st.markdown("#### Agent Logs")
     log_container = st.container(height=400)
     with log_container:
         for log in reversed(st.session_state.logs):
@@ -181,8 +199,8 @@ with st.sidebar:
 
     st.markdown("---")
     st.caption(f"System Status: **ONLINE**")
-    st.caption(f"Vector DB: **Pinecone**")
-    st.caption(f"Model: **Gemini 1.5 Pro**")
+    st.caption(f"Vector DB: **ChromaDB**")
+    st.caption(f"Model: **GPT-4-turbo**")
 
 # --- Main Layout ---
 # --- Main Layout ---

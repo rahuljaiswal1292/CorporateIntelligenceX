@@ -31,6 +31,7 @@ from .ded_agent import DEDAgent
 from intelligence_hub.storage.corporate_profile_store import (
     CorporateProfileStore,
 )
+from intelligence_hub.config.config import DATA_DIRECTORY
 from intelligence_hub.prompts import load_prompt
 
 
@@ -218,7 +219,7 @@ class MasterAgent(BaseAgent):
         # Update data directory to use canonical name immediately
         if canonical_name and canonical_name != self.company_name:
             old_dir = self.data_dir
-            self.data_dir = Path("intelligence_hub/data") / self._sanitize_company_name(
+            self.data_dir = Path(DATA_DIRECTORY) / self._sanitize_company_name(
                 canonical_name
             )
             self.data_dir.mkdir(parents=True, exist_ok=True)
@@ -404,7 +405,7 @@ class MasterAgent(BaseAgent):
         # Already updated earlier, but ensure it's set for enrichment agents
         if canonical_name and canonical_name != self.company_name:
             # Ensure data_dir is using canonical name
-            self.data_dir = Path("intelligence_hub/data") / self._sanitize_company_name(
+            self.data_dir = Path(DATA_DIRECTORY) / self._sanitize_company_name(
                 canonical_name
             )
             self.log(f"Confirmed canonical name for enrichment: {canonical_name}")

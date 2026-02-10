@@ -5,20 +5,34 @@ import plotly.graph_objects as go
 
 def render_header():
     """Renders the main dashboard header with Greeting and Process Flow."""
-    st.title("CorporateIntelligenceX")
-    st.markdown("### 360° Automated Banking Intelligence Agent")
-    st.markdown("---")
+    st.markdown(
+        "<h1>CorporateIntelligence<span style='color:blue'>X</span></h1>",
+        unsafe_allow_html=True,
+    )
+    st.markdown("### 360° Automated Web Agent")
+    # st.markdown("---")
 
     # Process Explanation Box
-    st.info(
+    st.html(
         """
-    **👋 Welcome to your Banking Intelligence Terminal.**
-    
-    This agent automates the due diligence process in 4 steps:
-    1.  **Identify**: Resolves the company entity from stock exchanges (ADX/DFM).
-    2.  **Scrape**: Fetches real-time annual reports and financial disclosures.
-    3.  **Vectorize**: Indexes documents for semantic search (RAG).
-    4.  **Analyze**: Generates strategic banking opportunities and risk signals.
+    <div class="feature-grid">
+        <div class="feature-card">
+            <h3>🤖 Multi-Agent AI</h3>
+            <p>Specialized AI agents work in parallel for different analysis tasks</p>
+        </div>
+        <div class="feature-card">
+            <h3>⚡ Real-time Updates</h3>
+            <p>Live streaming of search progress with instant notifications</p>
+        </div>
+        <div class="feature-card">
+            <h3>🌐 Data Integration</h3>
+            <p>Multiple data sources for comprehensive and accurate insights</p>
+        </div>
+        <div class="feature-card">
+            <h3>📊 Advanced Analytics</h3>
+            <p>Deep insights, trend analysis, and predictive intelligence</p>
+        </div>
+    </div>
     """
     )
 

@@ -17,9 +17,12 @@ MODEL_MAX_TOKENS = int(os.getenv("MODEL_MAX_TOKENS", "4096"))
 AGENT_MAX_ITERATIONS = int(os.getenv("AGENT_MAX_ITERATIONS", "15"))
 AGENT_MAX_EXECUTION_TIME = int(os.getenv("AGENT_MAX_EXECUTION_TIME", "300"))  # seconds
 
+# General Data Directory
+DATA_DIRECTORY = os.getenv("DATA_DIRECTORY", os.path.join(os.getcwd(), "data"))
+
 # ChromaDB Configuration
 CHROMADB_PERSIST_DIRECTORY = os.getenv(
-    "CHROMADB_PERSIST_DIRECTORY", os.path.join(os.getcwd(), "data", "chroma_db")
+    "CHROMADB_PERSIST_DIRECTORY", os.path.join(DATA_DIRECTORY, "chroma_db")
 )
 CHROMADB_COLLECTION_NAME = os.getenv("CHROMADB_COLLECTION_NAME", "company_profiles")
 

@@ -101,17 +101,11 @@ def create_graph():
     # Sequence: Resolver -> MasterEnrichment
     workflow.add_edge("resolver", "master_enrichment")
 
-    # Branching: MasterEnrichment -> Scraper AND MasterEnrichment -> PdfAgent
-    # This ensures both downstream agents have the canonical company name
+    # Serialized Execution to avoid State merging conflicts:
+    # MasterEnrichment -> Scraper -> Vectorizer -> PdfAgent -> Analyst
     workflow.add_edge("master_enrichment", "scraper")
-    workflow.add_edge("master_enrichment", "pdf_agent")
-
-    # Re-converging
-    # Scraper path
     workflow.add_edge("scraper", "vectorizer")
-    workflow.add_edge("vectorizer", "analyst")
-
-    # PdfAgent path
+    workflow.add_edge("vectorizer", "pdf_agent")
     workflow.add_edge("pdf_agent", "analyst")
 
     # Analyst is the end

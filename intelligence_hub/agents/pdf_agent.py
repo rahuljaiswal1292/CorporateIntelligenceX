@@ -6,6 +6,7 @@ from intelligence_hub.graph.state import AgentState
 from intelligence_hub.connectors.llm import LLMConnector
 from intelligence_hub.storage.corporate_profile_store import CorporateProfileStore
 from .base_agent import BaseAgent
+from intelligence_hub.config.config import DATA_DIRECTORY
 
 
 class PdfAgent(BaseAgent):
@@ -52,7 +53,7 @@ class PdfAgent(BaseAgent):
         """
         company_name = state.get("company_name", "Unknown")
         safe_company_name = company_name.strip()
-        data_dir = os.path.join("intelligence_hub", "data", safe_company_name)
+        data_dir = os.path.join(DATA_DIRECTORY, safe_company_name)
 
         # Check if directory exists and has PDFs
         if not os.path.exists(data_dir):
@@ -77,7 +78,7 @@ class PdfAgent(BaseAgent):
         """
         company_name = state.get("company_name", "Unknown")
         safe_company_name = company_name.strip()
-        data_dir = os.path.join("intelligence_hub", "data", safe_company_name)
+        data_dir = os.path.join(DATA_DIRECTORY, safe_company_name)
 
         self.log(f"Processing PDFs for: {company_name}")
         pdf_results = []

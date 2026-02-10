@@ -20,6 +20,7 @@ from intelligence_hub.connectors.llm import LLMConnector
 from intelligence_hub.storage.corporate_profile_store import (
     CorporateProfileStore,
 )
+from intelligence_hub.config.config import DATA_DIRECTORY
 
 
 class BaseAgent(ABC):
@@ -48,11 +49,8 @@ class BaseAgent(ABC):
         self.llm_connector = llm_connector
         self.log_callback = log_callback
         self.profile_store = profile_store
-
         # Create company data directory
-        self.data_dir = Path("intelligence_hub/data") / self._sanitize_company_name(
-            company_name
-        )
+        self.data_dir = Path(DATA_DIRECTORY) / self._sanitize_company_name(company_name)
         self.data_dir.mkdir(parents=True, exist_ok=True)
 
         # Agent state

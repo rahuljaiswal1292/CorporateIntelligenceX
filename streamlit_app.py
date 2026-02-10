@@ -31,7 +31,7 @@ st.markdown(get_custom_css(), unsafe_allow_html=True)
 if "logs" not in st.session_state:
     st.session_state.logs = [
         f"[{datetime.now().strftime('%H:%M:%S')}] **System**: Intelligence Hub Initialized.",
-        f"[{datetime.now().strftime('%H:%M:%S')}] **System**: Connected to Vector DB (Pinecone).",
+        f"[{datetime.now().strftime('%H:%M:%S')}] **System**: Connected to Vector DB (ChromaDB).",
         f"[{datetime.now().strftime('%H:%M:%S')}] **System**: Ready for Entity Query...",
     ]
 if "data" not in st.session_state:

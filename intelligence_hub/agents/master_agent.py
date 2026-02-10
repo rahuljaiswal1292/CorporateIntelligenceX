@@ -18,6 +18,8 @@ from datetime import datetime
 from pathlib import Path
 
 from .base_agent import BaseAgent
+from intelligence_hub.graph.state import AgentState
+from intelligence_hub.connectors.llm import LLMConnector
 from .serpapi_profile_agent import (
     SerpAPIProfileAgent,
 )
@@ -38,6 +40,7 @@ class MasterAgent(BaseAgent):
     def __init__(
         self,
         company_name: str,
+        llm_connector: LLMConnector,
         log_callback: Optional[Callable] = None,
         profile_store: Optional[CorporateProfileStore] = None,
         enable_enrichment: bool = True,
@@ -91,15 +94,18 @@ class MasterAgent(BaseAgent):
         super().__init__(
             agent_name="Master Coordination Agent",
             company_name=resolved_name,
+            llm_connector=llm_connector,
             log_callback=log_callback,
             profile_store=profile_store,
         )
         self.original_query = company_name
         self.enable_enrichment = enable_enrichment
+        self.llm_connector = llm_connector
 
         # Initialize worker agents
         self.serpapi_agent = SerpAPIProfileAgent(
             company_name=company_name,
+            llm_connector=llm_connector,
             log_callback=log_callback,
             profile_store=profile_store,
         )
@@ -107,27 +113,30 @@ class MasterAgent(BaseAgent):
         self.worker_agents = [
             WikipediaAgent(
                 company_name=company_name,
+                llm_connector=llm_connector,
                 log_callback=log_callback,
                 profile_store=profile_store,
             ),
             NewsAgent(
                 company_name=company_name,
+                llm_connector=llm_connector,
                 log_callback=log_callback,
                 profile_store=profile_store,
             ),
             DEDAgent(
                 company_name=company_name,
+                llm_connector=llm_connector,
                 log_callback=log_callback,
                 profile_store=profile_store,
             ),
         ]
 
-    def should_execute(self, context: Dict) -> tuple[bool, str]:
+    def should_execute(self, state: AgentState) -> tuple[bool, str]:
         """
         Master agent always executes
 
         Args:
-            context: Execution context
+            state: Shared agent state
 
         Returns:
             (True, reasoning)
@@ -137,12 +146,12 @@ class MasterAgent(BaseAgent):
             "Master agent coordinates all research workflow",
         )
 
-    def run_serpapi_phase(self, context: Dict) -> Dict:
+    def run_serpapi_phase(self, state: AgentState) -> Dict:
         """
         Phase 1: Run SERP API Profile Agent to establish canonical name
 
         Args:
-            context: Initial context with search query
+            state: Shared agent state
 
         Returns:
             Basic profile result
@@ -182,7 +191,7 @@ class MasterAgent(BaseAgent):
 
         # No recent profile found, run SERP API agent
         self.log("No recent profile found, fetching from SERP API...")
-        result = self.serpapi_agent.run(context)
+        result = self.serpapi_agent.run(state)
 
         if result["status"] != "completed":
             self.log(
@@ -255,7 +264,10 @@ class MasterAgent(BaseAgent):
         self.log("=" * 60)
 
         # Prepare context for worker agents
-        context = {"basic_profile": basic_profile}
+        state_for_workers = {
+            "enrichments": basic_profile,
+            "company_name": basic_profile.get("canonical_name", self.company_name),
+        }
 
         # Run agents in parallel
         results = []
@@ -263,7 +275,7 @@ class MasterAgent(BaseAgent):
         with ThreadPoolExecutor(max_workers=len(self.worker_agents)) as executor:
             # Submit all agent tasks
             future_to_agent = {
-                executor.submit(agent.run, context): agent
+                executor.submit(agent.run, state_for_workers): agent
                 for agent in self.worker_agents
             }
 
@@ -360,12 +372,12 @@ class MasterAgent(BaseAgent):
 
         return final_profile
 
-    def execute(self, context: Dict) -> Dict:
+    def execute(self, state: AgentState) -> Dict:
         """
         Execute full multi-agent research workflow
 
         Args:
-            context: Initial context with search query
+            state: Shared agent state
 
         Returns:
             Final comprehensive profile
@@ -376,7 +388,7 @@ class MasterAgent(BaseAgent):
 
         # Phase 1: SERP API Profile Extraction
         self.log("PROGRESS:10:Phase 1 - Basic profile extraction")
-        serpapi_result = self.run_serpapi_phase(context)
+        serpapi_result = self.run_serpapi_phase(state)
 
         if serpapi_result["status"] != "completed":
             return {

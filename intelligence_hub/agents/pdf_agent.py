@@ -1,86 +1,139 @@
 import os
 import fitz  # PyMuPDF
-import logging
 import json
+from typing import List, Dict, Optional, Callable
 from intelligence_hub.graph.state import AgentState
 from intelligence_hub.connectors.llm import LLMConnector
-from intelligence_hub.connectors.vector_db import VectorDBConnector
-from typing import List, Dict
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from intelligence_hub.storage.corporate_profile_store import CorporateProfileStore
+from .base_agent import BaseAgent
 
 
-class PdfAgent:
+class PdfAgent(BaseAgent):
     """
     Agent 5: The PDF Processor.
     Parses PDFs, chunks text, saves to Vector DB, and extracts insights.
     """
 
-    def __init__(self):
-        self.llm = LLMConnector()
-        self.vector_db = VectorDBConnector()
+    def __init__(
+        self,
+        company_name: str,
+        llm_connector: LLMConnector,
+        log_callback: Optional[Callable] = None,
+        profile_store: Optional[CorporateProfileStore] = None,
+    ):
+        super().__init__(
+            agent_name="PDF Agent",
+            company_name=company_name,
+            llm_connector=llm_connector,
+            log_callback=log_callback,
+            profile_store=profile_store,
+        )
         self.prompts = self._load_prompts()
         if not self.prompts:
-            logger.warning("PdfAgent: No prompts loaded from pdf_prompts.json")
+            self.log("No prompts loaded from pdf_prompts.json", "WARNING")
 
     def _load_prompts(self) -> List[Dict]:
         try:
             with open("intelligence_hub/prompts/pdf_prompts.json", "r") as f:
                 return json.load(f)
         except Exception as e:
-            logger.error(f"Failed to load PDF prompts: {e}")
+            self.log(f"Failed to load PDF prompts: {e}", "ERROR")
             return []
 
-    def run(self, state: AgentState) -> AgentState:
-        logger.info("PdfAgent: Checking for documents...")
-        logs = state.get("logs", [])
-        pdf_results = []
+    def should_execute(self, state: AgentState) -> tuple[bool, str]:
+        """
+        Decide if PDF processing should run
 
+        Args:
+            state: Shared agent state
+
+        Returns:
+            (should_run, reasoning)
+        """
         company_name = state.get("company_name", "Unknown")
-        # Ensure directory exists: data/{Company_Name}
-        # Handle potential directory issues with sanitization if needed
         safe_company_name = company_name.strip()
         data_dir = os.path.join("intelligence_hub", "data", safe_company_name)
 
+        # Check if directory exists and has PDFs
         if not os.path.exists(data_dir):
-            logs.append(f"PdfAgent: Directory not found: {data_dir}")
-            return {**state, "logs": logs, "pdf_results": []}
+            return (False, f"Directory not found: {data_dir}")
 
-        # Find PDFs
         pdf_files = [f for f in os.listdir(data_dir) if f.lower().endswith(".pdf")]
 
         if not pdf_files:
-            logs.append(f"PdfAgent: No PDFs found in {data_dir}")
-            return {**state, "logs": logs, "pdf_results": []}
+            return (False, f"No PDFs found in {data_dir}")
 
-        logs.append(f"PdfAgent: Found {len(pdf_files)} PDFs. Processing...")
+        return (True, f"Found {len(pdf_files)} PDFs to process")
+
+    def execute(self, state: AgentState) -> Dict:
+        """
+        Execute PDF processing
+
+        Args:
+            state: Shared agent state
+
+        Returns:
+            Result with PDF analysis data
+        """
+        company_name = state.get("company_name", "Unknown")
+        safe_company_name = company_name.strip()
+        data_dir = os.path.join("intelligence_hub", "data", safe_company_name)
+
+        self.log(f"Processing PDFs for: {company_name}")
+        pdf_results = []
+
+        # Find PDFs
+        pdf_files = [f for f in os.listdir(data_dir) if f.lower().endswith(".pdf")]
+        self.log(f"Found {len(pdf_files)} PDFs. Processing...")
 
         for pdf_file in pdf_files:
             pdf_path = os.path.join(data_dir, pdf_file)
             try:
                 # 1. Parse & Chunk
                 text_chunks = self.process_pdf(pdf_path)
+                self.log(f"Extracted {len(text_chunks)} chunks from {pdf_file}")
 
-                # 2. Upsert to Vector DB
-                # Metadata including filename and company
-                metadata = [
-                    {"source": pdf_file, "company": company_name} for _ in text_chunks
-                ]
-                self.vector_db.upsert_documents(text_chunks, metadata)
-                logs.append(f"PdfAgent: Processed & Indexed {pdf_file}")
+                # 2. Store to ChromaDB via profile_store
+                if self.profile_store:
+                    # Store chunks as enrichment data
+                    for i, chunk in enumerate(text_chunks):
+                        chunk_data = {
+                            "source": pdf_file,
+                            "company": company_name,
+                            "chunk_index": i,
+                            "text": chunk,
+                        }
+                        self.profile_store.store_enrichment_data(
+                            canonical_name=company_name,
+                            enrichment_data=chunk_data,
+                            document_type="pdf_chunk",
+                        )
+                    self.log(f"Stored {len(text_chunks)} chunks to ChromaDB")
 
-                # 3. Dynamic Extraction
+                # 3. Dynamic Extraction using prompts
                 extracted_info = {}
                 for prompt_cfg in self.prompts:
-                    # RAG Retrieval for specific prompt
-                    context = self.vector_db.search(
-                        prompt_cfg["prompt"],
-                        top_k=3,
-                        filter_conditions={"source": pdf_file},
-                    )
-                    context_str = "\n".join(context)
+                    # Get relevant chunks from ChromaDB
+                    if self.profile_store:
+                        enrichment_data = self.profile_store.get_enrichment_data(
+                            canonical_name=company_name,
+                            document_type="pdf_chunk",
+                        )
+                        pdf_chunks = enrichment_data.get("pdf_chunk", [])
+
+                        # Filter chunks from this specific PDF
+                        relevant_chunks = [
+                            c.get("text", "")
+                            for c in pdf_chunks
+                            if c.get("source") == pdf_file
+                        ][
+                            :3
+                        ]  # Top 3 chunks
+
+                        context_str = "\n".join(relevant_chunks)
+                    else:
+                        # Fallback: use first few chunks
+                        context_str = "\n".join(text_chunks[:3])
 
                     # LLM Extraction
                     full_prompt = f"""
@@ -91,16 +144,56 @@ class PdfAgent:
                     
                     Return a concise summary or answer.
                     """
-                    response = self.llm.analyze(full_prompt)
+                    response = self.llm_connector.analyze(full_prompt)
                     extracted_info[prompt_cfg["category"]] = response
 
                 pdf_results.append({"file": pdf_file, "analysis": extracted_info})
+                self.log(f"Completed analysis of {pdf_file}")
 
             except Exception as e:
-                logger.error(f"Error processing {pdf_file}: {e}")
-                logs.append(f"PdfAgent: Error processing {pdf_file}")
+                self.log(f"Error processing {pdf_file}: {e}", "ERROR")
 
-        return {**state, "logs": logs, "pdf_results": pdf_results}
+        return {
+            "data": pdf_results,
+            "document_type": "pdf_analysis",
+            "metadata": {
+                "pdf_count": len(pdf_files),
+                "processed_count": len(pdf_results),
+            },
+        }
+
+    def run(self, state: AgentState) -> AgentState:
+        """
+        Run PDF agent workflow
+
+        Args:
+            state: Current agent state
+
+        Returns:
+            Updated agent state
+        """
+        logs = state.get("logs", [])
+
+        # Check if should execute
+        should_run, reasoning = self.should_execute(state)
+
+        if not should_run:
+            self.log(f"Skipping PDF processing: {reasoning}")
+            logs.append(f"PdfAgent: Skipped - {reasoning}")
+            return {**state, "logs": logs, "pdf_results": []}
+
+        # Execute PDF processing
+        try:
+            result = self.execute(state)
+            pdf_results = result.get("data", [])
+
+            logs.append(f"PdfAgent: Processed {len(pdf_results)} PDFs")
+            return {**state, "logs": logs, "pdf_results": pdf_results}
+
+        except Exception as e:
+            self.log(f"PDF processing failed: {e}", "ERROR")
+            logs.append(f"PdfAgent: Failed - {str(e)}")
+            return {**state, "logs": logs, "pdf_results": []}
 
     def process_pdf(self, file_path: str) -> List[str]:
         """

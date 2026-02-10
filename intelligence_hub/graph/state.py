@@ -33,3 +33,6 @@ class AgentState(TypedDict):
 
     # Logs for UI
     logs: List[str]
+
+    # Enrichment Data
+    enrichments: Dict[str, Any]

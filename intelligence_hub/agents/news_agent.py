@@ -12,6 +12,8 @@ from urllib.parse import quote_plus
 from typing import Dict, Optional, Callable, List
 
 from .base_agent import BaseAgent
+from intelligence_hub.graph.state import AgentState
+from intelligence_hub.connectors.llm import LLMConnector
 from intelligence_hub.storage.corporate_profile_store import (
     CorporateProfileStore,
 )
@@ -27,27 +29,29 @@ class NewsAgent(BaseAgent):
     def __init__(
         self,
         company_name: str,
+        llm_connector: LLMConnector,
         log_callback: Optional[Callable] = None,
         profile_store: Optional[CorporateProfileStore] = None,
     ):
         super().__init__(
             agent_name="News Agent",
             company_name=company_name,
+            llm_connector=llm_connector,
             log_callback=log_callback,
             profile_store=profile_store,
         )
 
-    def should_execute(self, context: Dict) -> tuple[bool, str]:
+    def should_execute(self, state: AgentState) -> tuple[bool, str]:
         """
         Decide if news aggregation should run
 
         Args:
-            context: Context with basic profile
+            state: Shared agent state
 
         Returns:
             (should_run, reasoning)
         """
-        basic_profile = context.get("basic_profile", {})
+        basic_profile = state.get("enrichments", {})
 
         # Load decision prompt
         decision_prompt = load_prompt("agent_news_decision.txt")
@@ -63,7 +67,7 @@ class NewsAgent(BaseAgent):
         )
 
         # Invoke LLM for decision
-        chain = prompt | self.llm
+        chain = prompt | self.llm_connector.llm
         response = chain.invoke({"profile_json": json.dumps(basic_profile, indent=2)})
 
         # Parse decision
@@ -189,7 +193,7 @@ class NewsAgent(BaseAgent):
 
         return "Unknown"
 
-    def execute(self, context: Dict) -> Dict:
+    def execute(self, state: AgentState) -> Dict:
         """
         Execute news aggregation
 
@@ -199,8 +203,10 @@ class NewsAgent(BaseAgent):
         Returns:
             Result with news data
         """
-        basic_profile = context.get("basic_profile", {})
-        canonical_name = basic_profile.get("canonical_name", self.company_name)
+        basic_profile = state.get("enrichments", {})
+        canonical_name = basic_profile.get(
+            "canonical_name", state.get("company_name", self.company_name)
+        )
 
         self.log("PROGRESS:0:Starting news search")
         self.log(f"Fetching recent news for: {canonical_name}")

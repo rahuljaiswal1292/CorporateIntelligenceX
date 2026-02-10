@@ -15,8 +15,8 @@ from pathlib import Path
 from typing import Dict, Optional, Callable, Any
 from abc import ABC, abstractmethod
 
-from langchain_openai import ChatOpenAI
-from intelligence_hub.config.config import OPENAI_API_KEY
+from intelligence_hub.graph.state import AgentState
+from intelligence_hub.connectors.llm import LLMConnector
 from intelligence_hub.storage.corporate_profile_store import (
     CorporateProfileStore,
 )
@@ -29,6 +29,7 @@ class BaseAgent(ABC):
         self,
         agent_name: str,
         company_name: str,
+        llm_connector: LLMConnector,
         log_callback: Optional[Callable] = None,
         profile_store: Optional[CorporateProfileStore] = None,
     ):
@@ -38,20 +39,15 @@ class BaseAgent(ABC):
         Args:
             agent_name: Name of the agent (e.g., "Wikipedia Agent")
             company_name: Company being researched
+            llm_connector: Shared LLM connector instance
             log_callback: Function to call for progress updates
             profile_store: ChromaDB store instance
         """
         self.agent_name = agent_name
         self.company_name = company_name
+        self.llm_connector = llm_connector
         self.log_callback = log_callback
         self.profile_store = profile_store
-
-        # Initialize LLM
-        self.llm = ChatOpenAI(
-            model="gpt-4-turbo",
-            temperature=0,
-            api_key=OPENAI_API_KEY,
-        )
 
         # Create company data directory
         self.data_dir = Path("intelligence_hub/data") / self._sanitize_company_name(
@@ -242,12 +238,12 @@ class BaseAgent(ABC):
             return False
 
     @abstractmethod
-    def should_execute(self, context: Dict) -> tuple[bool, str]:
+    def should_execute(self, state: AgentState) -> tuple[bool, str]:
         """
-        Decide if this agent should execute based on context
+        Decide if this agent should execute based on state
 
         Args:
-            context: Context with basic profile and other info
+            state: Shared agent state
 
         Returns:
             (should_run, reasoning) tuple
@@ -255,24 +251,24 @@ class BaseAgent(ABC):
         pass
 
     @abstractmethod
-    def execute(self, context: Dict) -> Dict:
+    def execute(self, state: AgentState) -> Dict:
         """
         Execute the agent's research task
 
         Args:
-            context: Context with basic profile and other info
+            state: Shared agent state
 
         Returns:
             Result dictionary with enrichment data
         """
         pass
 
-    def run(self, context: Dict) -> Dict:
+    def run(self, state: AgentState) -> Dict:
         """
         Main execution method with decision making
 
         Args:
-            context: Context with basic profile
+            state: Shared agent state
 
         Returns:
             Result with status, data, and metadata
@@ -281,7 +277,7 @@ class BaseAgent(ABC):
         self.status = "deciding"
 
         # Step 1: Decide if should execute
-        should_run, reasoning = self.should_execute(context)
+        should_run, reasoning = self.should_execute(state)
         self.log(f"Decision: {'EXECUTE' if should_run else 'SKIP'}")
         self.log(f"```text\nReasoning: {reasoning}\n```")
 
@@ -297,7 +293,7 @@ class BaseAgent(ABC):
         # Step 2: Execute research
         self.status = "executing"
         try:
-            result = self.execute(context)
+            result = self.execute(state)
             self.status = "completed"
             self.result = result
 

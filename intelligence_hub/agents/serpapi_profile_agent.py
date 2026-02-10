@@ -11,6 +11,8 @@ from serpapi import GoogleSearch
 
 from intelligence_hub.config.config import SERPAPI_API_KEY
 from .base_agent import BaseAgent
+from intelligence_hub.graph.state import AgentState
+from intelligence_hub.connectors.llm import LLMConnector
 from intelligence_hub.storage.corporate_profile_store import (
     CorporateProfileStore,
 )
@@ -26,17 +28,19 @@ class SerpAPIProfileAgent(BaseAgent):
     def __init__(
         self,
         company_name: str,
+        llm_connector: LLMConnector,
         log_callback: Optional[Callable] = None,
         profile_store: Optional[CorporateProfileStore] = None,
     ):
         super().__init__(
             agent_name="SERP API Profile Agent",
             company_name=company_name,
+            llm_connector=llm_connector,
             log_callback=log_callback,
             profile_store=profile_store,
         )
 
-    def should_execute(self, context: Dict) -> tuple[bool, str]:
+    def should_execute(self, state: AgentState) -> tuple[bool, str]:
         """
         SERP API agent always executes as it provides the foundational profile
 
@@ -223,7 +227,7 @@ class SerpAPIProfileAgent(BaseAgent):
         )
 
         try:
-            chain = prompt | self.llm
+            chain = prompt | self.llm_connector.llm
             response = chain.invoke(
                 {
                     "query": original_query,
@@ -296,7 +300,7 @@ class SerpAPIProfileAgent(BaseAgent):
             serp_json = serp_json[:24000] + "\n... (truncated for token limit)"
 
         # Invoke LLM
-        chain = prompt | self.llm
+        chain = prompt | self.llm_connector.llm
         response = chain.invoke({"serp_json": serp_json})
 
         # Parse response
@@ -328,7 +332,7 @@ class SerpAPIProfileAgent(BaseAgent):
             )
             raise
 
-    def execute(self, context: Dict) -> Dict:
+    def execute(self, state: AgentState) -> Dict:
         """
         Execute SERP API profile extraction with retry logic
 
@@ -341,7 +345,7 @@ class SerpAPIProfileAgent(BaseAgent):
         self.log("PROGRESS:0:Starting SERP profile extraction")
 
         # Step 1: Fetch SERP data
-        query = context.get("initial_query", self.company_name)
+        query = state.get("query", self.company_name)
 
         max_attempts = 3
         attempt = 1

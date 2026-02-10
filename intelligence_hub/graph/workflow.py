@@ -8,6 +8,7 @@ from intelligence_hub.agents.vectorizer import VectorizerAgent
 from intelligence_hub.agents.analyst import AnalystAgent
 from intelligence_hub.agents.pdf_agent import PdfAgent
 from intelligence_hub.agents.master_agent import MasterAgent
+from intelligence_hub.connectors.llm import LLMConnector
 from intelligence_hub.storage.corporate_profile_store import CorporateProfileStore
 from intelligence_hub.config.config import CHROMADB_PERSIST_DIRECTORY
 
@@ -25,15 +26,18 @@ def run_enrichment_node(state: AgentState):
         # Initialize dependencies
         chroma_client = chromadb.PersistentClient(path=CHROMADB_PERSIST_DIRECTORY)
         store = CorporateProfileStore(chroma_client)
+        llm_connector = LLMConnector()
 
-        # Initialize Master Agent
-        # We pass a simple print as log_callback for console, but we'll capture logs in state too
+        # Initialize Master Agent with LLMConnector
         agent = MasterAgent(
-            company_name=company_name, profile_store=store, log_callback=print
+            company_name=company_name,
+            llm_connector=llm_connector,
+            profile_store=store,
+            log_callback=print,
         )
 
-        # Run agent
-        result = agent.run({"initial_query": state["query"]})
+        # Run agent with state
+        result = agent.run(state)
 
         # Extract data
         full_profile = result.get("data", {})
@@ -58,12 +62,27 @@ def create_graph():
     Constructs the Intelligence Graph.
     Flow: Resolver -> MasterEnrichment -> (Scraper, PdfAgent) -> Vectorizer -> Analyst
     """
-    # 1. Initialize Agents
+    # 1. Initialize shared dependencies
+    llm_connector = LLMConnector()
+    store = CorporateProfileStore(persist_directory=CHROMADB_PERSIST_DIRECTORY)
+
+    # 2. Initialize Agents
     resolver = ResolverAgent()
     scraper = ScraperOrchestrator()
     vectorizer = VectorizerAgent()
-    analyst = AnalystAgent()
-    pdf_agent = PdfAgent()
+
+    # Initialize agents that need llm_connector and profile_store
+    # Note: company_name will be updated from state during execution
+    analyst = AnalystAgent(
+        company_name="placeholder",  # Will be updated from state
+        llm_connector=llm_connector,
+        profile_store=store,
+    )
+    pdf_agent = PdfAgent(
+        company_name="placeholder",  # Will be updated from state
+        llm_connector=llm_connector,
+        profile_store=store,
+    )
 
     # 2. Define Graph
     workflow = StateGraph(AgentState)

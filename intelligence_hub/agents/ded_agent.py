@@ -13,6 +13,8 @@ from datetime import datetime
 from typing import Dict, Optional, Callable, List
 
 from .base_agent import BaseAgent
+from intelligence_hub.graph.state import AgentState
+from intelligence_hub.connectors.llm import LLMConnector
 from intelligence_hub.storage.corporate_profile_store import (
     CorporateProfileStore,
 )
@@ -28,12 +30,14 @@ class DEDAgent(BaseAgent):
     def __init__(
         self,
         company_name: str,
+        llm_connector: LLMConnector,
         log_callback: Optional[Callable] = None,
         profile_store: Optional[CorporateProfileStore] = None,
     ):
         super().__init__(
             agent_name="DED Agent",
             company_name=company_name,
+            llm_connector=llm_connector,
             log_callback=log_callback,
             profile_store=profile_store,
         )
@@ -52,17 +56,17 @@ class DEDAgent(BaseAgent):
             )
             self.chroma_client = None
 
-    def should_execute(self, context: Dict) -> tuple[bool, str]:
+    def should_execute(self, state: AgentState) -> tuple[bool, str]:
         """
         Decide if DED lookup should run
 
         Args:
-            context: Context with basic profile
+            state: Shared agent state
 
         Returns:
             (should_run, reasoning)
         """
-        basic_profile = context.get("basic_profile", {})
+        basic_profile = state.get("enrichments", {})
 
         # Load decision prompt
         decision_prompt = load_prompt("agent_ded_decision.txt")
@@ -78,7 +82,7 @@ class DEDAgent(BaseAgent):
         )
 
         # Invoke LLM for decision
-        chain = prompt | self.llm
+        chain = prompt | self.llm_connector.llm
         response = chain.invoke({"profile_json": json.dumps(basic_profile, indent=2)})
 
         # Parse decision
@@ -477,7 +481,7 @@ class DEDAgent(BaseAgent):
 
         # Invoke LLM for comparison
         self.log("Sending comparison request to AI...")
-        chain = prompt | self.llm
+        chain = prompt | self.llm_connector.llm
         try:
             response = chain.invoke(
                 {
@@ -676,19 +680,21 @@ class DEDAgent(BaseAgent):
             "total_licenses": total_licenses,
         }
 
-    def execute(self, context: Dict) -> Dict:
+    def execute(self, state: AgentState) -> Dict:
         """
         Execute DED license lookup with hybrid search
         (exact match + similarity search)
 
         Args:
-            context: Context with basic profile
+            state: Shared agent state
 
         Returns:
             Result with comprehensive DED data
         """
-        basic_profile = context.get("basic_profile", {})
-        canonical_name = basic_profile.get("canonical_name", self.company_name)
+        basic_profile = state.get("enrichments", {})
+        canonical_name = basic_profile.get(
+            "canonical_name", state.get("company_name", self.company_name)
+        )
 
         self.log(f"Querying DED database for: {canonical_name}")
         self.log("Using hybrid approach: exact match + similarity search")

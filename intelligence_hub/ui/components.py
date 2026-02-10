@@ -9,7 +9,7 @@ def render_header():
     """Renders the main dashboard header with Greeting and Process Flow."""
     st.markdown(
         f"""
-            <div style="display: flex; align-items: center; gap: 15px;">
+            <div style="display: flex; align-items: center; gap: 5px;">
             <img src="{logo_url}" style="width: 50px; height: 50px; border-radius: 8px;">
             <h1 style="margin: 0;">CorporateIntelligence<span style="color:blue">X</span></h1>
             </div>
@@ -17,7 +17,7 @@ def render_header():
         unsafe_allow_html=True,
     )
     st.markdown(
-        "<h4 style='color:blue; margin-left: 68px'> 360° Automated Web Agent</h4>",
+        "<h4 style='color:blue; margin-left: 58px; margin-top: -3px;' id='360-automated-web-agent'> 360° Automated Web Agent</h4>",
         unsafe_allow_html=True,
     )
     # st.markdown("---")

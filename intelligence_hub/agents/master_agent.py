@@ -33,6 +33,11 @@ from intelligence_hub.storage.corporate_profile_store import (
 )
 from intelligence_hub.config.config import DATA_DIRECTORY
 from intelligence_hub.prompts import load_prompt
+from intelligence_hub.config.settings import config
+from intelligence_hub.scrapers.adx import ADXScraper
+from intelligence_hub.scrapers.dfm import DFMScraper
+from intelligence_hub.connectors.scrapingbee import ScrapingBeeConnector
+import asyncio
 
 
 class MasterAgent(BaseAgent):
@@ -46,55 +51,15 @@ class MasterAgent(BaseAgent):
         profile_store: Optional[CorporateProfileStore] = None,
         enable_enrichment: bool = True,
     ):
-        # Check if we have a similar company in ChromaDB first
-        resolved_name = company_name
-        found_match = False
-
         if profile_store and log_callback:
-            log_callback("PROGRESS:2:Checking database for existing profiles")
-
-        if profile_store:
-            try:
-                # Use semantic similarity search
-                matches = profile_store.find_similar_company(
-                    company_name, max_results=1
-                )
-                if matches and len(matches) > 0:
-                    # Check if it's a close match (distance < 0.6 means similar enough)
-                    # ChromaDB uses cosine distance: 0 = identical, 2 = opposite
-                    top_match = matches[0]
-                    distance = top_match.get("distance", 1.0)
-                    if distance < 0.6:  # Reasonable similarity threshold
-                        resolved_name = top_match.get(
-                            "canonical_name",
-                            company_name,
-                        )
-                        found_match = True
-                        if log_callback and resolved_name != company_name:
-                            similarity_pct = max(
-                                0,
-                                (1 - distance) * 100,
-                            )
-                            log_callback(
-                                f"🔍 Found similar company in database: '{resolved_name}' (match: {similarity_pct:.1f}%)\n"
-                            )
-
-                # Log if no match was found
-                if not found_match and log_callback:
-                    log_callback(
-                        f"ℹ️ No existing profile found for '{company_name}' - starting new research\n"
-                    )
-
-            except Exception as e:
-                if log_callback:
-                    log_callback(f"⚠️ Similarity check failed: {e}\n")
+            log_callback("PROGRESS:2:Initializing Master Agent")
 
         if log_callback:
             log_callback("PROGRESS:5:Database check complete, initializing agents")
 
         super().__init__(
             agent_name="Master Coordination Agent",
-            company_name=resolved_name,
+            company_name=company_name,  # Start with raw query
             llm_connector=llm_connector,
             log_callback=log_callback,
             profile_store=profile_store,
@@ -131,6 +96,100 @@ class MasterAgent(BaseAgent):
                 profile_store=profile_store,
             ),
         ]
+
+    def resolve_query(self, query: str) -> Dict[str, str]:
+        """Phase 0: Entity Resolution"""
+        self.log(f"PHASE 0: Resolving entity for query: '{query}'")
+        query_lower = query.lower()
+
+        # 1. Config Check
+        for key, val in config.KNOWN_TICKER_MAP.items():
+            if key in query_lower:
+                self.log(f"Resolved via Config: {val['name']}")
+                return {
+                    "ticker": val["ticker"],
+                    "exchange": val["exchange"],
+                    "company_name": val["name"],
+                    "website": val.get("website", ""),
+                }
+
+        # 2. ChromaDB Check (Semantic)
+        if self.profile_store:
+            matches = self.profile_store.find_similar_company(query, max_results=1)
+            if matches and len(matches) > 0:
+                top_match = matches[0]
+                if top_match["distance"] < 0.4:  # Specific threshold
+                    meta = top_match["metadata"]
+                    self.log(f"Resolved via DB: {meta.get('canonical_name')}")
+                    return {
+                        "ticker": meta.get("ticker", ""),
+                        "exchange": meta.get("exchange", ""),
+                        "company_name": meta.get("canonical_name"),
+                        "website": meta.get("website", ""),
+                    }
+
+        # 3. Dynamic Search (Fallback)
+        self.log("Starting dynamic resolution via scrapers...")
+
+        sb_connector = ScrapingBeeConnector()
+        adx_scanner = ADXScraper(sb_connector)
+        dfm_scanner = DFMScraper(sb_connector)
+
+        def safe_run_async(coro):
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    import nest_asyncio
+
+                    nest_asyncio.apply()
+                    return loop.run_until_complete(coro)
+                else:
+                    return loop.run_until_complete(coro)
+            except RuntimeError:
+                return asyncio.run(coro)
+
+        found_ticker = None
+        found_exchange = None
+        found_name = None
+
+        try:
+            # Try ADX
+            _t, _n = safe_run_async(adx_scanner.search_ticker(query))
+            if _t:
+                found_ticker = _t
+                found_name = _n
+                found_exchange = "ADX"
+        except Exception:
+            pass
+
+        if not found_ticker:
+            try:
+                # Try DFM
+                _t, _n = safe_run_async(dfm_scanner.search_ticker(query))
+                if _t:
+                    found_ticker = _t
+                    found_name = _n
+                    found_exchange = "DFM"
+            except Exception:
+                pass
+
+        if found_ticker:
+            self.log(f"Resolved via Dynamic Search: {found_name}")
+            # Cache it? profile_store.store_company_profile(...) - Maybe later in workflow
+            return {
+                "ticker": found_ticker,
+                "exchange": found_exchange,
+                "company_name": found_name,
+                "website": "",
+            }
+
+        self.log(f"Could not resolve '{query}'. Proceeding with raw query.")
+        return {
+            "ticker": "UNKNOWN",
+            "company_name": query.title(),
+            "exchange": "UNKNOWN",
+            "website": "",
+        }
 
     def should_execute(self, state: AgentState) -> tuple[bool, str]:
         """
@@ -385,7 +444,25 @@ class MasterAgent(BaseAgent):
         """
         self.log("PROGRESS:0:Starting research workflow")
         self.log("Starting multi-agent research workflow")
+
+        # Phase 0: Resolution
+        resolution = self.resolve_query(
+            self.company_name
+        )  # self.company_name is raw query here
+        self.company_name = resolution[
+            "company_name"
+        ]  # Update to canonical/resolved name
         self.log(f"Target Company: {self.company_name}")
+
+        # Update state with resolution info
+        # Note: 'state' is a dict, we can't easily update it in place if it's not returned?
+        # But 'execute' returns a dict. The 'run' method (wrapper) merges it.
+        # Wait, 'execute' returns 'final_profile'.
+        # We need to ensure 'resolution' data gets into the state.
+        # But 'MasterAgent' returns dict which merges into state?
+        # Typically MasterAgent is used to Generate 'enrichments'.
+
+        # We should continue with research based on resolved name.
 
         # Phase 1: SERP API Profile Extraction
         self.log("PROGRESS:10:Phase 1 - Basic profile extraction")
@@ -454,5 +531,8 @@ class MasterAgent(BaseAgent):
                 "confidence": final_profile.get("confidence_score", 0),
                 "enrichment_count": len(enrichment_results),
                 "stored_in_chromadb": stored,
+                "ticker": resolution.get("ticker"),
+                "exchange": resolution.get("exchange"),
+                "website": resolution.get("website"),
             },
         }

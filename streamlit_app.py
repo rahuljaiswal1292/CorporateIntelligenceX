@@ -1,6 +1,7 @@
 import streamlit as st
 import time
 from datetime import datetime
+import os
 from intelligence_hub.ui.styles import get_custom_css
 from intelligence_hub.core.mock_data import get_company_data
 from intelligence_hub.graph.workflow import create_graph  # Real-Time Backend
@@ -16,10 +17,14 @@ from intelligence_hub.ui.components import (
     render_pdf_analysis,
 )
 
+image_path = os.path.join(
+    os.path.dirname(__file__), "intelligence_hub", "ui", "favicon.jpg"
+)
+
 # --- Page Configuration ---
 st.set_page_config(
     page_title="CorporateIntelligenceX",
-    page_icon="🏦",
+    page_icon=image_path,
     layout="wide",
     initial_sidebar_state="expanded",
 )

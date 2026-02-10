@@ -2,14 +2,24 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 
+logo_url = "https://www.emiratesnbd.com/-/media/enbd/images/logos/favicon.png"
+
 
 def render_header():
     """Renders the main dashboard header with Greeting and Process Flow."""
     st.markdown(
-        "<h1>CorporateIntelligence<span style='color:blue'>X</span></h1>",
+        f"""
+            <div style="display: flex; align-items: center; gap: 15px;">
+            <img src="{logo_url}" style="width: 50px; height: 50px; border-radius: 8px;">
+            <h1 style="margin: 0;">CorporateIntelligence<span style="color:blue">X</span></h1>
+            </div>
+            """,
         unsafe_allow_html=True,
     )
-    st.markdown("### 360° Automated Web Agent")
+    st.markdown(
+        "<h4 style='color:blue; margin-left: 68px'> 360° Automated Web Agent</h4>",
+        unsafe_allow_html=True,
+    )
     # st.markdown("---")
 
     # Process Explanation Box

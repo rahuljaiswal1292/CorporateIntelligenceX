@@ -147,8 +147,13 @@ class AnalystAgent(BaseAgent):
 
             logs.append(f"Analyst: Generated {len(insights)} strategic insights.")
 
+            # Generate Final Report
+            final_report = self.generate_final_report(state, insights)
+            logs.append("Analyst: Generated Final Report.")
+
             return {
                 "insights": insights,
+                "final_report": final_report,
                 "logs": logs,
                 # Pass through other state
                 "ticker": state.get("ticker", "Unknown"),
@@ -164,6 +169,44 @@ class AnalystAgent(BaseAgent):
                 "ticker": state.get("ticker", "Unknown"),
                 "company_name": state.get("company_name", "Unknown"),
             }
+
+    def generate_final_report(self, state: AgentState, insights: list) -> str:
+        """Generates a comprehensive final report."""
+        company_name = state.get("company_name", "Unknown")
+        ticker = state.get("ticker", "Unknown")
+        enrichments = state.get("enrichments", {})
+
+        # Create a summary of enrichments
+        profile_summary = {
+            "canonical_name": enrichments.get("canonical_name"),
+            "description": enrichments.get("description"),
+            "industry": enrichments.get("industry"),
+            "headquarters": enrichments.get("headquarters"),
+            "website": enrichments.get("website"),
+        }
+
+        prompt = f"""
+        Generate a professional Executive Banking Intelligence Report for {company_name} ({ticker}).
+        
+        Company Profile:
+        {json.dumps(profile_summary, indent=2)}
+        
+        Strategic Insights & Opportunities:
+        {json.dumps(insights, indent=2)}
+        
+        Format the report in Markdown being concise and professional.
+        Include sections:
+        1. Executive Summary
+        2. Company Overview
+        3. Strategic Banking Opportunities
+        4. Key Risks & Considerations
+        """
+
+        try:
+            return self.llm_connector.analyze(prompt)
+        except Exception as e:
+            self.log(f"Failed to generate final report: {e}", "ERROR")
+            return "Final report generation failed."
 
     def summarize_profile(self, text: str) -> str:
         """Summarizes raw text into a company profile."""

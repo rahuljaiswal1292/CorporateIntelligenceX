@@ -5,7 +5,7 @@ from intelligence_hub.scrapers.dfm import DFMScraper
 from intelligence_hub.scrapers.wiki import WikiScraper
 from intelligence_hub.scrapers.yahoo import YahooFinanceScraper
 from intelligence_hub.connectors.scrapingbee import ScrapingBeeConnector
-from intelligence_hub.connectors.pinecone_client import PineconeConnector
+from intelligence_hub.storage.corporate_profile_store import CorporateProfileStore
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ class ScraperOrchestrator:
 
     def __init__(self):
         self.sb_connector = ScrapingBeeConnector()
-        self.db = PineconeConnector()
+        self.db = CorporateProfileStore()
 
         self.adx_scraper = ADXScraper(self.sb_connector)
         self.dfm_scraper = DFMScraper(self.sb_connector)
@@ -52,8 +52,14 @@ class ScraperOrchestrator:
             logs.append(f"Scraper: Error fetching data - {str(e)}")
             data = {}
 
+        # Extract metadata for state
+        doc_urls = [s.get("url") for s in data.get("sources", []) if s.get("url")]
+        raw_html = data.get("raw_html_snippet", "")
+
         return {
             "financial_data": data,
+            "doc_urls": doc_urls,
+            "raw_html": raw_html,
             "logs": logs,
         }
 
@@ -91,12 +97,10 @@ class ScraperOrchestrator:
         logger.info(f"Orchestrating PARALLEL data fetch for {ticker} ({exchange})...")
 
         # 1. Check Cache
-        is_stale = self.db.check_staleness(ticker)
-        if not is_stale:
-            cached_data = self.db.fetch_cached_financials(ticker)
-            if cached_data:
-                logger.info(f"Returning cached data for {ticker}")
-                return cached_data
+        cached_data = self.db.get_financials(ticker)
+        if cached_data:
+            logger.info(f"Returning cached data for {ticker}")
+            return cached_data
 
         # 2. Scrape Fresh Data (Parallel Agents)
         scraped_data = {"financials": {}, "profile": {}, "sources": []}
@@ -173,7 +177,7 @@ class ScraperOrchestrator:
             scraped_data["profile"] = {"description": "Retrieved from Wikipedia"}
             scraped_data["raw_html_snippet"] = wiki_data.get("raw_html_snippet")
 
-        # 4. Index Fresh Data to Pinecone (Persist)
-        self.db.upsert_financials(ticker, scraped_data)
+        # 4. Index Fresh Data to ChromaDB (Persist)
+        self.db.store_financials(ticker, scraped_data)
 
         return scraped_data

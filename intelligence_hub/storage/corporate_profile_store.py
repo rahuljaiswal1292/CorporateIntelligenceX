@@ -698,3 +698,84 @@ class CorporateProfileStore:
         except Exception as e:
             self._log(f"Error storing enrichment data: {e}")
             return False
+
+    def store_financials(self, ticker: str, data: Dict) -> bool:
+        """Store financial data with timestamp for cache management"""
+        try:
+            timestamp = datetime.now().isoformat()
+            # We use 'financials' as document type
+            # Data typically contains 'financials' (dict) and 'sources' (list)
+
+            # Create a textual representation for search if needed
+            text_content = f"Financial Data for {ticker}: {str(data)[:500]}..."
+
+            # Serialize
+            data_json = json.dumps(data, ensure_ascii=False)
+
+            metadata = {
+                "ticker": ticker,
+                "document_type": "financials",
+                "timestamp": timestamp,
+                "data": data_json,
+            }
+
+            # Upsert (overwrite existing for this ticker)
+            doc_id = f"{ticker}_financials"
+
+            self.details_collection.upsert(
+                ids=[doc_id], documents=[text_content], metadatas=[metadata]
+            )
+            return True
+        except Exception as e:
+            self._log(f"Error storing financials: {e}")
+            return False
+
+    def get_financials(self, ticker: str, max_age_hours: int = 24) -> Optional[Dict]:
+        """Retrieve financial data if fresh"""
+        try:
+            doc_id = f"{ticker}_financials"
+            results = self.details_collection.get(ids=[doc_id], include=["metadatas"])
+
+            if not results["ids"]:
+                return None
+
+            metadata = results["metadatas"][0]
+            timestamp_str = metadata.get("timestamp")
+
+            if not timestamp_str:
+                return None
+
+            # Check staleness
+            stored_time = datetime.fromisoformat(timestamp_str)
+            if (datetime.now() - stored_time).total_seconds() > (max_age_hours * 3600):
+                self._log(f"Financial data for {ticker} is stale.")
+                return None
+
+            # Deserialize
+            if "data" in metadata:
+                return json.loads(metadata["data"])
+            return None
+
+        except Exception as e:
+            self._log(f"Error retrieving financials: {e}")
+            return None
+
+    def store_vectors(self, vectors: List[tuple]) -> bool:
+        """
+        Store vectors (chunks) directly.
+        Args:
+            vectors: List of (id, embedding_values, metadata)
+        """
+        try:
+            ids = [v[0] for v in vectors]
+            embeddings = [v[1] for v in vectors]
+            metadatas = [v[2] for v in vectors]
+            documents = [m.get("text", "") for m in metadatas]
+
+            self.details_collection.upsert(
+                ids=ids, embeddings=embeddings, metadatas=metadatas, documents=documents
+            )
+            return True
+        except Exception as e:
+            self._log(f"Error storing vectors: {e}")
+            return False

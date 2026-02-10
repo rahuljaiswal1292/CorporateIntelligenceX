@@ -2,7 +2,9 @@ import os
 import chromadb
 from langgraph.graph import StateGraph, END
 from intelligence_hub.graph.state import AgentState
-from intelligence_hub.agents.resolver import ResolverAgent
+from intelligence_hub.graph.state import AgentState
+
+# from intelligence_hub.agents.resolver import ResolverAgent (Removed)
 from intelligence_hub.agents.scraper_orchestrator import ScraperOrchestrator
 from intelligence_hub.agents.vectorizer import VectorizerAgent
 from intelligence_hub.agents.analyst import AnalystAgent
@@ -17,39 +19,50 @@ def run_enrichment_node(state: AgentState):
     """
     Executes the Master Coordination Agent for profile enrichment.
     """
-    company_name = state.get("company_name", "Unknown")
+    company_name = state.get("company_name") or state.get("query", "Unknown")
     logs = state.get("logs", [])
 
-    logs.append(f"Starting enrichment for {company_name}...")
+    logs.append(f"Starting enrichment (and resolution) for {company_name}...")
 
     try:
         # Initialize dependencies
-        # Initialize dependencies
-        # Use default persist directory from config, consistently with other agents
         store = CorporateProfileStore()
         llm_connector = LLMConnector()
 
-        # Initialize Master Agent with LLMConnector
+        # Log collector
+        def log_handler(msg):
+            logs.append(msg.strip())
+            print(msg.strip())
+
+        # Initialize Master Agent
         agent = MasterAgent(
             company_name=company_name,
             llm_connector=llm_connector,
             profile_store=store,
-            log_callback=print,
+            log_callback=log_handler,
         )
 
-        # Run agent with state
+        # Run agent
         result = agent.run(state)
 
         # Extract data
         full_profile = result.get("data", {})
-        enrichments = full_profile.get("enrichments", {})
-        canonical_name = full_profile.get("canonical_name", company_name)
+        metadata = result.get("metadata", {})
+        canonical_name = metadata.get("canonical_name", company_name)
+
+        # Extract resolution info
+        ticker = metadata.get("ticker", state.get("ticker"))
+        exchange = metadata.get("exchange", state.get("exchange"))
+        website = metadata.get("website", state.get("website"))
 
         logs.append(f"Enrichment completed. Canonical Name: {canonical_name}")
 
         return {
-            "enrichments": full_profile,  # Store the whole profile structure
-            "company_name": canonical_name,  # Update canonical name if changed
+            "enrichments": full_profile,
+            "company_name": canonical_name,
+            "ticker": ticker,
+            "exchange": exchange,
+            "website": website,
             "logs": logs,
         }
 
@@ -68,7 +81,8 @@ def create_graph():
     store = CorporateProfileStore(persist_directory=CHROMADB_PERSIST_DIRECTORY)
 
     # 2. Initialize Agents
-    resolver = ResolverAgent()
+    # 2. Initialize Agents
+    # resolver = ResolverAgent() (Removed)
     scraper = ScraperOrchestrator()
     vectorizer = VectorizerAgent()
 
@@ -89,7 +103,8 @@ def create_graph():
     workflow = StateGraph(AgentState)
 
     # 3. Add Nodes
-    workflow.add_node("resolver", resolver.run)
+    # 3. Add Nodes
+    # workflow.add_node("resolver", resolver.run) (Removed)
     workflow.add_node("master_enrichment", run_enrichment_node)
     workflow.add_node("scraper", scraper.run)
     workflow.add_node("vectorizer", vectorizer.run)
@@ -97,10 +112,10 @@ def create_graph():
     workflow.add_node("pdf_agent", pdf_agent.run)
 
     # 4. Define Edges
-    workflow.set_entry_point("resolver")
+    workflow.set_entry_point("master_enrichment")
 
-    # Sequence: Resolver -> MasterEnrichment
-    workflow.add_edge("resolver", "master_enrichment")
+    # Sequence: (Resolver removed) MasterEnrichment starts
+    # workflow.add_edge("resolver", "master_enrichment")
 
     # Serialized Execution to avoid State merging conflicts:
     # MasterEnrichment -> Scraper -> Vectorizer -> PdfAgent -> Analyst

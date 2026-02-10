@@ -1,0 +1,119 @@
+================================================================================
+REDUNDANT FILES AND DIRECTORIES - QUICK REFERENCE
+================================================================================
+Repository: CorporateIntelligenceX
+Branch: develop
+Date: 2026-02-10
+================================================================================
+
+REDUNDANT/UNUSED DIRECTORIES (Can be safely deleted):
+------------------------------------------------------
+1. intelligence_hub/prompts/          [Empty - only docstring in __init__.py]
+   - No code references found
+   - LLM prompts are hardcoded in agent files instead
+
+2. intelligence_hub/models/           [Empty - causes test failures]
+   - Only docstring in __init__.py
+   - Referenced in tests but file doesn't exist
+   - Action: Delete and fix test file
+
+3. UI_SNAPSHOTS/                      [Not referenced in code]
+   - Contains 6 PNG files (snapshots 0,1,2,3,5,7)
+   - Missing Snap_4.png and Snap_6.png
+   - No references in code or documentation
+   - Action: Move to docs/ or delete if obsolete
+
+================================================================================
+
+MISSING FILES (Referenced but don't exist - causing errors):
+------------------------------------------------------------
+1. intelligence_hub/models/state.py
+   - Imported in: tests/test_intelligence_hub.py:4
+   - Expected class: InvestigationState
+   - Actual location: intelligence_hub/graph/state.py has AgentState instead
+
+2. intelligence_hub/utils/helpers.py
+   - Imported in: tests/test_intelligence_hub.py:6
+   - Expected functions: normalize_company_name, validate_ticker_format
+   - File doesn't exist
+
+3. intelligence_hub/agents/investigation_workflow.py
+   - Imported in: tests/test_intelligence_hub.py:54
+   - Expected function: create_investigation_workflow
+   - Actual location: intelligence_hub/graph/workflow.py has create_graph()
+
+4. main.py
+   - Referenced in: setup.py, README.md (2 places)
+   - Actual entry point: streamlit_app.py
+   - Causes: Package installation to create broken console command
+
+5. scripts/ directory
+   - Referenced in: README.md (2 places)
+   - Scripts like: scripts/init_db.py
+   - Directory doesn't exist
+
+6. intelligence_hub/connectors/__init__.py
+   - Missing __init__.py in connectors package
+   - Should exist for proper Python package structure
+
+================================================================================
+
+BROKEN CONFIGURATION:
+--------------------
+1. setup.py - Entry point definition (line 44)
+   entry_points = {"console_scripts": ["intelligence-hub=main:main"]}
+   - Points to non-existent main.py
+   - Should reference streamlit_app.py or be removed
+
+================================================================================
+
+STATISTICS:
+-----------
+Total Redundant Directories: 2-3 (prompts, models, possibly UI_SNAPSHOTS)
+Total Missing Files: 6 (causing import/documentation errors)
+Total Broken Config: 1 (setup.py entry point)
+
+Impact Level:
+- HIGH: 4 issues (missing files cause test failures, broken entry point)
+- MEDIUM: 2 issues (missing __init__.py, UI_SNAPSHOTS unclear purpose)
+- LOW: 2 issues (empty prompts and models directories)
+
+================================================================================
+
+RECOMMENDED ACTIONS:
+-------------------
+Priority 1 (CRITICAL - Fixes Errors):
+  - Fix tests/test_intelligence_hub.py imports
+  - Fix or remove setup.py console script entry point
+  - Update README.md to remove references to main.py and scripts/
+
+Priority 2 (RECOMMENDED - Improves Structure):
+  - Add intelligence_hub/connectors/__init__.py
+  - Delete intelligence_hub/prompts/ directory
+  - Delete intelligence_hub/models/ directory (after fixing test)
+
+Priority 3 (OPTIONAL - Cleanup):
+  - Clarify purpose of UI_SNAPSHOTS/ or move to docs/
+  - Complete missing snapshots (4, 6) or remove incomplete set
+
+================================================================================
+
+VERIFICATION COMMANDS:
+---------------------
+# Check empty directories
+find intelligence_hub -type d -empty
+
+# Test import errors
+python -c "from intelligence_hub.models.state import InvestigationState"
+python -c "from intelligence_hub.utils.helpers import normalize_company_name"
+
+# Check file existence
+ls -la main.py scripts/ intelligence_hub/connectors/__init__.py
+
+# Find references
+grep -r "from intelligence_hub.prompts" . --include="*.py"
+grep -r "UI_SNAPSHOTS" . --include="*.py" --include="*.md"
+
+================================================================================
+For detailed analysis, see: REDUNDANT_FILES_ANALYSIS.md
+================================================================================

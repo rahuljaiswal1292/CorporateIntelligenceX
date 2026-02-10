@@ -1,3 +1,5 @@
+import os
+import chromadb
 from langgraph.graph import StateGraph, END
 from intelligence_hub.graph.state import AgentState
 from intelligence_hub.agents.resolver import ResolverAgent
@@ -5,12 +7,56 @@ from intelligence_hub.agents.scraper_orchestrator import ScraperOrchestrator
 from intelligence_hub.agents.vectorizer import VectorizerAgent
 from intelligence_hub.agents.analyst import AnalystAgent
 from intelligence_hub.agents.pdf_agent import PdfAgent
+from intelligence_hub.agents.master_agent import MasterAgent
+from intelligence_hub.storage.corporate_profile_store import CorporateProfileStore
+from intelligence_hub.config.config import CHROMADB_PERSIST_DIRECTORY
+
+
+def run_enrichment_node(state: AgentState):
+    """
+    Executes the Master Coordination Agent for profile enrichment.
+    """
+    company_name = state.get("company_name", "Unknown")
+    logs = state.get("logs", [])
+
+    logs.append(f"Starting enrichment for {company_name}...")
+
+    try:
+        # Initialize dependencies
+        chroma_client = chromadb.PersistentClient(path=CHROMADB_PERSIST_DIRECTORY)
+        store = CorporateProfileStore(chroma_client)
+
+        # Initialize Master Agent
+        # We pass a simple print as log_callback for console, but we'll capture logs in state too
+        agent = MasterAgent(
+            company_name=company_name, profile_store=store, log_callback=print
+        )
+
+        # Run agent
+        result = agent.run({"initial_query": state["query"]})
+
+        # Extract data
+        full_profile = result.get("data", {})
+        enrichments = full_profile.get("enrichments", {})
+        canonical_name = full_profile.get("canonical_name", company_name)
+
+        logs.append(f"Enrichment completed. Canonical Name: {canonical_name}")
+
+        return {
+            "enrichments": full_profile,  # Store the whole profile structure
+            "company_name": canonical_name,  # Update canonical name if changed
+            "logs": logs,
+        }
+
+    except Exception as e:
+        logs.append(f"Enrichment failed: {str(e)}")
+        return {"logs": logs, "enrichments": {"error": str(e)}}
 
 
 def create_graph():
     """
     Constructs the Intelligence Graph.
-    Flow: Resolver -> (Scraper, PdfAgent) -> Vectorizer -> Analyst
+    Flow: Resolver -> MasterEnrichment -> (Scraper, PdfAgent) -> Vectorizer -> Analyst
     """
     # 1. Initialize Agents
     resolver = ResolverAgent()
@@ -24,6 +70,7 @@ def create_graph():
 
     # 3. Add Nodes
     workflow.add_node("resolver", resolver.run)
+    workflow.add_node("master_enrichment", run_enrichment_node)
     workflow.add_node("scraper", scraper.run)
     workflow.add_node("vectorizer", vectorizer.run)
     workflow.add_node("analyst", analyst.run)
@@ -32,41 +79,23 @@ def create_graph():
     # 4. Define Edges
     workflow.set_entry_point("resolver")
 
-    # Branching: Resolver -> Scraper AND Resolver -> PdfAgent
-    workflow.add_edge("resolver", "scraper")
-    workflow.add_edge("resolver", "pdf_agent")
+    # Sequence: Resolver -> MasterEnrichment
+    workflow.add_edge("resolver", "master_enrichment")
 
-    # Re-converging: Both Scraper and PdfAgent go to Vectorizer/Analyst?
-    # Logic:
-    # Scraper -> Vectorizer -> Analyst
-    # PdfAgent -> Analyst (PdfAgent handles its own vectorization/extraction internally for now)
+    # Branching: MasterEnrichment -> Scraper AND MasterEnrichment -> PdfAgent
+    # This ensures both downstream agents have the canonical company name
+    workflow.add_edge("master_enrichment", "scraper")
+    workflow.add_edge("master_enrichment", "pdf_agent")
 
+    # Re-converging
+    # Scraper path
     workflow.add_edge("scraper", "vectorizer")
     workflow.add_edge("vectorizer", "analyst")
 
-    # PdfAgent also feeds into Analyst so Analyst can see "pdf_results" in state
-    # This requires Analyst to wait for PdfAgent?
-    # In LangGraph, if multiple nodes go to one, it waits? Or executes as soon as one is ready?
-    # For simplicity in this version, let's just make PdfAgent an independent branch that ends,
-    # but the state is shared so Analyst *might* see it if it runs later.
-    # To Ensure Analyst sees it, we should edge PdfAgent -> Analyst.
-    # But Analyst only runs once.
-    # Let's chain them to be safe: Resolver -> Scraper -> Vectorizer -> PdfAgent -> Analyst
-    # This ensures Analyst has EVERYTHING. Parallelism in LangGraph requires 'map' or 'parallel' constructs.
-    # Sequential is safer for now to guarantee state availability.
-
-    # workflow.add_edge("vectorizer", "pdf_agent")
-    # workflow.add_edge("pdf_agent", "analyst")
-
-    # WAIT, the prompt asked for "parallel".
-    # If I use branching, I need to make sure Analyst waits.
-    # LangGraph's default behavior for multiple edges to a node is to run the node for EACH input (if not configured to wait).
-    # Let's stick to a linear flow for safety/correctness in this step unless I'm sure of the join behavior.
-    # Resolver -> Scraper -> Vectorizer -> PdfAgent -> Analyst.
-    # This is "stitched".
-
-    workflow.add_edge("vectorizer", "pdf_agent")
+    # PdfAgent path
     workflow.add_edge("pdf_agent", "analyst")
+
+    # Analyst is the end
     workflow.add_edge("analyst", END)
 
     # 5. Compile

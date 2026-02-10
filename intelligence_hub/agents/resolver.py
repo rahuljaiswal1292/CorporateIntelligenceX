@@ -3,122 +3,114 @@ import asyncio
 from intelligence_hub.graph.state import AgentState
 from intelligence_hub.config.settings import config
 from intelligence_hub.connectors.pinecone_client import PineconeConnector
-from intelligence_hub.scrapers.adx import ADXScraper
-from intelligence_hub.scrapers.dfm import DFMScraper
-from intelligence_hub.connectors.scrapingbee import ScrapingBeeConnector
+from intelligence_hub.utils.web_search import WebSearch
+from intelligence_hub.connectors.playwright_scraper import PlaywrightConnector
+try:
+    import nest_asyncio
+except ImportError:
+    nest_asyncio = None
 
 logger = logging.getLogger(__name__)
 
 class ResolverAgent:
     """
     Agent 1: The Resolver.
-    Maps user query to Entity, Ticker, and Exchange.
+    Maps user query to Entity, Ticker, and Exchange using Dynamic Web Search.
+    Orchestrates scraping via Playwright.
     """
     def run(self, state: AgentState) -> AgentState:
-        query = state["query"].lower()
+        query = state["query"]
         logger.info(f"Resolver: Resolving '{query}'...")
+        logs = state.get("logs", [])
         
-        db = PineconeConnector()
+        # 1. Web Search for Identity (Exchange, Wiki, Official)
+        logs.append(f"Resolver: Searching web for '{query}' identity...")
+        links = WebSearch.find_company_links(query)
         
-        # 1. Check Config (Static Overrides) - Lowest Latency / High Confidence
-        # Check if query matches any known key in config map
-        for key, val in config.KNOWN_TICKER_MAP.items():
-            if key in query:
-                 return {
-                    "ticker": val["ticker"], 
-                    "company_name": val["name"], 
-                    "exchange": val["exchange"],
-                    "logs": state.get("logs", []) + [f"Resolved '{query}' to {val['name']} ({val['exchange']}: {val['ticker']}) [Config Match]"]
-                }
+        exchange_url = links.get("exchange_url")
+        exchange_name = links.get("exchange_name", "Unknown")
+        ticker = links.get("ticker_hint")
+        wiki_url = links.get("wiki_url")
+        official_url = links.get("official_url")
+        
+        if exchange_url:
+             logs.append(f"Resolver: Found Exchange URL: {exchange_url} ({exchange_name})")
+        if wiki_url:
+             logs.append(f"Resolver: Found Wiki URL: {wiki_url}")
 
-        # 2. Check Vector DB (Cache)
-        cached_res = db.resolve_ticker(query)
-        if cached_res:
-             return {
-                "ticker": cached_res["ticker"], 
-                "company_name": cached_res["company_name"], 
-                "exchange": cached_res["exchange"],
-                "logs": state.get("logs", []) + [f"Resolved '{query}' to {cached_res['company_name']} ({cached_res['exchange']}: {cached_res['ticker']}) [Cache Hit]"]
-            }
+        # 2. Scrape Data (Playwright)
+        scraper = PlaywrightConnector()
+        
+        # Initialize Data Containers with Defaults
+        profile_data = {"description": "", "sector": "", "website": official_url or "", "est_date": "", "shareholders": []}
+        financial_data = {"financials": {}, "risk": {}, "sources": []}
+        
+        async def scrape_all():
+             tasks = []
+             if wiki_url:
+                 tasks.append(scraper.scrape_wiki_profile(wiki_url))
+             if exchange_url:
+                 tasks.append(scraper.scrape_exchange_data(exchange_url, exchange_name))
+                 
+             if not tasks:
+                 return []
+                 
+             results = await asyncio.gather(*tasks, return_exceptions=True)
+             return results
 
-        # 3. Dynamic Search (Fallback)
-        # We try to "search" by navigating to exchange search pages or guessing URLs
-        # For simplicity in this environment, we'll try a basic probe logic:
-        # - Guess ticker? No, that's hard.
-        # - Use Exchange Site Search? DFM/ADX usually have search APIs. 
-        # - Since I don't have a generic "search_web" tool available inside the python code without external deps, 
-        #   I will implement a "Probe" that checks common tickers if the name is very short, OR just log failure.
-        #   Wait, the user requirement is "searches it at runtime". 
-        #   I will assume `ADXScraper` and `DFMScraper` can implement a `search_ticker` method.
-        
-        # NOTE: Since I haven't implemented `search_ticker` in scrapers yet, I will outline the call here and then implement it.
-        # Currently, I'll log that I'm attempting dynamic search.
-        
-        # Attempt ADX Search (Mock/Heuristic for now until Scraper update)
-        sb_connector = ScrapingBeeConnector()
-        adx_scanner = ADXScraper(sb_connector)
-        dfm_scanner = DFMScraper(sb_connector)
-        
-        import asyncio
-        
-        # Helper to run async search safely
-        def safe_run_async(coro):
-            try:
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    import nest_asyncio
-                    nest_asyncio.apply()
-                    return loop.run_until_complete(coro)
-                else:
-                    return loop.run_until_complete(coro)
-            except RuntimeError:
-                 return asyncio.run(coro)
-
-        found_ticker = None
-        found_exchange = None
-        found_name = None
-        
-        # 1. Try ADX
+        # Run Async Scraping (Sync Wrapper)
         try:
-            # Note: For production agent, best to make the Agent.run async.
-            # But avoiding major refactor, we force sync wait here.
-            # Simplified for this specific environment where we control the runner often.
-            # We'll try to use a simple loop runner.
-            _t, _n = safe_run_async(adx_scanner.search_ticker(query))
-            if _t:
-                found_ticker = _t
-                found_name = _n
-                found_exchange = "ADX"
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                if nest_asyncio:
+                    nest_asyncio.apply()
+                scraped_results = loop.run_until_complete(scrape_all())
+            else:
+                scraped_results = asyncio.run(scrape_all())
+                
+            # Process Results
+            for res in scraped_results:
+                if isinstance(res, dict):
+                    if "description" in res: # Wiki Profile result
+                        profile_data.update(res)
+                    elif "financials" in res: # Exchange Data result
+                        financial_data = res
+                    # If 'risk', 'sources' were top-level keys in scraper return, handle them
+                            
         except Exception as e:
-            logger.warning(f"ADX Search error: {e}")
+            logger.error(f"Scraping failed: {e}")
+            logs.append(f"Resolver: Scraping error: {e}")
 
-        # 2. Try DFM if not found
-        if not found_ticker:
-            try:
-                _t, _n = safe_run_async(dfm_scanner.search_ticker(query))
-                if _t:
-                    found_ticker = _t
-                    found_name = _n
-                    found_exchange = "DFM"
-            except Exception as e:
-                 logger.warning(f"DFM Search error: {e}")
+        # 3. Construct Final State
+        final_ticker = ticker if ticker else "UNKNOWN"
+        if final_ticker == "UNKNOWN":
+             # Try to extract ticker from exchange URL again or just use query
+             final_ticker = query.upper().replace(" ", "")
 
-        if found_ticker:
-            # Save to Cache
-            db.cache_ticker(found_name, found_ticker, found_exchange)
-            
-            return {
-                "ticker": found_ticker, 
-                "company_name": found_name, 
-                "exchange": found_exchange,
-                "logs": state.get("logs", []) + [f"Resolved '{query}' to {found_name} ({found_exchange}: {found_ticker}) [Dynamic Search]"]
+        # Prepare unified financial data structure for UI
+        unified_data = {
+            "profile": profile_data,
+            "financials": financial_data.get("financials", {}),
+            "risk": financial_data.get("risk", {}),
+            "sources": financial_data.get("sources", []),
+            "meta": {
+                "name": query.title(),
+                "description": profile_data.get("description", ""),
+                "sector": profile_data.get("sector", ""),
+                "website": profile_data.get("website", official_url),
+                "exchange": exchange_name,
+                "ticker": final_ticker,
+                "est_date": profile_data.get("est_date", ""),
+                "shareholders": profile_data.get("shareholders", [])
             }
+        }
         
-        # 4. Failure
+        # Pass this as 'financial_data' (which stream/UI expects)
+        
         return {
-            "ticker": "UNKNOWN", 
+            "ticker": final_ticker, 
             "company_name": query.title(), 
-            "exchange": "UNKNOWN",
-            "website": "",
-            "logs": state.get("logs", []) + [f"Could not resolve '{query}'. Added to manual review queue."]
+            "exchange": exchange_name,
+            "financial_data": unified_data,
+            "logs": logs + [f"Resolved '{query}' to {final_ticker} ({exchange_name}) via Web Search & Playwright."]
         }

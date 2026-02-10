@@ -16,15 +16,36 @@ logger = logging.getLogger("WebScraperConnector")
 
 class WebScraperConnector:
     """
-    Connector for a generic Web Scraping API (e.g. Scrape.do, ScrapingBee).
-    Abstracts the vendor specifics behind a common interface.
+    Connector for Web Scraping APIs (ScraperAPI, Scrape.do, ScrapingBee).
+    Abstracts vendor specifics behind a common interface.
+    Supports PDF and Excel file downloads.
     """
-    def __init__(self, api_key: str = None):
+    def __init__(self, api_key: str = None, provider: str = "scraperapi"):
+        """
+        Initialize the connector.
+        
+        Args:
+            api_key: API key for the scraping service
+            provider: Which provider to use ('scraperapi', 'scrape.do', 'scrapingbee')
+        """
         self.api_key = api_key or os.getenv("SCRAPER_API_KEY")
-        self.base_url = "http://api.scrape.do"
+        self.provider = provider.lower()
+        
+        # Configure base URL based on provider
+        if self.provider == "scraperapi":
+            self.base_url = "https://api.scraperapi.com"
+        elif self.provider == "scrape.do":
+            self.base_url = "http://api.scrape.do"
+        elif self.provider == "scrapingbee":
+            self.base_url = "https://app.scrapingbee.com/api/v1"
+        else:
+            logger.warning(f"Unknown provider '{provider}', defaulting to ScraperAPI")
+            self.base_url = "https://api.scraperapi.com"
+            self.provider = "scraperapi"
         
         if self.api_key:
             self.mode = "LIVE"
+            logger.info(f"Initialized with {self.provider.upper()} in LIVE mode")
         else:
             self.mode = "LOCAL_PLAYWRIGHT" # Default to local if no key
             if PlaywrightConnector:
@@ -77,25 +98,9 @@ class WebScraperConnector:
     def _scrape_live(self, url: str, render_js: bool, wait_for: str, js_scenario: dict) -> str:
         """Executes actual API call to the Web Scraper Service."""
         try:
-            # Construct Scraper URL
-            # API: https://api.scraperapi.com?token=API_KEY&url=URL&render=true
+            params = self._build_params(url, render_js, wait_for)
             
-            params = {
-                "token": self.api_key,
-                "url": url,
-                "super": "true"
-            }
-            
-            if render_js:
-                params["render"] = "true"
-            
-            if wait_for:
-                 params["waitForSelector"] = wait_for 
-                 
-            # Some providers don't support complex 'js_scenario' directly in URL.
-            # We rely on basic render and wait_for selectors.
-            
-            response = requests.get(self.base_url, params=params, timeout=120) # Extneded timeout for rendering
+            response = requests.get(self.base_url, params=params, timeout=120)
             
             if response.status_code == 200:
                 return response.content.decode("utf-8")
@@ -105,7 +110,7 @@ class WebScraperConnector:
             # Fallback
             if response.status_code in [404, 401, 403, 429, 500]:
                 logger.info(f"API Error {response.status_code}. Switching to Playwright Fallback...")
-                self.mode = "LOCAL_PLAYWRIGHT" # Switch mode for future calls
+                self.mode = "LOCAL_PLAYWRIGHT"
                 if not self.pw_connector and PlaywrightConnector:
                      self.pw_connector = PlaywrightConnector()
                 return self._scrape_playwright_sync(url, wait_for, js_scenario)
@@ -116,32 +121,67 @@ class WebScraperConnector:
             logger.info("Exception occurred, trying Playwright Fallback...")
             return self._scrape_playwright_sync(url, wait_for, js_scenario)
 
+    def _build_params(self, url: str, render_js: bool, wait_for: str) -> dict:
+        """Build API parameters based on provider."""
+        
+        if self.provider == "scraperapi":
+            # ScraperAPI format: https://api.scraperapi.com?api_key=KEY&url=URL&render=true
+            params = {
+                "api_key": self.api_key,
+                "url": url,
+            }
+            if render_js:
+                params["render"] = "true"
+            if wait_for:
+                params["wait_for_selector"] = wait_for
+            return params
+            
+        elif self.provider == "scrape.do":
+            # Scrape.do format (COMMENTED OUT - LEGACY)
+            # params = {
+            #     "token": self.api_key,
+            #     "url": url,
+            #     "super": "true"
+            # }
+            # if render_js:
+            #     params["render"] = "true"
+            # if wait_for:
+            #     params["waitForSelector"] = wait_for
+            # return params
+            pass
+            
+        elif self.provider == "scrapingbee":
+            # ScrapingBee format (COMMENTED OUT - ALTERNATIVE)
+            # params = {
+            #     "api_key": self.api_key,
+            #     "url": url,
+            #     "render_js": "true" if render_js else "false"
+            # }
+            # if wait_for:
+            #     params["wait_for"] = wait_for
+            # return params
+            pass
+        
+        # Default to ScraperAPI
+        return {
+            "api_key": self.api_key,
+            "url": url,
+            "render": "true" if render_js else "false"
+        }
+
     def _scrape_playwright_sync(self, url: str, wait_for: str, js_scenario: dict) -> str:
-        """Synchronous wrapper for Playwright scraping. Creates a fresh instance to avoid loop interactions."""
+        """Synchronous wrapper for Playwright scraping."""
         if not PlaywrightConnector:
              logger.error("Playwright Connector class not available.")
              return self._scrape_direct(url)
              
         try:
              import asyncio
-             # Check if we have a loop
-             try:
-                 loop = asyncio.get_event_loop()
-             except RuntimeError:
-                 loop = asyncio.new_event_loop()
-                 asyncio.set_event_loop(loop)
-                 
-             if loop.is_running():
-                 # Should not happen in run_in_executor usually, but if so:
-                 logger.warning("Event loop is running in sync wrapper. This is unexpected.")
-                 pass
-             
              # Create new loop for this thread
              new_loop = asyncio.new_event_loop()
              asyncio.set_event_loop(new_loop)
              
              async def runner():
-                 # Create FRESH connector for this thread/loop
                  connector = PlaywrightConnector()
                  try:
                      content, page = await connector.scrape(url, wait_for_selector=wait_for, js_scenario=js_scenario)
@@ -161,10 +201,7 @@ class WebScraperConnector:
         """Direct scraping using requests session."""
         try:
             logger.info(f"[DIRECT] Scraping URL: {url}")
-            try:
-                response = self.session.get(url, timeout=30)
-            except Exception:
-                response = self.session.get(url, timeout=30)
+            response = self.session.get(url, timeout=30)
                 
             if response.status_code == 200:
                  return response.text
@@ -174,47 +211,133 @@ class WebScraperConnector:
              logger.error(f"Direct Scraping Exception: {e}")
              return ""
 
-    async def download_file_async(self, url: str) -> bytes:
+    async def download_file_async(self, url: str, expected_type: str = None) -> tuple:
         """
-        Asynchronously downloads a file (PDF/Doc) using run_in_executor.
+        Asynchronously downloads a file (PDF/Excel/Doc).
+        
+        Args:
+            url: URL of the file to download
+            expected_type: Expected content type ('pdf', 'excel', 'doc', etc.)
+            
+        Returns:
+            tuple: (file_content: bytes, content_type: str, is_valid: bool)
         """
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, self.download_file, url)
+        return await loop.run_in_executor(None, self.download_file, url, expected_type)
 
-    def download_file(self, url: str) -> bytes:
+    def download_file(self, url: str, expected_type: str = None) -> tuple:
         """
-        Downloads a file (binary).
+        Downloads a file (binary) with content-type validation.
+        
+        Args:
+            url: URL of the file to download
+            expected_type: Expected content type ('pdf', 'excel', 'doc', etc.)
+            
+        Returns:
+            tuple: (file_content: bytes, content_type: str, is_valid: bool)
         """
         logger.info(f"[{self.mode}] Downloading File: {url}")
         
         if self.mode == "MOCK":
              # Return a minimally VALID PDF binary
-             return b"%PDF-1.4\n%Mock PDF"
+             return (b"%PDF-1.4\n%Mock PDF", "application/pdf", True)
 
         try:
-            # Try via Web Scraper (without render) to avoid blocks
-            params = {
-                "token": self.api_key,
-                "url": url,
-                "render": "false"
-            }
+            # Try via Web Scraper API first
+            if self.mode == "LIVE" and self.api_key:
+                params = self._build_download_params(url)
+                r = requests.get(self.base_url, params=params, timeout=60)
+                
+                if r.status_code == 200:
+                    content_type = r.headers.get('content-type', '').lower()
+                    is_valid = self._validate_content_type(content_type, expected_type)
+                    
+                    if not is_valid:
+                        logger.warning(f"Content-Type mismatch: got '{content_type}', expected '{expected_type}'")
+                    
+                    return (r.content, content_type, is_valid)
+                
+                logger.warning(f"Web Scraper download failed {r.status_code}, attempting direct fallback...")
             
-            r = requests.get(self.base_url, params=params, timeout=60)
-            
-            if r.status_code == 200:
-                return r.content
-            
-            logger.warning(f"Web Scraper download failed {r.status_code}, attempting direct fallback...")
-            
-            # Fallback Direct
+            # Fallback: Direct download
             r_direct = self.session.get(url, timeout=60, stream=True)
             if r_direct.status_code == 200:
-                return r_direct.content
+                content_type = r_direct.headers.get('content-type', '').lower()
+                is_valid = self._validate_content_type(content_type, expected_type)
+                
+                if not is_valid:
+                    logger.warning(f"Content-Type mismatch: got '{content_type}', expected '{expected_type}'")
+                
+                return (r_direct.content, content_type, is_valid)
             
-            return None
+            return (None, None, False)
         except Exception as e:
             logger.error(f"Download Exception: {str(e)}")
-            return None
+            return (None, None, False)
+
+    def _build_download_params(self, url: str) -> dict:
+        """Build download parameters based on provider."""
+        if self.provider == "scraperapi":
+            return {
+                "api_key": self.api_key,
+                "url": url,
+                "render": "false"  # Don't render for file downloads
+            }
+        elif self.provider == "scrape.do":
+            # return {
+            #     "token": self.api_key,
+            #     "url": url,
+            #     "render": "false"
+            # }
+            pass
+        elif self.provider == "scrapingbee":
+            # return {
+            #     "api_key": self.api_key,
+            #     "url": url,
+            #     "render_js": "false"
+            # }
+            pass
+        
+        # Default
+        return {
+            "api_key": self.api_key,
+            "url": url,
+            "render": "false"
+        }
+
+    def _validate_content_type(self, content_type: str, expected_type: str = None) -> bool:
+        """
+        Validate that the content type matches expectations.
+        
+        Args:
+            content_type: Actual content-type from response
+            expected_type: Expected type ('pdf', 'excel', 'doc', etc.)
+            
+        Returns:
+            bool: True if valid, False if HTML or mismatch
+        """
+        if not content_type:
+            return True  # Unknown, assume valid
+        
+        # Reject HTML
+        if 'text/html' in content_type:
+            return False
+        
+        # If no expectation, accept any non-HTML
+        if not expected_type:
+            return True
+        
+        # Validate expected types
+        type_mappings = {
+            'pdf': ['application/pdf'],
+            'excel': ['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+            'doc': ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+            'csv': ['text/csv'],
+            'zip': ['application/zip']
+        }
+        
+        expected_types = type_mappings.get(expected_type.lower(), [])
+        return any(et in content_type for et in expected_types)
 
     def _scrape_mock(self, url: str) -> str:
         """Returns detailed Mock HTML."""

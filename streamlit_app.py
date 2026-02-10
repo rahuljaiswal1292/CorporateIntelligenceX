@@ -207,7 +207,7 @@ with st.sidebar:
 render_header()
 
 # Search Area with ENBD Styling
-c_search, c_btn, c_clear = st.columns([6, 1, 1])
+c_search, c_btn, c_clear = st.columns([5, 1, 1])
 with c_search:
     query_input = st.text_input(
         "Search Entity",

@@ -105,35 +105,44 @@ div[data-testid="stTextInput"] {
 /* --- Buttons --- */
 /* Primary Search Button (Navy Background with White Text) */
 div.stButton>button[kind="primary"] {
-    background-color: #002D62 !important;
+    background: linear-gradient(135deg, #002D62 0%, #00408A 100%) !important;
     color: #FFFFFF !important;
     /* High Contrast White */
     font-weight: 700 !important;
-    border: 2px solid #002D62 !important;
-    border-radius: 6px;
+    border: none !important;
+    border-radius: 8px;
     font-size: 1rem !important;
-    padding: 0.5rem 1rem !important;
+    padding: 0.6rem 1.2rem !important;
+    box-shadow: 0 4px 6px rgba(0, 45, 98, 0.2);
+    transition: all 0.3s ease;
 }
 
 div.stButton>button[kind="primary"] p {
     color: #FFFFFF !important;
-    /* Force child paragraph (icon/text) to white */
     fill: #FFFFFF !important;
-    /* Force icon fill to white */
+}
+
+div.stButton>button[kind="primary"]:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px rgba(0, 45, 98, 0.3);
 }
 
 /* Other Buttons (Gold/Secondary) */
 div.stButton>button {
-    background-color: #FFB600;
+    background: linear-gradient(135deg, #FFB600 0%, #FFCC33 100%);
     color: #002D62;
-    font-weight: 600;
-    border: 1px solid #CC9200;
-    border-radius: 6px;
+    font-weight: 700;
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(255, 182, 0, 0.2);
+    transition: all 0.3s ease;
 }
 
 div.stButton>button:hover {
-    opacity: 0.9;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px rgba(255, 182, 0, 0.3);
+    opacity: 1;
+    /* Override existing opacity change */
 }
 
 /* --- Alerts (st.info/success/warning) --- */
@@ -387,4 +396,21 @@ div[data-testid="stDataFrame"] {
     font-size: 24px;
     color: white;
     font-family: 'Inter', sans-serif;
+}
+
+
+header[data-testid="stHeader"] {
+    visibility: hidden;
+    height: 0%;
+}
+
+div[data-testid="stDecoration"] {
+    visibility: hidden;
+    height: 0%;
+}
+
+.block-container {
+    padding-top: 0rem;
+    padding-bottom: 0rem;
+    margin-top: -4rem;
 }

@@ -40,6 +40,10 @@ def clean_html_to_markdown(html_content: str) -> str:
     for dl in soup.find_all("dl"):
         _process_dl_to_table(dl, soup)
 
+    # DFM SPECIFIC: Flex Tables and Grid Structures
+    _process_dfm_flex_table(soup)
+    _process_dfm_grid_to_table(soup)
+
     # Convert <pre> blocks with CSV/Tab data to tables
     for pre in soup.find_all(["pre", "code"]):
         text = pre.get_text()
@@ -48,10 +52,10 @@ def clean_html_to_markdown(html_content: str) -> str:
             pre.replace_with(new_table)
 
     # 4. REMOVE FONT STYLES (Clean Prose)
-    # We want to strip formatting tags but keep structural ones (h1-h6, p, ul, ol, li, table, tr, td, th, blockquote, pre, code)
-    # Tags to strip (keep content): b, strong, i, em, u, s, strike, font, span, div, a (maybe keep links? User said "Output text as clean, unformatted prose", usually implies links are ok as text, but "Remove all font styles" might mean just styles. Links are structural in web. Let's keep links but strip styling tags.)
-    # Strip tags list for markdownify:
-    strip_tags = ['b', 'strong', 'i', 'em', 'u', 's', 'strike', 'font', 'span', 'div', 'sup', 'sub', 'big', 'small', 'mark', 'ins', 'del', 'img'] 
+    # We want to strip formatting tags but keep structural ones.
+    # After our custom processors have converted flex/grid to <table>, 
+    # we can safely strip <div> and <span> to get clean text inside table cells.
+    strip_tags = ['b', 'strong', 'i', 'em', 'u', 's', 'strike', 'font', 'sup', 'sub', 'big', 'small', 'mark', 'ins', 'del', 'img', 'div', 'span'] 
     
     # 5. CONVERT TO MARKDOWN
     # heading_style="ATX" -> # Header
@@ -279,6 +283,127 @@ def _process_dl_to_table(dl, soup):
             
             tbody.append(tr)
             
-    dl.replace_with(table)
+def _process_dfm_flex_table(soup):
+    """
+    Detects and converts DFM flex-tables (table-flex, t-row, t-col/t-cell) to HTML tables.
+    """
+    # 1. Handle .table-flex with .t-row and .t-cell (Simple list-like tables)
+    for flex_table in soup.find_all(class_="table-flex"):
+        # If it has .t-row and .t-cell structure
+        rows = flex_table.find_all(class_="t-row")
+        if not rows: continue
+        
+        html_table = soup.new_tag("table")
+        tbody = soup.new_tag("tbody")
+        html_table.append(tbody)
+        
+        for row in rows:
+            tr = soup.new_tag("tr")
+            # Headers might be specified via class or just first row
+            cells = row.find_all(class_="t-cell")
+            if not cells: continue
+            
+            for cell in cells:
+                td = soup.new_tag("td")
+                td.string = cell.get_text(separator=" ", strip=True)
+                tr.append(td)
+            tbody.append(tr)
+            
+        flex_table.replace_with(html_table)
+
+    # 2. Handle .table-flex-vertical with .t-row and .t-col (Grid-like key-value tables)
+    for flex_table in soup.find_all(class_="table-flex-vertical"):
+        rows = flex_table.find_all(class_="t-row")
+        if not rows: continue
+        
+        html_table = soup.new_tag("table")
+        tbody = soup.new_tag("tbody")
+        html_table.append(tbody)
+        
+        for row in rows:
+            cols = row.find_all(class_="t-col")
+            if not cols: 
+                # Sometimes t-row has t-cell directly
+                cols = row.find_all(class_="t-cell")
+                if not cols: continue
+            
+            for col in cols:
+                # Find label
+                label_el = col.find(class_=re.compile(r"t-head|text-muted|text-xs"))
+                label = label_el.get_text(strip=True) if label_el else "Info"
+                
+                # Clone col and remove label to get value
+                from copy import copy
+                col_copy = BeautifulSoup(str(col), 'html.parser').find()
+                l_copy = col_copy.find(class_=re.compile(r"t-head|text-muted|text-xs"))
+                if l_copy: l_copy.decompose()
+                
+                value = col_copy.get_text(separator=" ", strip=True)
+                
+                if label and value:
+                    tr = soup.new_tag("tr")
+                    th = soup.new_tag("th")
+                    th.string = label
+                    td = soup.new_tag("td")
+                    td.string = value
+                    tr.append(th)
+                    tr.append(td)
+                    tbody.append(tr)
+                
+        flex_table.replace_with(html_table)
+
+def _process_dfm_grid_to_table(soup):
+    """
+    Detects and converts DFM grid-based key-value pairs into HTML tables.
+    Matches classes like grid-cols-1, md:grid-cols-2, etc.
+    """
+    for grid in soup.find_all(class_=re.compile(r"grid-cols-\d+")):
+        # Skip if already inside a table we created
+        if grid.find_parent("table"): continue
+        
+        items = grid.find_all(recursive=False)
+        if not items: continue
+        
+        processed_pairs = []
+        for item in items:
+            # Look for spans/divs with specific DFM classes or structural patterns
+            # Pattern 1: Labels with text-xs, text-muted, font-medium
+            label_el = item.find(class_=re.compile(r"text-xs|text-muted|font-medium|uppercase"))
+            if label_el:
+                label = label_el.get_text(strip=True)
+                # Value is the rest of the text
+                from copy import copy
+                item_copy = BeautifulSoup(str(item), 'html.parser').find()
+                l_copy = item_copy.find(class_=re.compile(r"text-xs|text-muted|font-medium|uppercase"))
+                if l_copy: l_copy.decompose()
+                value = item_copy.get_text(separator=" ", strip=True)
+                
+                if label and value:
+                    processed_pairs.append((label, value))
+            else:
+                # Pattern 2: Two children, first is label
+                children = item.find_all(recursive=False)
+                if len(children) >= 2:
+                    label = children[0].get_text(strip=True)
+                    value = children[1].get_text(separator=" ", strip=True)
+                    if label and value:
+                        processed_pairs.append((label, value))
+
+        if len(processed_pairs) > 1:
+            html_table = soup.new_tag("table")
+            tbody = soup.new_tag("tbody")
+            html_table.append(tbody)
+            
+            for label, value in processed_pairs:
+                tr = soup.new_tag("tr")
+                th = soup.new_tag("th")
+                th.string = label
+                td = soup.new_tag("td")
+                td.string = value
+                tr.append(th)
+                tr.append(td)
+                tbody.append(tr)
+            
+            grid.replace_with(html_table)
 
 

@@ -17,9 +17,9 @@ Decision criteria:
   * Company name too generic (high noise in results)
 
 Output format:
-{
+{{
   "should_execute": true/false,
   "reasoning": "Clear explanation of decision",
   "confidence": 0-100,
   "search_terms": ["suggested", "search", "terms"]
-}
+}}

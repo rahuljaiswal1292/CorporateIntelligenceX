@@ -11,7 +11,7 @@ class Settings:
     SCRAPER_PROVIDER = os.getenv(
         "SCRAPER_PROVIDER", "scraperapi"
     )  # scraperapi, scrape.do, scrapingbee
-    PINECONE_API_KEY = os.getenv("PINECONE_API_KEY", "")
+
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
 
     # Paths
@@ -29,10 +29,6 @@ class Settings:
     # Document Filtering
     MAX_DOCUMENT_AGE_YEARS = int(os.getenv("MAX_DOCUMENT_AGE_YEARS", "3"))
     ENABLE_DATE_FILTERING = os.getenv("ENABLE_DATE_FILTERING", "true").lower() == "true"
-
-    # Pinecone
-    PINECONE_INDEX_NAME = "corporate-intelligence"
-    PINECONE_ENV = "gcp-starter"
 
     # Known Ticker Map (Static Overrides)
     KNOWN_TICKER_MAP = {
@@ -79,10 +75,6 @@ class Settings:
         if not self.SCRAPER_API_KEY:
             print(
                 "⚠️ Warning: SCRAPER_API_KEY not found. Scrapers will run in Mock Mode."
-            )
-        if not self.PINECONE_API_KEY:
-            print(
-                "⚠️ Warning: PINECONE_API_KEY not found. Vector DB will run in Mock Mode."
             )
 
 

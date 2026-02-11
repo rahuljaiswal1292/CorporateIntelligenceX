@@ -36,7 +36,7 @@ from intelligence_hub.prompts import load_prompt
 from intelligence_hub.config.settings import config
 from intelligence_hub.scrapers.adx import ADXScraper
 from intelligence_hub.scrapers.dfm import DFMScraper
-from intelligence_hub.connectors.scrapingbee import ScrapingBeeConnector
+from intelligence_hub.connectors.web_scraper_connector import WebScraperConnector
 import asyncio
 
 
@@ -131,7 +131,7 @@ class MasterAgent(BaseAgent):
         # 3. Dynamic Search (Fallback)
         self.log("Starting dynamic resolution via scrapers...")
 
-        sb_connector = ScrapingBeeConnector()
+        sb_connector = WebScraperConnector()
         adx_scanner = ADXScraper(sb_connector)
         dfm_scanner = DFMScraper(sb_connector)
 

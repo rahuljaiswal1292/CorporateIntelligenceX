@@ -29,4 +29,10 @@ build/
 logs/
 *.log*
 
+# Data
 data/
+
+# Test files
+test*.py
+validate*.py
+verify*.py

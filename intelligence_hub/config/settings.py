@@ -7,7 +7,10 @@ load_dotenv()
 
 class Settings:
     # API Keys
-    SCRAPINGBEE_API_KEY = os.getenv("SCRAPINGBEE_API_KEY", "")
+    SCRAPER_API_KEY = os.getenv("SCRAPER_API_KEY", "")
+    SCRAPER_PROVIDER = os.getenv(
+        "SCRAPER_PROVIDER", "scraperapi"
+    )  # scraperapi, scrape.do, scrapingbee
     PINECONE_API_KEY = os.getenv("PINECONE_API_KEY", "")
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
 
@@ -19,6 +22,13 @@ class Settings:
 
     # Caching
     CACHE_TTL_HOURS = 24  # Stale after 1 day
+
+    # Playwright
+    HEADLESS = False  # Set to False to bypass cloudflare/bot detection
+
+    # Document Filtering
+    MAX_DOCUMENT_AGE_YEARS = int(os.getenv("MAX_DOCUMENT_AGE_YEARS", "3"))
+    ENABLE_DATE_FILTERING = os.getenv("ENABLE_DATE_FILTERING", "true").lower() == "true"
 
     # Pinecone
     PINECONE_INDEX_NAME = "corporate-intelligence"
@@ -66,9 +76,9 @@ class Settings:
 
     def validate(self):
         """Validates critical configuration."""
-        if not self.SCRAPINGBEE_API_KEY:
+        if not self.SCRAPER_API_KEY:
             print(
-                "⚠️ Warning: SCRAPINGBEE_API_KEY not found. Scrapers will run in Mock Mode."
+                "⚠️ Warning: SCRAPER_API_KEY not found. Scrapers will run in Mock Mode."
             )
         if not self.PINECONE_API_KEY:
             print(

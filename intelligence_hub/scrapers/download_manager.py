@@ -94,13 +94,15 @@ class DownloadManager:
                     logger.info(f"✓ Download successful: {os.path.basename(result)}")
                     self.download_stats['successful'] += 1
                     return result
+                else:
+                    logger.warning(f"Attempt {attempt + 1} failed (returned None)")
                 
             except Exception as e:
-                logger.warning(f"Attempt {attempt + 1} failed: {e}")
+                logger.warning(f"Attempt {attempt + 1} failed with error: {e}")
                 
                 # Exponential backoff
                 if attempt < max_retries - 1:
-                    wait_time = (2 ** attempt) * 1.0  # 1s, 2s, 4s
+                    wait_time = (2 ** attempt) * 1.5  # Slightly longer backoff
                     logger.info(f"Retrying in {wait_time}s...")
                     await asyncio.sleep(wait_time)
         
@@ -206,8 +208,9 @@ class DownloadManager:
         
         # Strategy 1: Click-based download
         try:
+            # Use force=True and moderate timeout to bypass sticky-header interception
             async with page.expect_download(timeout=30000) as download_info:
-                await element.click()
+                await element.click(force=True, timeout=10000)
             
             download = await download_info.value
             
@@ -238,9 +241,9 @@ class DownloadManager:
             return final_path
             
         except PlaywrightTimeoutError:
-            logger.debug("Strategy 1 (click) timed out, trying Strategy 2")
+            logger.warning("Strategy 1 (click) timed out")
         except Exception as e:
-            logger.debug(f"Strategy 1 failed: {e}")
+            logger.warning(f"Strategy 1 failed: {e}")
         
         # Strategy 2: Direct URL download
         try:

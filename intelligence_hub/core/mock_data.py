@@ -112,6 +112,25 @@ Headquartered in Abu Dhabi, **e&** was established over four decades ago as the 
         ]
         est_date = "1976"
 
+    elif "FAB" in query or "FIRST ABU" in query:
+        ticker = "FAB"
+        exchange = "ADX"
+        name = "First Abu Dhabi Bank PJSC"
+        sector = "Banking"
+        profile_type = "BANK"
+        desc = """**First Abu Dhabi Bank (FAB)** is the UAE's largest bank and one of the world's largest and safest financial institutions. Headquartered in Abu Dhabi, it provides a comprehensive range of financial products and services.
+        
+FAB offers corporate, investment, and personal banking solutions, with a strong presence in global markets."""
+        
+        website = "https://www.bankfab.com"
+        socials = {"LinkedIn": "https://linkedin.com/company/fab", "Twitter": "@FABConnects", "Instagram": "@fabconnects"}
+
+        shareholders = [
+            {"Name": "Mubadala Investment Company", "Type": "Government", "%": "37.9%"},
+            {"Name": "Public / Free Float", "Type": "Public", "%": "62.1%"}
+        ]
+        est_date = "2017 (Merger of NBAD & FGB)"
+
     else: 
         # Generic Fallback
         ticker = "UNKNOWN"
@@ -263,7 +282,30 @@ Headquartered in Abu Dhabi, **e&** was established over four decades ago as the 
             }
         ]
 
-    else: # Default (Etisalat)
+    elif ticker == "FAB":
+        data["financials"] = {
+            "current": {"period": "FY 2024", "rev": "AED 28.5B", "profit": "AED 16.4B", "price": "AED 13.60", "trend": "+1.1%"},
+            "last_year": {"period": "FY 2023", "rev": "AED 27.0B", "profit": "AED 15.0B"},
+            "last_quarter": {"period": "Q4 2024", "rev": "AED 7.2B", "profit": "AED 4.1B", "rev_gro": "+5%", "prof_gro": "+8%"}
+        }
+        data["risk"] = {"debt_equity": "N/A", "credit_rating": "AA- (Fitch)", "interest_cover": "N/A"}
+        data["competitors"] = [
+            {"Company": "Emirates NBD", "Mkt Cap": "AED 110B", "P/E": "5.5", "Rev Growth": "15%"},
+            {"Company": "ADCB", "Mkt Cap": "AED 64B", "P/E": "8.5", "Rev Growth": "10%"},
+            {"Company": "DIB", "Mkt Cap": "AED 41B", "P/E": "7.2", "Rev Growth": "9%"}
+        ]
+        data["sources"] = [{"title": "FAB Earnings Release", "url": "https://www.bankfab.com/en-ae/about-fab/investor-relations"}]
+        data["insights"] = [
+             {
+                "category": "Global Markets",
+                "finding": "Strong International Expansion",
+                "source": "Investor Presentation",
+                "trigger": "Cross-Border Flows",
+                "action": "Leverage global network for trade finance deals."
+            }
+        ]
+
+    elif ticker == "EAND":
         data["financials"] = {
             "current": {"period": "TTM Q3 2024", "rev": "AED 52.4B", "profit": "AED 10.1B", "price": "AED 18.42", "trend": "-0.5%"},
             "last_year": {"period": "FY 2023", "rev": "AED 51.0B", "profit": "AED 9.8B"},
@@ -318,6 +360,17 @@ Headquartered in Abu Dhabi, **e&** was established over four decades ago as the 
                 "action": "Strategic stake building. Offer acquisition financing or currency hedging for GBP exposure."
             }
         ]
+
+    else: # Genuine Fallback (Empty/Loading State)
+        data["financials"] = {
+            "current": {"period": "TBD", "rev": "---", "profit": "---", "price": "---", "trend": "---"},
+            "last_year": {"period": "---", "rev": "---", "profit": "---"},
+            "last_quarter": {"period": "---", "rev": "---", "profit": "---", "rev_gro": "---", "prof_gro": "---"}
+        }
+        data["risk"] = {"debt_equity": "---", "credit_rating": "---", "interest_cover": "---"}
+        data["competitors"] = []
+        data["sources"] = []
+        data["insights"] = []
     
     # Simulate Chart Data
     dates = pd.date_range(start="2024-01-01", periods=100)

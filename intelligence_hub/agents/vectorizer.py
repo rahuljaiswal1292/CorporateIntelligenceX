@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class VectorizerAgent:
     """
     Agent 3: The Knowledge Manager (RAG).
-    Chunks documents and upserts to Pinecone.
+    Chunks documents and upserts to ChromaDB.
     """
 
     def __init__(self):

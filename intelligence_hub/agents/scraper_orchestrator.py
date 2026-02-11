@@ -5,7 +5,7 @@ from intelligence_hub.scrapers.dfm import DFMScraper
 from intelligence_hub.scrapers.wiki import WikiScraper
 from intelligence_hub.scrapers.yahoo import YahooFinanceScraper
 from intelligence_hub.connectors.web_scraper_connector import WebScraperConnector
-from intelligence_hub.connectors.pinecone_client import PineconeConnector
+from intelligence_hub.storage.corporate_profile_store import CorporateProfileStore
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ class ScraperOrchestrator:
 
     def __init__(self):
         self.sb_connector = WebScraperConnector()
-        self.db = PineconeConnector()
+        self.db = CorporateProfileStore()
 
         self.adx_scraper = ADXScraper(self.sb_connector)
         self.dfm_scraper = DFMScraper(self.sb_connector)

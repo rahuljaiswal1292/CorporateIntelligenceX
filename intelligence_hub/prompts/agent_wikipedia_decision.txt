@@ -16,8 +16,8 @@ Decision criteria:
   * Company name is ambiguous and likely to return wrong Wikipedia page
 
 Output format:
-{
+{{
   "should_execute": true/false,
   "reasoning": "Clear explanation of decision",
   "confidence": 0-100
-}
+}}

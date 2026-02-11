@@ -22,9 +22,9 @@ Decision criteria:
   * Company name is international brand unlikely to need DED license
 
 Output format:
-{
+{{
   "should_execute": true/false,
   "reasoning": "Clear explanation of decision, considering the enhanced matching capability",
   "confidence": 0-100,
   "search_variations": ["company name variations to try"]
-}
+}}

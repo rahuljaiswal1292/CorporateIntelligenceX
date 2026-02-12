@@ -1190,20 +1190,66 @@ class DFMScraper:
             return []
 
     async def search_ticker(self, query: str) -> tuple:
-        return None, None
+        """
+        Search for ticker using Web Search (DuckDuckGo) targeting DFM.
+        Returns (ticker, company_name)
+        """
+        try:
+            # Lazy import
+            from intelligence_hub.utils.web_search import WebSearch
+            import urllib.parse
+
+            # Search query specific to DFM
+            search_query = f"{query} site:dfm.ae company profile"
+            results = WebSearch.search(search_query, max_results=5)
+
+            for res in results:
+                url = res.get("href", "").lower()
+                title = res.get("title", "")
+
+                # Check for ticker pattern in URL
+                # DFM: dfm.ae/the-exchange/market-information/company/TICKER/profile...
+                if "/company/" in url:
+                    try:
+                        parts = url.split("/company/")
+                        if len(parts) > 1:
+                            ticker_part = parts[1].split("/")[0]
+                            ticker = ticker_part.upper().strip()
+
+                            if len(ticker) >= 2 and len(ticker) < 12:
+                                # Clean potential garbage
+                                if "?" in ticker:
+                                    ticker = ticker.split("?")[0]
+
+                                company_name = title.split("|")[0].strip()
+                                return ticker, company_name
+                    except:
+                        pass
+
+            logger.warning(f"DFM search for '{query}' found no tickers.")
+            return None, None
+
+        except Exception as e:
+            logger.error(f"Error searching DFM ticker: {e}")
+            return None, None
 
 
 if __name__ == "__main__":
+    import asyncio
+
     tickers = [
-        # 'AIRARABIA',
-        # 'MASQ',
         "EMAAR",
-        # 'TALABAT'
     ]
-    for ticker in tickers:
 
-        async def main():
-            scraper = DFMScraper()
-            await scraper.scrape_company(ticker)
+    async def main():
+        scraper = DFMScraper()
 
-        asyncio.run(main())
+        # Test Search
+        print("Testing Search...")
+        t, n = await scraper.search_ticker("Emaar properties")
+        print(f"Found: {t} - {n}")
+
+        if t:
+            await scraper.scrape_company(t)
+
+    asyncio.run(main())

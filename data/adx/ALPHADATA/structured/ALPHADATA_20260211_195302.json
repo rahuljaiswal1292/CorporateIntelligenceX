@@ -1,0 +1,24 @@
+{
+  "source": "ADX",
+  "ticker": "ALPHADATA",
+  "scraped_at": "2026-02-11T19:51:58.892605",
+  "profile": {
+    "company_name": "Alpha Data PJSC",
+    "sector": "NOT AVAILABLE",
+    "about": "NOT AVAILABLE"
+  },
+  "financials": {
+    "documents_found": 0,
+    "documents_downloaded": 0,
+    "documents_failed": 0,
+    "download_stats": {
+      "attempted": 9,
+      "successful": 4,
+      "failed": 0,
+      "skipped_old": 0,
+      "skipped_invalid": 0
+    }
+  },
+  "metrics": {},
+  "documents": []
+}

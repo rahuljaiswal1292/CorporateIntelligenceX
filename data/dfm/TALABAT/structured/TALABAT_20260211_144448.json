@@ -1,0 +1,45 @@
+{
+  "source": "DFM",
+  "ticker": "TALABAT",
+  "scraped_at": "2026-02-11T14:43:11.384430",
+  "profile": {
+    "company_name": "Equities",
+    "sector": "NOT AVAILABLE",
+    "listing_date": "NOT AVAILABLE",
+    "isin": "NOT AVAILABLE"
+  },
+  "financials": {
+    "documents_downloaded": 0,
+    "page_type": "reports",
+    "files": []
+  },
+  "news": {
+    "news_items": [],
+    "files": []
+  },
+  "documents": [],
+  "corporate_actions": {
+    "actions": [],
+    "files": []
+  },
+  "shareholders": {
+    "shareholders": [],
+    "files": []
+  },
+  "trading_data": {
+    "documents_downloaded": 0,
+    "page_type": "trading_data",
+    "files": []
+  },
+  "daily_summary": {
+    "documents_downloaded": 0,
+    "page_type": "daily_summary",
+    "files": []
+  },
+  "foreign_investments": {
+    "foreign_investment_data": {
+      "raw_summary": "Country of Origin Foreigners allowed AE Yes  Permitted Actual Available National 100% 7.38% 92.62% GCC 100% 2.72% 97.28% Foreign 100% 89.9% 10.1% \n              \n               Nationals: Investors who hold the same nationality as the \u201cCountry of Origin\u201d of the symbol.\n              \n               GCC: Investors who hold a GCC nationality, excluding investors from the \u201cCountry of Origin\u201d of the symbol.\n              \n               Foreigners: All other nationalities. \nNote: For companies where"
+    },
+    "files": []
+  }
+}

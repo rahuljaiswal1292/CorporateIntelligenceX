@@ -1,0 +1,31 @@
+
+            EMAAR PROPERTIES PJSC
+            CONSOLIDATED INCOME STATEMENT
+            For the year ended 31 December 2024
+            
+            Revenue: AED 26,700,000,000 (2023: AED 26,000,000,000)
+            Net Profit: AED 11,600,000,000 (2023: AED 10,800,000,000)
+            
+            CONSOLIDATED STATEMENT OF FINANCIAL POSITION
+            As at 31 December 2024
+            
+            Total Assets: AED 130,000,000,000
+            Total Liabilities: AED 60,000,000,000
+            Total Equity: AED 70,000,000,000
+            
+            GOVERNANCE SECTION
+            Board of Directors:
+            - Mohamed Alabbar (Founder & Managing Director)
+            - Jamal Bin Theniyah (Chairman)
+            - Ahmed Jawa (Vice Chairman)
+            
+            Major Shareholders:
+            - Investment Corporation of Dubai: 24%
+            - Awqaf: 4%
+            - Public: 72%
+            
+            MARKET DATA (Sample)
+            Share Price: AED 8.45
+            Market Cap: AED 72.5 Billion
+            P/E Ratio: 6.5x
+            

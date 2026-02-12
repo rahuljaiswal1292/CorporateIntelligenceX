@@ -705,24 +705,71 @@ class ADXScraper:
         # Deprecated - use _generic_document_extract instead
         return {}
 
-    async def search_ticker(self, query: str) -> tuple:
-        return None, None
+    async def search_ticker(self, query: str) -> Tuple[Optional[str], Optional[str]]:
+        """
+        Search for ticker using Web Search (DuckDuckGo) targeting ADX.
+        Returns (ticker, company_name)
+        """
+        try:
+            # Lazy import to avoid circular dep if any (though utils should be fine)
+            from intelligence_hub.utils.web_search import WebSearch
+
+            # Search query specific to ADX
+            search_query = f"{query} site:adx.ae market information"
+            results = WebSearch.search(search_query, max_results=5)
+
+            for res in results:
+                url = res.get("href", "").lower()
+                title = res.get("title", "")
+
+                # Check for ticker pattern in URL
+                # formatted: adx.ae/../company-profile/overview?symbols=TICKER
+                if "symbols=" in url:
+                    try:
+                        # Extract Ticker from URL
+                        ticker = url.split("symbols=")[1].split("&")[0].upper()
+                        # Clean ticker (remove noise if any)
+                        if "%" in ticker:
+                            ticker = urllib.parse.unquote(ticker)
+
+                        # Verify it looks like a ticker (3-10 chars, usually)
+                        if len(ticker) >= 2 and len(ticker) < 12:
+                            return ticker, title.split("|")[0].strip()
+                    except:
+                        pass
+
+                # Alternative URL pattern
+                if "/company/" in url:
+                    # sometimes urls are different? ADX usually uses query params or specific structure
+                    pass
+
+            logger.warning(f"ADX search for '{query}' found no tickers.")
+            return None, None
+
+        except Exception as e:
+            logger.error(f"Error searching ADX ticker: {e}")
+            return None, None
 
 
 # Run Standalone
 if __name__ == "__main__":
+    import asyncio
+
     tickers = [
         "LULU",
         "ADNOCGAS",
-        # 'ADCB',
-        # 'FAB',
-        # 'ADNHC'
     ]
-    for ticker in tickers:
 
-        async def main():
-            scraper = ADXScraper()
-            # Test with verified ticker
-            await scraper.scrape_company(ticker)
+    async def main():
+        scraper = ADXScraper()
 
-        asyncio.run(main())
+        # Test Search
+        print("Testing Search...")
+        t, n = await scraper.search_ticker("Lulu")
+        print(f"Found: {t} - {n}")
+
+        # Test Scrape
+        if t:
+            await scraper.scrape_company(t)
+
+    asyncio.run(main())

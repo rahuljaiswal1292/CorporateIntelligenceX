@@ -118,35 +118,52 @@ def run_investigation(query):
                         else:
                             add_log("System", log)
 
-        # 4. Update Data with Real Intelligence (Using final state)
+        # 4. Update Data with Real Intelligence (Using final state from PresentationAgent)
+
+        # A. Competitors (New)
+        if final_state.get("competitors"):
+            st.session_state.data["competitors"] = final_state["competitors"]
+
+        # B. Financial Data (Consolidated)
         if final_state.get("financial_data"):
             real_data = final_state["financial_data"]
 
-            # A. Update Financials
+            # 1. Update Financials
             if "financials" in real_data:
                 real_fin = real_data["financials"]
                 # Map Revenue
-                if "revenue" in real_fin:
+                if "revenue" in real_fin and real_fin["revenue"]:
                     val = real_fin["revenue"]
-                    st.session_state.data["financials"]["current"]["rev"] = (
-                        f"AED {val/1_000_000_000:.1f}B"
-                        if val > 1e9
-                        else f"AED {val:,.0f}"
-                    )
-                # Map Profit
-                if "net_income" in real_fin:  # Scrapers might use net_income
-                    val = real_fin["net_income"]
-                    st.session_state.data["financials"]["current"]["profit"] = (
-                        f"AED {val/1_000_000_000:.1f}B"
-                        if val > 1e9
-                        else f"AED {val:,.0f}"
-                    )
+                    try:
+                        val_float = float(val)
+                        st.session_state.data["financials"]["current"]["rev"] = (
+                            f"AED {val_float/1_000_000_000:.1f}B"
+                            if val_float > 1e9
+                            else f"AED {val_float:,.0f}"
+                        )
+                    except:
+                        st.session_state.data["financials"]["current"]["rev"] = str(val)
 
-            # B. Update Profile (if Wiki scraped)
+                # Map Profit
+                if "net_income" in real_fin and real_fin["net_income"]:
+                    val = real_fin["net_income"]
+                    try:
+                        val_float = float(val)
+                        st.session_state.data["financials"]["current"]["profit"] = (
+                            f"AED {val_float/1_000_000_000:.1f}B"
+                            if val_float > 1e9
+                            else f"AED {val_float:,.0f}"
+                        )
+                    except:
+                        st.session_state.data["financials"]["current"]["profit"] = str(
+                            val
+                        )
+
+            # 2. Update Profile
             if "profile" in real_data:
                 prof = real_data["profile"]
                 if "profile" not in st.session_state.data:
-                    st.session_state.data["profile"] = {}  # Initialize if missing
+                    st.session_state.data["profile"] = {}
 
                 if "description" in prof:
                     st.session_state.data["profile"]["description"] = prof[
@@ -155,12 +172,18 @@ def run_investigation(query):
                 if "sector" in prof:
                     st.session_state.data["profile"]["sector"] = prof["sector"]
 
-            # C. Update Sources
+            # 3. Update Sources
             if "sources" in real_data:
                 st.session_state.data["sources"] = real_data["sources"]
 
+        # C. Insights
         if final_state.get("insights"):
             st.session_state.data["insights"] = final_state["insights"]
+
+        # D. PDF Results
+        if final_state.get("pdf_results"):
+            # UI expects pdf_results key in data? components.py render_pdf_analysis(data) checks data["pdf_results"]
+            st.session_state.data["pdf_results"] = final_state["pdf_results"]
 
         status.update(
             label="✅ **Investigation Complete**", state="complete", expanded=False

@@ -39,12 +39,22 @@ logger = logging.getLogger("DFMScraper")
 # --- Configuration & Storage ---
 
 # Import project-level config
-# Import project-level config
 from intelligence_hub.config.settings import config
+
+# Import content cleaner
 try:
     from intelligence_hub.utils.content_cleaner import clean_html_to_markdown
 except ImportError:
-    clean_html_to_markdown = lambda x: x # Fallback if cleaner missing
+    clean_html_to_markdown = lambda x: x 
+
+# Import Smart Agents (Optional)
+try:
+    from intelligence_hub.agents.vectorizing_agent import VectorizingAgent
+    from intelligence_hub.agents.summarizer_agent import SummarizerAgent
+except ImportError as e:
+    logger.warning(f"Smart Agents not available: {e}")
+    VectorizingAgent = None
+    SummarizerAgent = None
 
 # --- Scraper ---
 
@@ -66,6 +76,10 @@ class DFMScraper:
         self.downloaded_urls = set()   # Track downloaded items by URL to avoid duplicates
         self.expanded_views = set()   # Track which views have been expanded
         self.bot_handler = BotHandler() if BotHandler else None
+
+        # Initialize Smart Agents
+        self.vector_agent = VectorizingAgent() if VectorizingAgent else None
+        self.summarizer_agent = SummarizerAgent(self.vector_agent) if SummarizerAgent and self.vector_agent else None
 
     async def _setup_browser(self):
         """Initialize Playwright browser with stealth settings"""
@@ -289,6 +303,32 @@ class DFMScraper:
             # Save final structured data
             StorageManager.save_structured(data, "dfm", ticker)
             
+            # # Smart Processing (Vectorize & Summarize)
+            # logger.info(f"Starting Smart Processing for {ticker}...")
+            # try:
+            #     if self.vector_agent:
+            #         # A. Vectorize (Ingest PDFs/MDs)
+            #         data_dir = os.path.join(config.DATA_DIR, "dfm", ticker)
+            #         self.vector_agent.ingest_company_data(ticker, data_dir)
+            #     else:
+            #         logger.warning("VectorizingAgent not initialized. Skipping ingestion.")
+                
+            #     if self.summarizer_agent:
+            #         # B. Summarize (LLM Extraction)
+            #         smart_summary = await self.summarizer_agent.summarize_company(ticker)
+                    
+            #         # Update structured_data with smart insights
+            #         if smart_summary:
+            #             data.update(smart_summary)
+            #             # Re-save with smart data
+            #             StorageManager.save_structured(data, "dfm", ticker)
+            #     else:
+            #         logger.warning("SummarizerAgent not initialized. Skipping summarization.")
+                    
+            # except Exception as e:
+            #     logger.error(f"Smart Processing failed for {ticker}: {e}")
+
+            # logger.info(f"Successfully scraped and processed {ticker}")
             return data
 
         except Exception as e:
@@ -818,11 +858,11 @@ class DFMScraper:
 
                 link = page.locator(f'a[href="{doc["url"]}"]').first
                 if await link.count() > 0:
-                    result = await self.download_manager.download_with_retry(
+                    res = await self.download_manager.download_with_retry(
                         element=link, page=page, doc_info=doc, target_dir=structured_dir
                     )
-                    if result:
-                        found_files.append(result)
+                    if res:
+                        found_files.append(res)
                         downloaded_count += 1
                         self.downloaded_texts.add(content_key)
                         if doc_url: self.downloaded_urls.add(doc_url)
@@ -975,10 +1015,12 @@ class DFMScraper:
 
 if __name__ == "__main__":
     tickers = [
-        # 'AIRARABIA', 
+        'AIRARABIA', 
         # 'MASQ', 
-        'EMAAR', 
-        # 'TALABAT'
+        # 'EMAAR', 
+        # 'TALABAT',
+        # 'EMIRATESNBD',
+        # 'DU',
         ]
     for ticker in tickers:
         async def main():

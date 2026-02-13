@@ -737,8 +737,13 @@ class ADXScraper:
 # Run Standalone
 if __name__ == "__main__":
     tickers  = [
-        'LULU', 
-        'ADNOCGAS',
+        # 'LULU', 
+        # 'ADNOCGAS',
+        'EAND',
+        # 'ADNHC',
+        # 'ALDAR',
+        'FAB',
+        # 'ALPHADATA'
         ]
     for ticker in tickers:
         async def main():

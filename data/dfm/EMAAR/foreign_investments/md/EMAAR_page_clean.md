@@ -1,14 +1,12 @@
-Dubai Financial Market - Region’s leading financial exchange
-
-Market  closed DFMGI    6686.27  
-(-85.33 / -1.26%)
- Total Volume   252,753,818  Total Value   1,085,333,897.09  Total Trades   21,482   [Market Watch](https://marketwatch.dfm.ae/)
+Market open DFMGI 6720.91 
+(6.31 / 0.094%)
+ Total Volume 416,915,865 Total Value 1,119,461,334.62 Total Trades 18,073 [Market Watch](https://marketwatch.dfm.ae/)
 
 # Equities
 
-EMAAR Emaar Properties PJSC  16.40 
--0.100
- -0.606%
+EMAAR Emaar Properties PJSC 16.40 + 
+0.100
+ + 0.614%
 
 * [Trading](/the-exchange/market-information/company/EMAAR/trading)
 * [Profile](/the-exchange/market-information/company/EMAAR/profile)
@@ -26,16 +24,16 @@ EMAAR Emaar Properties PJSC  16.40
 | --- | --- |
 | AE | Yes |
 
-|  |  |  |  |
+| | | | |
 | --- | --- | --- | --- |
-|  | Permitted | Actual | Available |
-| National | 100% | 47.84% | 52.16% |
+| | Permitted | Actual | Available |
+| National | 100% | 47.8% | 52.2% |
 | GCC | 0 | 0 | 0 |
-| Foreign | 100% | 52.16% | 47.84% |
+| Foreign | 100% | 52.2% | 47.8% |
 
 ### Definitions
 
-|  |  |
+| | |
 | --- | --- |
 | Nationals: | Investors who hold the same nationality as the “Country of Origin” of the symbol. |
 | GCC: | Investors who hold a GCC nationality, excluding investors from the “Country of Origin” of the symbol. |
@@ -47,19 +45,19 @@ EMAAR Emaar Properties PJSC  16.40
 ### Notes
 
 * Ownership percentage is subject to change based on several reasons including the following:
-  1. Trading activity.
-  2. Off-Market Transactions such as family and inheritance transfers.
-  3. Changes in the nationality status of investors.
-  4. Securities deposits and withdrawals to and from DFM for Dual listed companies.
-  5. Capital increase by issuing new shares to a strategic investor.
-  6. Converting Bonds into shares.
-  7. Equity added to the equity of the associated group.
-  8. Direct Deals.
+ 1. Trading activity.
+ 2. Off-Market Transactions such as family and inheritance transfers.
+ 3. Changes in the nationality status of investors.
+ 4. Securities deposits and withdrawals to and from DFM for Dual listed companies.
+ 5. Capital increase by issuing new shares to a strategic investor.
+ 6. Converting Bonds into shares.
+ 7. Equity added to the equity of the associated group.
+ 8. Direct Deals.
 * Percentages for the columns of Actual and Available are updated every two minutes during trading hours and every one hour after trading hours to reflect changes not associated with trading (if any).
 
 Disclaimer
 The information provided in this document is only available in Arabic due to the (Dubai court attestations only being in Arabic herein after referred thereto as (“Information”) is provided by way of general information and comment only. While reasonable care has been taken in producing this Information, changes in circumstances may occur at any time and may impact on the accuracy of the Information. The Information does not constitute professional advice or provision of any kind of services and should not be relied upon as such. Dubai Financial Market (“DFM”) and/or its affiliates, officers or employees, does not give any warranty or representation as to the accuracy, reliability, timeliness or completeness of the Information now or in the future. DFM shall not be liable for any loss suffered, directly or indirectly by any person acting in reliance upon the Information contained herein.
 
-  AI generated summary 
+ AI generated summary 
 \*This information is AI generated, for more detailed info, read the full document.
  Please review the original documents to validate accuracy, as the analysis does not constitute investment advice and should not replace your own assessment. No warranty is given that the information is accurate, complete, or up to date.

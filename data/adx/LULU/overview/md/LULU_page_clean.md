@@ -1,437 +1,83 @@
-Company Profile Overview
+Company Profile OverviewConsumer Staples
 
-* 2POINTZERO2.4000.050(2.128%)
-* ADAVIATION5.5400.030(0.544%)
-* ADCB15.400-0.060(-0.388%)
-* ADIB26.2200.120(0.460%)
-* ADNH0.4560.011(2.472%)
-* ADNHC0.7650.000(0.000%)
-* ADNOCDIST4.1000.000(0.000%)
-* ADNOCDRILL5.470-0.050(-0.906%)
-* ADNOCGAS3.670-0.050(-1.344%)
-* ADNOCLS5.8800.010(0.170%)
-* ADPORTS5.3000.000(0.000%)
-* ADSB8.3400.060(0.725%)
-* AGILITY1.5000.010(0.671%)
-* AGTHIA3.9100.220(5.962%)
-* AIPOWR2.080-0.010(-0.478%)
-* ALDAR10.9000.040(0.368%)
-* ALEFEDT1.0600.000(0.000%)
-* ALPHADATA1.5800.000(0.000%)
-* ALPHADHABI9.4900.240(2.595%)
-* AMR2.0100.140(7.487%)
-* ANAN1.1300.070(6.604%)
-* APEX3.9500.030(0.765%)
-* ARAM2.4300.100(4.292%)
-* ASM2.6100.070(2.756%)
-* BILDCO1.4700.020(1.379%)
-* BONDAE3.7900.050(1.337%)
-* BOROUGE2.6200.010(0.383%)
-* BOS1.270-0.010(-0.781%)
-* BURJEEL1.3300.000(0.000%)
-* CBI0.8770.000(0.000%)
-* CHADX153.8600.060(1.579%)
-* CHHK4.9800.000(0.000%)
-* DANA0.953-0.006(-0.626%)
-* DRIVE3.520-0.010(-0.283%)
-* E71.1200.020(1.818%)
-* E7W2.3000.150(6.977%)
-* EAND20.9600.020(0.096%)
-* EASYLEASE28.2800.560(2.020%)
-* EMSTEEL1.250-0.020(-1.575%)
-* ESG14.4800.160(1.117%)
-* ESHRAQ0.4800.000(0.000%)
-* FAB19.9400.120(0.605%)
-* FCI0.4660.006(1.304%)
-* FERTIGLB2.8300.040(1.434%)
-* GCEM1.0000.058(6.157%)
-* GHITHA17.1400.180(1.061%)
-* GMPC2.0100.010(0.500%)
-* GRMNY4.9000.080(1.660%)
-* HAYAH1.350-0.050(-3.571%)
-* ICAP1.490-0.010(-0.667%)
-* IHC399.5000.000(0.000%)
-* INDI3.3600.020(0.599%)
-* INVICTUS1.950-0.130(-6.250%)
-* JPANI5.2000.140(2.767%)
-* JULPHAR1.2200.010(0.826%)
-* KRBN121.800-0.800(-0.653%)
-* KWEB126.1000.800(0.638%)
-* KWTI3.770-0.080(-2.078%)
-* LULU1.1200.000(0.000%)
-* LUXURY1.9900.080(4.188%)
-* MAIR1.1900.010(0.847%)
-* MANAZEL0.3160.001(0.317%)
-* MODON3.5900.040(1.127%)
-* NBQ2.8800.040(1.408%)
-* NCTH1.8500.110(6.322%)
-* NMDC21.440-0.400(-1.832%)
-* NMDCENR2.740-0.010(-0.364%)
-* ORAS34.9000.500(1.453%)
-* PALMS8.2400.210(2.615%)
-* PHX0.9530.000(0.000%)
-* PKSTN11.7000.400(3.540%)
-* PRESIGHT3.6000.100(2.857%)
-* PUREHEALTH2.7800.030(1.091%)
-* QUANTM2.190-0.070(-3.097%)
-* RAKBANK9.790-0.060(-0.609%)
-* RAKCEC2.6300.030(1.154%)
-* RAKPROP1.4300.030(2.143%)
-* RAPCO2.1500.000(0.000%)
-* RPM3.050-0.020(-0.651%)
-* SAUDIA3.5000.000(0.000%)
-* SCIDC0.9300.020(2.198%)
-* SIB3.770-0.080(-2.078%)
-* SPACE421.6300.010(0.617%)
-* SUDATEL0.6280.022(3.630%)
-* SUKUK3.7500.000(0.000%)
-* TAQA3.1600.010(0.317%)
-* TURKI7.3300.010(0.137%)
-* UAB1.390-0.030(-2.113%)
-* UAEA9.8300.040(0.409%)
-* UAED6.3400.160(2.589%)
-* USGRWTH7.9200.000(0.000%)
-* USVALUE4.840-0.010(-0.206%)
-* WAHA2.0800.030(1.463%)
+## LULU
 
-* 2POINTZERO2.4000.050(2.128%)
-* ADAVIATION5.5400.030(0.544%)
-* ADCB15.400-0.060(-0.388%)
-* ADIB26.2200.120(0.460%)
-* ADNH0.4560.011(2.472%)
-* ADNHC0.7650.000(0.000%)
-* ADNOCDIST4.1000.000(0.000%)
-* ADNOCDRILL5.470-0.050(-0.906%)
-* ADNOCGAS3.670-0.050(-1.344%)
-* ADNOCLS5.8800.010(0.170%)
-* ADPORTS5.3000.000(0.000%)
-* ADSB8.3400.060(0.725%)
-* AGILITY1.5000.010(0.671%)
-* AGTHIA3.9100.220(5.962%)
-* AIPOWR2.080-0.010(-0.478%)
-* ALDAR10.9000.040(0.368%)
-* ALEFEDT1.0600.000(0.000%)
-* ALPHADATA1.5800.000(0.000%)
-* ALPHADHABI9.4900.240(2.595%)
-* AMR2.0100.140(7.487%)
-* ANAN1.1300.070(6.604%)
-* APEX3.9500.030(0.765%)
-* ARAM2.4300.100(4.292%)
-* ASM2.6100.070(2.756%)
-* BILDCO1.4700.020(1.379%)
-* BONDAE3.7900.050(1.337%)
-* BOROUGE2.6200.010(0.383%)
-* BOS1.270-0.010(-0.781%)
-* BURJEEL1.3300.000(0.000%)
-* CBI0.8770.000(0.000%)
-* CHADX153.8600.060(1.579%)
-* CHHK4.9800.000(0.000%)
-* DANA0.953-0.006(-0.626%)
-* DRIVE3.520-0.010(-0.283%)
-* E71.1200.020(1.818%)
-* E7W2.3000.150(6.977%)
-* EAND20.9600.020(0.096%)
-* EASYLEASE28.2800.560(2.020%)
-* EMSTEEL1.250-0.020(-1.575%)
-* ESG14.4800.160(1.117%)
-* ESHRAQ0.4800.000(0.000%)
-* FAB19.9400.120(0.605%)
-* FCI0.4660.006(1.304%)
-* FERTIGLB2.8300.040(1.434%)
-* GCEM1.0000.058(6.157%)
-* GHITHA17.1400.180(1.061%)
-* GMPC2.0100.010(0.500%)
-* GRMNY4.9000.080(1.660%)
-* HAYAH1.350-0.050(-3.571%)
-* ICAP1.490-0.010(-0.667%)
-* IHC399.5000.000(0.000%)
-* INDI3.3600.020(0.599%)
-* INVICTUS1.950-0.130(-6.250%)
-* JPANI5.2000.140(2.767%)
-* JULPHAR1.2200.010(0.826%)
-* KRBN121.800-0.800(-0.653%)
-* KWEB126.1000.800(0.638%)
-* KWTI3.770-0.080(-2.078%)
-* LULU1.1200.000(0.000%)
-* LUXURY1.9900.080(4.188%)
-* MAIR1.1900.010(0.847%)
-* MANAZEL0.3160.001(0.317%)
-* MODON3.5900.040(1.127%)
-* NBQ2.8800.040(1.408%)
-* NCTH1.8500.110(6.322%)
-* NMDC21.440-0.400(-1.832%)
-* NMDCENR2.740-0.010(-0.364%)
-* ORAS34.9000.500(1.453%)
-* PALMS8.2400.210(2.615%)
-* PHX0.9530.000(0.000%)
-* PKSTN11.7000.400(3.540%)
-* PRESIGHT3.6000.100(2.857%)
-* PUREHEALTH2.7800.030(1.091%)
-* QUANTM2.190-0.070(-3.097%)
-* RAKBANK9.790-0.060(-0.609%)
-* RAKCEC2.6300.030(1.154%)
-* RAKPROP1.4300.030(2.143%)
-* RAPCO2.1500.000(0.000%)
-* RPM3.050-0.020(-0.651%)
-* SAUDIA3.5000.000(0.000%)
-* SCIDC0.9300.020(2.198%)
-* SIB3.770-0.080(-2.078%)
-* SPACE421.6300.010(0.617%)
-* SUDATEL0.6280.022(3.630%)
-* SUKUK3.7500.000(0.000%)
-* TAQA3.1600.010(0.317%)
-* TURKI7.3300.010(0.137%)
-* UAB1.390-0.030(-2.113%)
-* UAEA9.8300.040(0.409%)
-* UAED6.3400.160(2.589%)
-* USGRWTH7.9200.000(0.000%)
-* USVALUE4.840-0.010(-0.206%)
-* WAHA2.0800.030(1.463%)
+#### Lulu Retail Holdings PLC
 
-* 2POINTZERO2.4000.050(2.128%)
-* ADAVIATION5.5400.030(0.544%)
-* ADCB15.400-0.060(-0.388%)
-* ADIB26.2200.120(0.460%)
-* ADNH0.4560.011(2.472%)
-* ADNHC0.7650.000(0.000%)
-* ADNOCDIST4.1000.000(0.000%)
-* ADNOCDRILL5.470-0.050(-0.906%)
-* ADNOCGAS3.670-0.050(-1.344%)
-* ADNOCLS5.8800.010(0.170%)
-* ADPORTS5.3000.000(0.000%)
-* ADSB8.3400.060(0.725%)
-* AGILITY1.5000.010(0.671%)
-* AGTHIA3.9100.220(5.962%)
-* AIPOWR2.080-0.010(-0.478%)
-* ALDAR10.9000.040(0.368%)
-* ALEFEDT1.0600.000(0.000%)
-* ALPHADATA1.5800.000(0.000%)
-* ALPHADHABI9.4900.240(2.595%)
-* AMR2.0100.140(7.487%)
-* ANAN1.1300.070(6.604%)
-* APEX3.9500.030(0.765%)
-* ARAM2.4300.100(4.292%)
-* ASM2.6100.070(2.756%)
-* BILDCO1.4700.020(1.379%)
-* BONDAE3.7900.050(1.337%)
-* BOROUGE2.6200.010(0.383%)
-* BOS1.270-0.010(-0.781%)
-* BURJEEL1.3300.000(0.000%)
-* CBI0.8770.000(0.000%)
-* CHADX153.8600.060(1.579%)
-* CHHK4.9800.000(0.000%)
-* DANA0.953-0.006(-0.626%)
-* DRIVE3.520-0.010(-0.283%)
-* E71.1200.020(1.818%)
-* E7W2.3000.150(6.977%)
-* EAND20.9600.020(0.096%)
-* EASYLEASE28.2800.560(2.020%)
-* EMSTEEL1.250-0.020(-1.575%)
-* ESG14.4800.160(1.117%)
-* ESHRAQ0.4800.000(0.000%)
-* FAB19.9400.120(0.605%)
-* FCI0.4660.006(1.304%)
-* FERTIGLB2.8300.040(1.434%)
-* GCEM1.0000.058(6.157%)
-* GHITHA17.1400.180(1.061%)
-* GMPC2.0100.010(0.500%)
-* GRMNY4.9000.080(1.660%)
-* HAYAH1.350-0.050(-3.571%)
-* ICAP1.490-0.010(-0.667%)
-* IHC399.5000.000(0.000%)
-* INDI3.3600.020(0.599%)
-* INVICTUS1.950-0.130(-6.250%)
-* JPANI5.2000.140(2.767%)
-* JULPHAR1.2200.010(0.826%)
-* KRBN121.800-0.800(-0.653%)
-* KWEB126.1000.800(0.638%)
-* KWTI3.770-0.080(-2.078%)
-* LULU1.1200.000(0.000%)
-* LUXURY1.9900.080(4.188%)
-* MAIR1.1900.010(0.847%)
-* MANAZEL0.3160.001(0.317%)
-* MODON3.5900.040(1.127%)
-* NBQ2.8800.040(1.408%)
-* NCTH1.8500.110(6.322%)
-* NMDC21.440-0.400(-1.832%)
-* NMDCENR2.740-0.010(-0.364%)
-* ORAS34.9000.500(1.453%)
-* PALMS8.2400.210(2.615%)
-* PHX0.9530.000(0.000%)
-* PKSTN11.7000.400(3.540%)
-* PRESIGHT3.6000.100(2.857%)
-* PUREHEALTH2.7800.030(1.091%)
-* QUANTM2.190-0.070(-3.097%)
-* RAKBANK9.790-0.060(-0.609%)
-* RAKCEC2.6300.030(1.154%)
-* RAKPROP1.4300.030(2.143%)
-* RAPCO2.1500.000(0.000%)
-* RPM3.050-0.020(-0.651%)
-* SAUDIA3.5000.000(0.000%)
-* SCIDC0.9300.020(2.198%)
-* SIB3.770-0.080(-2.078%)
-* SPACE421.6300.010(0.617%)
-* SUDATEL0.6280.022(3.630%)
-* SUKUK3.7500.000(0.000%)
-* TAQA3.1600.010(0.317%)
-* TURKI7.3300.010(0.137%)
-* UAB1.390-0.030(-2.113%)
-* UAEA9.8300.040(0.409%)
-* UAED6.3400.160(2.589%)
-* USGRWTH7.9200.000(0.000%)
-* USVALUE4.840-0.010(-0.206%)
-* WAHA2.0800.030(1.463%)
-
-* [Overview](/main-market/company-profile/overview)
-* [Financial Reports](/main-market/company-profile/financial-reports)
-* [Assembly Meetings](/main-market/company-profile/assembly-meetings)
-* [Orderbook](/main-market/company-profile/orderbook)
-* [Disclosures](/main-market/company-profile/disclosures)
-* [Shareholders & Board](/main-market/company-profile/shareholder-and-board)
-* [Fundamentals](/main-market/company-profile/fundamentals)
-
-## 
-
-#### 
-
-Last Price%
+investor.relations@ae.lulumea.com ‎+971 2 418 2000 www.luluretail.comLast Price1.09 -0.909%
 
 ### MARKET CAP.
 
--
+11,258,506,832.000
 
 ### OPEN PRICE
 
--
+1.090
 
 ### PREV CLOSE
 
--
+1.100
 
 ### BID
 
--
+1.090
 
 ### BID SIZE
 
-0
+1,985,902
 
 ### ASK
 
--
+1.100
 
 ### ASK SIZE
 
-0
+3,116,203
 
-# ‌
+## COMPANY OVERVIEW
 
-‌
+The Company and its subsidiaries (the “Group”) is the largest full-line retailer with stores in all GCC countries (“pan-GCC retailer”) by Selling Space, sales (retail sales value) and number of stores in 2023.
+The Group operates retail stores under the “LuLu” brand in the UAE, the KSA, Oman, Qatar, Kuwait and Bahrain (together, the Group’s “Markets”). According to the Market Consultant, the Group was the second largest grocery retailer in the UAE and the largest retailer in Oman, Qatar, Bahrain and Kuwait and the fastest growing and largest pan-GCC retailer in the KSA, in each case based on the retail sales value for 2023 According to the Market Consultant, the Group holds the top position in modern offline grocery retail in the GCC region, capturing 13.5% share of the GCC modern offline grocery market in 2023.
+
+SHARE CAPITAL526,774,172.00LISTING DATE14 Nov 2024INCORPORATION23 Sep 2019COMPANY TYPEPublicAUDITORDeloitte & Touche (M. E.) LLPARTICLES OF ASSOCIATION
 
 ## OWNERSHIP DISTRIBUTION
 
 ### FOREIGN OWNERSHIP
 
-0.00%
+74.98%
 
-from0.00%
+from100.00%
 
 ### GCC OWNERSHIP
 
-0.00%
+9.91%
 
-from0.00%
+from100.00%
 
 ### UAE NATIONALS
 
-0.00%
+14.29%
 
-from0.00%
+from100.00%
 
 ### ARAB COUNTRIES
 
-0.00%
+0.82%
 
-from0.00%Disclosures[View All](/en/main-market/company-profile/disclosures?symbols=undefined&secCode=undefined) ‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-DisclaimerFinancial Reports[View All](/en/main-market/company-profile/financial-reports?symbols=&secCode=) ‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
+from100.00%Disclosures[View All](/en/main-market/company-profile/disclosures?symbols=LULU&secCode=LULU) 12Feb 2026LULU -0.010 (-0.909%)[Lulu Retail Expands Presence with Opening of Two Express Stores](#)11Feb 2026LULU -0.010 (-0.909%)[Lulu Retail Holdings PLC to be Included in MSCI UAE Small Cap Index](#)09Feb 2026LULU -0.010 (-0.909%)[Announcement of Board Meeting to be held on 13/02/2026 at 17:00](#) 07Feb 2026LULU -0.010 (-0.909%)[Lulu Retail Expands Presence with Opening of an Express Store in Sharjah](#)06Feb 2026LULU -0.010 (-0.909%)[Lulu Retail Expands Presence with Opening of an Express Store in Abu Dhabi](#)DisclaimerFinancial Reports[View All](/en/main-market/company-profile/financial-reports?symbols=LULU&secCode=) 10Nov 2025LULU -0.010 (-0.909%)[Lulu Retail Holdings PLC Financial Results for the Period Ended September 30,2025](#)10Nov 2025LULU -0.010 (-0.909%)[Lulu Retail Holdings PLC Financial Results Press Release for the Period Ended September 30,2025](#)12Aug 2025LULU -0.010 (-0.909%)[Lulu Retail Holdings PLC Financial Results for the Period Ended June 30,2025](#)
 
 ## RECENT TRADES
 
-|  |  |  |  |  |
-| --- | --- | --- | --- | --- |
-| ‌ | ‌ | ‌ | ‌ | ‌ |
-| ‌ | ‌ | ‌ | ‌ | ‌ |
-| ‌ | ‌ | ‌ | ‌ | ‌ |
-| ‌ | ‌ | ‌ | ‌ | ‌ |
-| ‌ | ‌ | ‌ | ‌ | ‌ |
-| ‌ | ‌ | ‌ | ‌ | ‌ |
+| Date | Open (AED) | Low (AED) | High (AED) | Close (AED) | Value (AED) | Volume | Trades |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 13 Feb 2026 | 1.090 | 1.080 | 1.100 | 1.100 | 9,004,624.18 | 8,259,687 | 244 |
+| 12 Feb 2026 | 1.120 | 1.100 | 1.120 | 1.100 | 20,316,606.53 | 18,381,089 | 392 |
+| 11 Feb 2026 | 1.120 | 1.110 | 1.130 | 1.120 | 38,020,788.28 | 33,933,733 | 594 |
+| 10 Feb 2026 | 1.120 | 1.100 | 1.130 | 1.120 | 25,400,852.50 | 22,777,520 | 426 |
+| 09 Feb 2026 | 1.090 | 1.090 | 1.130 | 1.120 | 64,655,928.68 | 58,469,922 | 900 |
+| 06 Feb 2026 | 1.090 | 1.080 | 1.100 | 1.080 | 13,077,579.42 | 11,996,685 | 241 |
+| 05 Feb 2026 | 1.090 | 1.080 | 1.100 | 1.090 | 15,603,744.67 | 14,308,942 | 399 |
+| 04 Feb 2026 | 1.100 | 1.090 | 1.100 | 1.090 | 19,595,674.52 | 17,904,911 | 415 |
+| 03 Feb 2026 | 1.090 | 1.080 | 1.110 | 1.100 | 36,476,304.05 | 33,241,664 | 557 |
+| 02 Feb 2026 | 1.090 | 1.080 | 1.090 | 1.090 | 6,117,087.80 | 5,626,633 | 301 |

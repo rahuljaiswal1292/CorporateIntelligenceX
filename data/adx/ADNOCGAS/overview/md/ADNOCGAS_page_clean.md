@@ -1,434 +1,82 @@
-Company Profile Overview
+Company Profile OverviewEnergy
 
-* 2POINTZERO2.320-0.080(-3.333%)
-* ADAVIATION5.6500.110(1.986%)
-* ADCB15.320-0.080(-0.519%)
-* ADIB26.2200.000(0.000%)
-* ADNH0.451-0.005(-1.096%)
-* ADNHC0.764-0.001(-0.131%)
-* ADNIC7.900-0.080(-1.003%)
-* ADNOCDIST4.080-0.020(-0.488%)
-* ADNOCDRILL5.460-0.010(-0.183%)
-* ADNOCGAS3.640-0.030(-0.817%)
-* ADNOCLS5.790-0.090(-1.531%)
-* ADPORTS5.260-0.040(-0.755%)
-* ADSB8.230-0.110(-1.319%)
-* AGILITY1.480-0.020(-1.333%)
-* AGTHIA3.860-0.050(-1.279%)
-* AIPOWR2.1100.030(1.442%)
-* ALDAR10.740-0.160(-1.468%)
-* ALEFEDT1.050-0.010(-0.943%)
-* ALPHADATA1.570-0.010(-0.633%)
-* ALPHADHABI9.380-0.110(-1.159%)
-* AMR1.910-0.100(-4.975%)
-* ANAN1.110-0.020(-1.770%)
-* APEX3.850-0.100(-2.532%)
-* ARAM2.330-0.100(-4.115%)
-* ASM2.560-0.050(-1.916%)
-* BILDCO1.420-0.050(-3.401%)
-* BONDAE3.730-0.060(-1.583%)
-* BOROUGE2.6200.000(0.000%)
-* BOS1.2900.020(1.575%)
-* BURJEEL1.3400.010(0.752%)
-* CHADX153.9300.070(1.813%)
-* CHHK4.9800.000(0.000%)
-* DANA0.9580.005(0.525%)
-* DRIVE3.7000.180(5.114%)
-* E71.1200.000(0.000%)
-* EAND20.900-0.060(-0.286%)
-* EASYLEASE27.740-0.540(-1.909%)
-* EMSTEEL1.240-0.010(-0.800%)
-* ESG14.220-0.260(-1.796%)
-* ESHRAQ0.5020.022(4.583%)
-* FAB19.9600.020(0.100%)
-* FCI0.4660.000(0.000%)
-* FERTIGLB2.800-0.030(-1.060%)
-* GCEM0.987-0.013(-1.300%)
-* GHITHA17.020-0.120(-0.700%)
-* GMPC2.0100.000(0.000%)
-* GRMNY4.9500.050(1.020%)
-* HAYAH1.3500.000(0.000%)
-* ICAP1.4900.000(0.000%)
-* IH0.5550.049(9.684%)
-* IHC399.5000.000(0.000%)
-* INVICTUS1.9700.020(1.026%)
-* JPANI5.2000.000(0.000%)
-* JULPHAR1.210-0.010(-0.820%)
-* KICO5.900-0.080(-1.338%)
-* KRBN118.800-3.000(-2.463%)
-* KWEB126.9000.800(0.634%)
-* KWTI3.7900.020(0.531%)
-* LULU1.110-0.010(-0.893%)
-* LUXURY2.0000.010(0.503%)
-* MAIR1.2300.040(3.361%)
-* MANAZEL0.3190.003(0.949%)
-* MODON3.540-0.050(-1.393%)
-* NCTH1.8800.030(1.622%)
-* NMDC21.5400.100(0.466%)
-* NMDCENR2.700-0.040(-1.460%)
-* OEIHC0.8200.000(0.000%)
-* ORAS35.0600.160(0.458%)
-* PALMS8.030-0.210(-2.549%)
-* PHX0.945-0.008(-0.839%)
-* PKSTN11.660-0.040(-0.342%)
-* PRESIGHT3.6400.040(1.111%)
-* PUREHEALTH2.740-0.040(-1.439%)
-* QUANTM2.160-0.030(-1.370%)
-* RAKBANK9.8000.010(0.102%)
-* RAKCEC2.6300.000(0.000%)
-* RAKPROP1.4500.020(1.399%)
-* RAKWCT0.990-0.010(-1.000%)
-* RAPCO2.020-0.130(-6.047%)
-* RPM3.0800.030(0.984%)
-* SCIDC0.907-0.023(-2.473%)
-* SIB3.7900.020(0.531%)
-* SPACE421.6600.030(1.840%)
-* SUDATEL0.6450.017(2.707%)
-* SUKUK3.7500.000(0.000%)
-* TAQA3.080-0.080(-2.532%)
-* UAB1.4500.060(4.317%)
-* UAEA10.2000.370(3.764%)
-* UAED6.4500.110(1.735%)
-* USGRWTH7.9500.030(0.379%)
-* USVALUE4.8400.000(0.000%)
-* WAHA2.060-0.020(-0.962%)
+## ADNOCGAS
 
-* 2POINTZERO2.320-0.080(-3.333%)
-* ADAVIATION5.6500.110(1.986%)
-* ADCB15.320-0.080(-0.519%)
-* ADIB26.2200.000(0.000%)
-* ADNH0.451-0.005(-1.096%)
-* ADNHC0.764-0.001(-0.131%)
-* ADNIC7.900-0.080(-1.003%)
-* ADNOCDIST4.080-0.020(-0.488%)
-* ADNOCDRILL5.460-0.010(-0.183%)
-* ADNOCGAS3.640-0.030(-0.817%)
-* ADNOCLS5.790-0.090(-1.531%)
-* ADPORTS5.260-0.040(-0.755%)
-* ADSB8.230-0.110(-1.319%)
-* AGILITY1.480-0.020(-1.333%)
-* AGTHIA3.860-0.050(-1.279%)
-* AIPOWR2.1100.030(1.442%)
-* ALDAR10.740-0.160(-1.468%)
-* ALEFEDT1.050-0.010(-0.943%)
-* ALPHADATA1.570-0.010(-0.633%)
-* ALPHADHABI9.380-0.110(-1.159%)
-* AMR1.910-0.100(-4.975%)
-* ANAN1.110-0.020(-1.770%)
-* APEX3.850-0.100(-2.532%)
-* ARAM2.330-0.100(-4.115%)
-* ASM2.560-0.050(-1.916%)
-* BILDCO1.420-0.050(-3.401%)
-* BONDAE3.730-0.060(-1.583%)
-* BOROUGE2.6200.000(0.000%)
-* BOS1.2900.020(1.575%)
-* BURJEEL1.3400.010(0.752%)
-* CHADX153.9300.070(1.813%)
-* CHHK4.9800.000(0.000%)
-* DANA0.9580.005(0.525%)
-* DRIVE3.7000.180(5.114%)
-* E71.1200.000(0.000%)
-* EAND20.900-0.060(-0.286%)
-* EASYLEASE27.740-0.540(-1.909%)
-* EMSTEEL1.240-0.010(-0.800%)
-* ESG14.220-0.260(-1.796%)
-* ESHRAQ0.5020.022(4.583%)
-* FAB19.9600.020(0.100%)
-* FCI0.4660.000(0.000%)
-* FERTIGLB2.800-0.030(-1.060%)
-* GCEM0.987-0.013(-1.300%)
-* GHITHA17.020-0.120(-0.700%)
-* GMPC2.0100.000(0.000%)
-* GRMNY4.9500.050(1.020%)
-* HAYAH1.3500.000(0.000%)
-* ICAP1.4900.000(0.000%)
-* IH0.5550.049(9.684%)
-* IHC399.5000.000(0.000%)
-* INVICTUS1.9700.020(1.026%)
-* JPANI5.2000.000(0.000%)
-* JULPHAR1.210-0.010(-0.820%)
-* KICO5.900-0.080(-1.338%)
-* KRBN118.800-3.000(-2.463%)
-* KWEB126.9000.800(0.634%)
-* KWTI3.7900.020(0.531%)
-* LULU1.110-0.010(-0.893%)
-* LUXURY2.0000.010(0.503%)
-* MAIR1.2300.040(3.361%)
-* MANAZEL0.3190.003(0.949%)
-* MODON3.540-0.050(-1.393%)
-* NCTH1.8800.030(1.622%)
-* NMDC21.5400.100(0.466%)
-* NMDCENR2.700-0.040(-1.460%)
-* OEIHC0.8200.000(0.000%)
-* ORAS35.0600.160(0.458%)
-* PALMS8.030-0.210(-2.549%)
-* PHX0.945-0.008(-0.839%)
-* PKSTN11.660-0.040(-0.342%)
-* PRESIGHT3.6400.040(1.111%)
-* PUREHEALTH2.740-0.040(-1.439%)
-* QUANTM2.160-0.030(-1.370%)
-* RAKBANK9.8000.010(0.102%)
-* RAKCEC2.6300.000(0.000%)
-* RAKPROP1.4500.020(1.399%)
-* RAKWCT0.990-0.010(-1.000%)
-* RAPCO2.020-0.130(-6.047%)
-* RPM3.0800.030(0.984%)
-* SCIDC0.907-0.023(-2.473%)
-* SIB3.7900.020(0.531%)
-* SPACE421.6600.030(1.840%)
-* SUDATEL0.6450.017(2.707%)
-* SUKUK3.7500.000(0.000%)
-* TAQA3.080-0.080(-2.532%)
-* UAB1.4500.060(4.317%)
-* UAEA10.2000.370(3.764%)
-* UAED6.4500.110(1.735%)
-* USGRWTH7.9500.030(0.379%)
-* USVALUE4.8400.000(0.000%)
-* WAHA2.060-0.020(-0.962%)
+#### ADNOC Gas plc
 
-* 2POINTZERO2.320-0.080(-3.333%)
-* ADAVIATION5.6500.110(1.986%)
-* ADCB15.320-0.080(-0.519%)
-* ADIB26.2200.000(0.000%)
-* ADNH0.451-0.005(-1.096%)
-* ADNHC0.764-0.001(-0.131%)
-* ADNIC7.900-0.080(-1.003%)
-* ADNOCDIST4.080-0.020(-0.488%)
-* ADNOCDRILL5.460-0.010(-0.183%)
-* ADNOCGAS3.640-0.030(-0.817%)
-* ADNOCLS5.790-0.090(-1.531%)
-* ADPORTS5.260-0.040(-0.755%)
-* ADSB8.230-0.110(-1.319%)
-* AGILITY1.480-0.020(-1.333%)
-* AGTHIA3.860-0.050(-1.279%)
-* AIPOWR2.1100.030(1.442%)
-* ALDAR10.740-0.160(-1.468%)
-* ALEFEDT1.050-0.010(-0.943%)
-* ALPHADATA1.570-0.010(-0.633%)
-* ALPHADHABI9.380-0.110(-1.159%)
-* AMR1.910-0.100(-4.975%)
-* ANAN1.110-0.020(-1.770%)
-* APEX3.850-0.100(-2.532%)
-* ARAM2.330-0.100(-4.115%)
-* ASM2.560-0.050(-1.916%)
-* BILDCO1.420-0.050(-3.401%)
-* BONDAE3.730-0.060(-1.583%)
-* BOROUGE2.6200.000(0.000%)
-* BOS1.2900.020(1.575%)
-* BURJEEL1.3400.010(0.752%)
-* CHADX153.9300.070(1.813%)
-* CHHK4.9800.000(0.000%)
-* DANA0.9580.005(0.525%)
-* DRIVE3.7000.180(5.114%)
-* E71.1200.000(0.000%)
-* EAND20.900-0.060(-0.286%)
-* EASYLEASE27.740-0.540(-1.909%)
-* EMSTEEL1.240-0.010(-0.800%)
-* ESG14.220-0.260(-1.796%)
-* ESHRAQ0.5020.022(4.583%)
-* FAB19.9600.020(0.100%)
-* FCI0.4660.000(0.000%)
-* FERTIGLB2.800-0.030(-1.060%)
-* GCEM0.987-0.013(-1.300%)
-* GHITHA17.020-0.120(-0.700%)
-* GMPC2.0100.000(0.000%)
-* GRMNY4.9500.050(1.020%)
-* HAYAH1.3500.000(0.000%)
-* ICAP1.4900.000(0.000%)
-* IH0.5550.049(9.684%)
-* IHC399.5000.000(0.000%)
-* INVICTUS1.9700.020(1.026%)
-* JPANI5.2000.000(0.000%)
-* JULPHAR1.210-0.010(-0.820%)
-* KICO5.900-0.080(-1.338%)
-* KRBN118.800-3.000(-2.463%)
-* KWEB126.9000.800(0.634%)
-* KWTI3.7900.020(0.531%)
-* LULU1.110-0.010(-0.893%)
-* LUXURY2.0000.010(0.503%)
-* MAIR1.2300.040(3.361%)
-* MANAZEL0.3190.003(0.949%)
-* MODON3.540-0.050(-1.393%)
-* NCTH1.8800.030(1.622%)
-* NMDC21.5400.100(0.466%)
-* NMDCENR2.700-0.040(-1.460%)
-* OEIHC0.8200.000(0.000%)
-* ORAS35.0600.160(0.458%)
-* PALMS8.030-0.210(-2.549%)
-* PHX0.945-0.008(-0.839%)
-* PKSTN11.660-0.040(-0.342%)
-* PRESIGHT3.6400.040(1.111%)
-* PUREHEALTH2.740-0.040(-1.439%)
-* QUANTM2.160-0.030(-1.370%)
-* RAKBANK9.8000.010(0.102%)
-* RAKCEC2.6300.000(0.000%)
-* RAKPROP1.4500.020(1.399%)
-* RAKWCT0.990-0.010(-1.000%)
-* RAPCO2.020-0.130(-6.047%)
-* RPM3.0800.030(0.984%)
-* SCIDC0.907-0.023(-2.473%)
-* SIB3.7900.020(0.531%)
-* SPACE421.6600.030(1.840%)
-* SUDATEL0.6450.017(2.707%)
-* SUKUK3.7500.000(0.000%)
-* TAQA3.080-0.080(-2.532%)
-* UAB1.4500.060(4.317%)
-* UAEA10.2000.370(3.764%)
-* UAED6.4500.110(1.735%)
-* USGRWTH7.9500.030(0.379%)
-* USVALUE4.8400.000(0.000%)
-* WAHA2.060-0.020(-0.962%)
-
-* [Overview](/main-market/company-profile/overview)
-* [Financial Reports](/main-market/company-profile/financial-reports)
-* [Assembly Meetings](/main-market/company-profile/assembly-meetings)
-* [Orderbook](/main-market/company-profile/orderbook)
-* [Disclosures](/main-market/company-profile/disclosures)
-* [Shareholders & Board](/main-market/company-profile/shareholder-and-board)
-* [Fundamentals](/main-market/company-profile/fundamentals)
-
-## 
-
-#### 
-
-Last Price%
+ir@adnocgas.ae ‎+971 2 707 0000 https://www.adnoc.ae/en/adnoc-gasLast Price3.61 0.00%
 
 ### MARKET CAP.
 
--
+277,072,633,463.000
 
 ### OPEN PRICE
 
--
+3.610
 
 ### PREV CLOSE
 
--
+3.610
 
 ### BID
 
--
+3.600
 
 ### BID SIZE
 
-0
+1,187,464
 
 ### ASK
 
--
+3.610
 
 ### ASK SIZE
 
-0
+964,341
 
-# ‌
+## COMPANY OVERVIEW
 
-‌
+ADNOC Gas is a world-class, large-scale integrated gas processing company operating across the gas value chain, from receipt of raw gas feedstock from ADNOC through our large, long-life operations for gas processing and fractionation to the sale of our products to domestic and international customers. We believe we are a progressive, transformative and sustainable energy company and are seeking to be a leader in our field. By feeding the rich feedstock we receive from ADNOC through our gas processing capabilities, we produce an attractive product mix, including methane, ethane, propane and butane, paraffinic naphtha, condensate and sulphur. In addition, through our liquefaction operations we produce liquefied natural gas. Our industrial gases business, which represents a smaller part of our operations, produces vital industrial gases such as gaseous and liquid nitrogen, liquid oxygen and a mix of krypton and xenon, and is expected to play a critical role in growing the UAE's industrial sector and achieving its low carbon hydrogen economy ambitions through our contribution to the production of low carbon ammonia. We market our products ourselves or through the ADNOC Group to end-customers in over 20 countries.
+
+SHARE CAPITAL70,457,805,407.00LISTING DATE13 Mar 2023INCORPORATIONCOMPANY TYPEPublicAUDITORDeloitte & Touche (M. E.)ARTICLES OF ASSOCIATION
 
 ## OWNERSHIP DISTRIBUTION
 
 ### FOREIGN OWNERSHIP
 
-0.00%
+5.02%
 
-from0.00%
+from100.00%
 
 ### GCC OWNERSHIP
 
-0.00%
+0.40%
 
-from0.00%
+from100.00%
 
 ### UAE NATIONALS
 
-0.00%
+94.52%
 
-from0.00%
+from100.00%
 
 ### ARAB COUNTRIES
 
-0.00%
+0.05%
 
-from0.00%Disclosures[View All](/en/main-market/company-profile/disclosures?symbols=undefined&secCode=undefined) ‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-DisclaimerFinancial Reports[View All](/en/main-market/company-profile/financial-reports?symbols=&secCode=) ‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
-‌  
+from100.00%Disclosures[View All](/en/main-market/company-profile/disclosures?symbols=ADNOCGAS&secCode=ADNOCGAS) 11Feb 2026ADNOCGAS 0.000 (0.000%)[By Circulation of Board Meeting to be held on 16/02/2026 at 18:00](#) 09Feb 2026ADNOCGAS 0.000 (0.000%)[Financial Results Press Release for the Period Ended December 31,2025](#)09Feb 2026ADNOCGAS 0.000 (0.000%)[Preliminary Financial Results for the Period Ended December 31,2025](#)09Feb 2026ADNOCGAS 0.000 (0.000%)[Management Discussion and Analysis Report for the Period Ended December 31,2025](#)09Feb 2026ADNOCGAS 0.000 (0.000%)[Board Meeting Results held on 06/02/2026 at 15:00](#) DisclaimerFinancial Reports[View All](/en/main-market/company-profile/financial-reports?symbols=ADNOCGAS&secCode=) 09Feb 2026ADNOCGAS 0.000 (0.000%)[ADNOC Gas plc Financial Results Press Release for the Period Ended December 31,2025](#)09Feb 2026ADNOCGAS 0.000 (0.000%)[ADNOC Gas plc Preliminary Financial Results for the Period Ended December 31,2025](#)09Feb 2026ADNOCGAS 0.000 (0.000%)[ADNOC Gas plc Management Discussion and Analysis Report for the Period Ended December 31,2025](#)
 
 ## RECENT TRADES
 
-|  |  |  |  |  |
-| --- | --- | --- | --- | --- |
-| ‌ | ‌ | ‌ | ‌ | ‌ |
-| ‌ | ‌ | ‌ | ‌ | ‌ |
-| ‌ | ‌ | ‌ | ‌ | ‌ |
-| ‌ | ‌ | ‌ | ‌ | ‌ |
-| ‌ | ‌ | ‌ | ‌ | ‌ |
-| ‌ | ‌ | ‌ | ‌ | ‌ |
+| Date | Open (AED) | Low (AED) | High (AED) | Close (AED) | Value (AED) | Volume | Trades |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 13 Feb 2026 | 3.610 | 3.570 | 3.620 | 3.610 | 42,499,342.97 | 11,815,642 | 553 |
+| 12 Feb 2026 | 3.630 | 3.610 | 3.640 | 3.610 | 64,591,676.01 | 17,844,097 | 777 |
+| 11 Feb 2026 | 3.680 | 3.620 | 3.700 | 3.630 | 127,555,959.21 | 34,890,064 | 1,614 |
+| 10 Feb 2026 | 3.720 | 3.660 | 3.730 | 3.670 | 170,389,202.13 | 46,226,954 | 1,266 |
+| 09 Feb 2026 | 3.720 | 3.680 | 3.760 | 3.720 | 332,389,808.79 | 89,623,733 | 2,177 |
+| 06 Feb 2026 | 3.690 | 3.680 | 3.720 | 3.720 | 139,872,932.83 | 37,827,278 | 737 |
+| 05 Feb 2026 | 3.700 | 3.680 | 3.700 | 3.700 | 169,076,574.98 | 45,761,458 | 1,390 |
+| 04 Feb 2026 | 3.650 | 3.630 | 3.710 | 3.700 | 337,479,860.34 | 91,867,638 | 4,763 |
+| 03 Feb 2026 | 3.600 | 3.600 | 3.670 | 3.650 | 186,990,595.80 | 51,333,926 | 1,726 |
+| 02 Feb 2026 | 3.600 | 3.580 | 3.610 | 3.600 | 94,187,069.66 | 26,197,327 | 1,029 |

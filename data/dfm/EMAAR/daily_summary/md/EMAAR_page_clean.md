@@ -1,14 +1,12 @@
-Dubai Financial Market - Region’s leading financial exchange
-
-Market  closed DFMGI    6686.27  
-(-85.33 / -1.26%)
- Total Volume   252,753,818  Total Value   1,085,333,897.09  Total Trades   21,482   [Market Watch](https://marketwatch.dfm.ae/)
+Market open DFMGI 6722.2 
+(7.6 / 0.113%)
+ Total Volume 417,149,913 Total Value 1,121,526,603.45 Total Trades 18,099 [Market Watch](https://marketwatch.dfm.ae/)
 
 # Equities
 
-EMAAR Emaar Properties PJSC  16.40 
--0.100
- -0.606%
+EMAAR Emaar Properties PJSC 16.40 + 
+0.100
+ + 0.614%
 
 * [Trading](/the-exchange/market-information/company/EMAAR/trading)
 * [Profile](/the-exchange/market-information/company/EMAAR/profile)
@@ -24,6 +22,6 @@ EMAAR Emaar Properties PJSC  16.40
 
 No data available for the selected criteria
 
-  AI generated summary 
+ AI generated summary 
 \*This information is AI generated, for more detailed info, read the full document.
  Please review the original documents to validate accuracy, as the analysis does not constitute investment advice and should not replace your own assessment. No warranty is given that the information is accurate, complete, or up to date.

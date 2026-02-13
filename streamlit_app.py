@@ -65,11 +65,15 @@ def get_cached_graph():
     return create_graph()
 
 
-def run_investigation(query):
+def run_investigation(query, progress_placeholder):
     # Reset State
     st.session_state.logs = []
     st.session_state.analysis_complete = False
-    st.session_state.progress_stage = 0
+    st.session_state.progress_stage = 1  # Start at "Identify" immediately
+
+    # 0. Initial Render of Progress
+    with progress_placeholder.container():
+        render_progress_chain(1)
 
     # 1. Initialize Baseline (Hybrid Approach)
     base_data = get_company_data(query)
@@ -99,21 +103,33 @@ def run_investigation(query):
                         processed_logs.add(log)
 
                         # UI Logic for Logs and Progress
-                        if "Resolved" in log:
-                            add_log("Resolver", log)
+                        # UI Logic for Logs and Progress
+                        if "Enrichment" in log or "Resolution" in log:
+                            add_log("Master Agent", log)
                             st.session_state.progress_stage = 1
-                            st.write(f"✅ {log}")
-                        elif "Scraping" in log:
-                            add_log("Scraper", log)
+                            with progress_placeholder.container():
+                                render_progress_chain(1)
+                            st.write(f"🕵️‍♂️ {log}")
+                        elif "Scraper" in log or "Pdf" in log:
+                            add_log("Scraper/PDF", log)
                             st.session_state.progress_stage = 2
+                            with progress_placeholder.container():
+                                render_progress_chain(2)
                             st.write(f"🕸️ {log}")
                         elif "Vectorizer" in log:
                             add_log("Vectorizer", log)
                             st.session_state.progress_stage = 3
+                            with progress_placeholder.container():
+                                render_progress_chain(3)
                             st.write(f"🧠 {log}")
-                        elif "Analyst" in log:
-                            add_log("Analyst", log)
+                        elif "Analyst" in log or "Presentation" in log:
+                            if "Presentation" in log:
+                                add_log("Presentation Agent", log)
+                            else:
+                                add_log("Analyst", log)
                             st.session_state.progress_stage = 4
+                            with progress_placeholder.container():
+                                render_progress_chain(4)
                             st.write(f"📊 {log}")
                         else:
                             add_log("System", log)
@@ -189,6 +205,7 @@ def run_investigation(query):
             label="✅ **Investigation Complete**", state="complete", expanded=False
         )
         st.session_state.analysis_complete = True
+        st.session_state.progress_stage = 5  # Mark as Ready
 
 
 # --- Sidebar ---
@@ -249,9 +266,18 @@ if clear_clicked:
     st.session_state.analysis_complete = False
     st.rerun()
 
+
+# Progress Chain Placeholder - Always visible if active
+progress_placeholder = st.empty()
+
+# Render Progress Chain if already active (on rerun)
+if st.session_state.progress_stage > 0:
+    with progress_placeholder.container():
+        render_progress_chain(st.session_state.progress_stage)
+
 # Trigger Search
 if search_clicked and query_input:
-    run_investigation(query_input)
+    run_investigation(query_input, progress_placeholder)
     st.rerun()
 elif (
     query_input and not st.session_state.analysis_complete
@@ -260,10 +286,6 @@ elif (
     # but sidebar search button is explicit.
     # Let's rely on the button for the "Deep Search" feel requested.
     pass
-
-# Render Progress Chain
-if st.session_state.progress_stage > 0:
-    render_progress_chain(st.session_state.progress_stage)
 
 if st.session_state.analysis_complete and st.session_state.data:
     data = st.session_state.data
@@ -302,11 +324,11 @@ elif not st.session_state.analysis_complete and st.session_state.progress_stage 
     st.subheader("Recent Investigations")
     col_a, col_b, col_c = st.columns(3)
     if col_a.button("Emaar Properties", use_container_width=True):
-        run_investigation("Emaar")
+        run_investigation("Emaar", progress_placeholder)
         st.rerun()
     if col_b.button("Emirates NBD", use_container_width=True):
-        run_investigation("Emirates NBD")
+        run_investigation("Emirates NBD", progress_placeholder)
         st.rerun()
     if col_c.button("Air Arabia", use_container_width=True):
-        run_investigation("Air Arabia")
+        run_investigation("Air Arabia", progress_placeholder)
         st.rerun()

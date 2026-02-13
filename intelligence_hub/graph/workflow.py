@@ -10,6 +10,7 @@ from intelligence_hub.agents.vectorizer import VectorizerAgent
 from intelligence_hub.agents.analyst import AnalystAgent
 from intelligence_hub.agents.pdf_agent import PdfAgent
 from intelligence_hub.agents.master_agent import MasterAgent
+from intelligence_hub.agents.presentation_agent import PresentationAgent
 from intelligence_hub.connectors.llm import LLMConnector
 from intelligence_hub.storage.corporate_profile_store import CorporateProfileStore
 from intelligence_hub.config.config import CHROMADB_PERSIST_DIRECTORY
@@ -98,6 +99,7 @@ def create_graph():
         llm_connector=llm_connector,
         profile_store=store,
     )
+    presentation_agent = PresentationAgent()
 
     # 2. Define Graph
     workflow = StateGraph(AgentState)
@@ -110,6 +112,7 @@ def create_graph():
     workflow.add_node("vectorizer", vectorizer.run)
     workflow.add_node("analyst", analyst.run)
     workflow.add_node("pdf_agent", pdf_agent.run)
+    workflow.add_node("presentation_agent", presentation_agent.run)
 
     # 4. Define Edges
     workflow.set_entry_point("master_enrichment")
@@ -125,7 +128,8 @@ def create_graph():
     workflow.add_edge("vectorizer", "analyst")
 
     # Analyst is the end
-    workflow.add_edge("analyst", END)
+    workflow.add_edge("analyst", "presentation_agent")
+    workflow.add_edge("presentation_agent", END)
 
     # 5. Compile
     return workflow.compile()

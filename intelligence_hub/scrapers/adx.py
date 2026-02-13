@@ -170,66 +170,55 @@ class ADXScraper:
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             )
             
-            # Setup download handler
-            download_dir = os.path.join(config.DATA_DIR, "adx", ticker, "downloads")
-            os.makedirs(download_dir, exist_ok=True)
-            
-            # Track downloads
-            downloaded_files = []
-
-            async def handle_download(download):
-                try:
-                    suggested_filename = download.suggested_filename
-                    path = os.path.join(download_dir, suggested_filename)
-                    await download.save_as(path)
-                    logger.info(f"Downloaded: {path}")
-                    downloaded_files.append(path)
-                except Exception as e:
-                    logger.error(f"Download failed: {e}")
-
             # Define processing function for each page type
             async def process_page(url, page_type):
                 page = await self._create_stealth_page(context)
+                
+                # Setup page-specific download handler (in 'structured' subfolder)
+                page_download_dir = os.path.join(config.DATA_DIR, "adx", ticker, page_type, "structured")
+                os.makedirs(page_download_dir, exist_ok=True)
+                
+                async def handle_download(download):
+                    try:
+                        suggested_filename = download.suggested_filename
+                        path = os.path.join(page_download_dir, suggested_filename)
+                        await download.save_as(path)
+                        logger.info(f"Downloaded to {page_type}: {path}")
+                    except Exception as e:
+                        logger.error(f"Download failed in {page_type}: {e}")
+
                 page.on("download", handle_download)
                 
                 logger.info(f"Navigating to {page_type}: {url}")
                 try:
-                    # Use domcontentloaded for faster initial load, especially for financial reports
-                    await page.goto(url, wait_until="domcontentloaded", timeout=90000)
+                    # Use 'load' for more completeness
+                    await page.goto(url, wait_until="load", timeout=90000)
                     
-                    # Wait for page to settle
-                    await page.wait_for_timeout(3000)
+                    # Prepare page (scroll, wait)
+                    await self._prepare_page_content(page, page_type)
                     
-                    # Scroll to trigger lazy loading
-                    await page.evaluate("window.scrollTo(0, document.body.scrollHeight/2)")
-                    await page.wait_for_timeout(1000)
-                    await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-                    await page.wait_for_timeout(3000) # Final settle
+                    # Extract structured data FIRST for pages that need interaction (like financials)
+                    extracted_data = {}
+                    if page_type == "overview":
+                        extracted_data = await self._extract_overview(page, ticker, page_type)
+                    elif page_type == "financials":
+                        # This method clicks tabs and triggers data loading
+                        extracted_data = await self._interact_and_extract_financials(page, ticker, page_type)
+                    elif page_type in ["disclosures", "assembly_meetings", "fundamentals"]:
+                        extracted_data = await self._generic_document_extract(page, ticker, page_type)
                     
-                    # Store Raw HTML using new page-type structure
+                    # Capture content AFTER interaction to ensure dynamic data is present
                     content = await page.content()
+                    
+                    # Save Raw HTML
                     StorageManager.save_page_content(content, "adx", ticker, page_type, "html", "page")
 
-                    # Convert and Store Clean Markdown
+                    # Convert and Store Clean Markdown (using raw HTML for best results)
                     try:
                         md_content = clean_html_to_markdown(content)
                         StorageManager.save_page_content(md_content, "adx", ticker, page_type, "md", "page_clean")
                     except Exception as e:
                         logger.warning(f"Failed to convert/save markdown for {page_type}: {e}")
-
-                    # Extract Content and download documents
-                    extracted_data = {}
-                    
-                    if page_type == "overview":
-                        extracted_data = await self._extract_overview(page, ticker, page_type)
-                    elif page_type == "financials":
-                        extracted_data = await self._interact_and_extract_financials(page, ticker, page_type)
-                    elif page_type in ["disclosures", "assembly_meetings", "fundamentals"]:
-                        # Use generic document extraction for these pages
-                        extracted_data = await self._generic_document_extract(page, ticker, page_type)
-                    elif page_type in ["orderbook", "shareholders"]:
-                        # Placeholder for pages without documents
-                        extracted_data = {}
                         
                     await page.close()
                     return (page_type, extracted_data)
@@ -237,6 +226,7 @@ class ADXScraper:
                     logger.error(f"Error processing {page_type}: {e}")
                     await page.close()
                     return (page_type, None)
+                    
 
             # Exec tasks
             tasks = [
@@ -260,11 +250,8 @@ class ADXScraper:
                     elif page_type == "financials":
                         data["financials"] = result.get("financials", {})
             
-            data["documents"] = downloaded_files
-            
-            # Save final structured data
-            StorageManager.save_structured(data, "adx", ticker)
-            
+            # Documents are tracked within their respective processing methods if needed
+            # Returning merged data without root-level structured/downloads
             return data
 
         except Exception as e:
@@ -363,33 +350,150 @@ class ADXScraper:
         
         return {"profile": profile, "metrics": metrics}
 
+    async def _prepare_page_content(self, page: Page, page_type: str):
+        """Interact with page elements to ensure all content is loaded before capture."""
+        # 1. Universal Scroll to trigger lazy loading
+        try:
+            await page.evaluate("window.scrollTo(0, document.body.scrollHeight/2)")
+            await page.wait_for_timeout(1000)
+            await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            await page.wait_for_timeout(2000)
+        except: pass
+        
+        # 2. Page Specific Waits
+        if page_type == "financials":
+            try:
+                 # Check for bot detection
+                 if self.bot_handler and await self.bot_handler.detect_bot_challenge(page):
+                     await self.bot_handler.handle_bot_detection(page)
+                     
+                 # Wait for the tabs or documents to appear
+                 logger.info("Waiting for financial data to render...")
+                 
+                 # Dynamic wait for actual data (PDF links or tables with content)
+                 await page.wait_for_function("""
+                    () => {
+                        const hasReports = !!document.querySelector('a[href*=".pdf"], a[href*="Download"]');
+                        const tables = document.querySelectorAll('table, .adx-table, .table-responsive');
+                        let tableHasContent = false;
+                        for (const tbl of tables) {
+                            if (tbl.innerText.replace(/[\u200B-\u200D\uFEFF]/g, '').trim().length > 20) {
+                                tableHasContent = true;
+                                break;
+                            }
+                        }
+                        return hasReports || tableHasContent;
+                    }
+                 """, timeout=30000)
+                 await page.wait_for_timeout(2000)
+            except Exception as e:
+                logger.warning(f"Wait timeout on financials: {e}")
+        
+        elif page_type == "shareholders":
+            logger.info("Waiting for shareholders data mapping...")
+            try:
+                # Wait for any of the common shareholder tables or headings
+                await page.wait_for_selector(".adx-shareholders-board, .shareholders-board_content, h2", timeout=15000)
+                await page.wait_for_timeout(2000)
+            except: pass
+            
+        elif page_type == "overview":
+            logger.info("Waiting for overview details...")
+            try:
+                # Wait for share capital or auditor sections if they appear late
+                await page.wait_for_selector(".sharecard-title, .companyoverview-pra, h3", timeout=15000)
+                await page.wait_for_timeout(2000)
+            except: pass
+            
+    def _clean_generic_adx_content(self, html_content: str) -> str:
+        """Remove generic ADX noise with maximum prejudice."""
+        if not html_content: return ""
+        try:
+            soup = BeautifulSoup(html_content, 'html.parser')
+            
+            # 1. Broad Removal of known noise containers
+            noise_selectors = [
+                ".marqueeWrapperTicker", ".ticker-value",
+                ".uae-current-date", ".language-switcher", ".accessbility-container",
+                ".login-btn", ".mw-btn", "header", "footer", ".adx-header", ".adx-footer",
+                ".search-btn-responsive", ".side-bar", ".sidebar", ".breadcrumb",
+                "nav", ".navbar", ".adx-top-nav", ".social-links", ".cookie-banner",
+                "#top-nav", ".sub-footer"
+            ]
+            for selector in noise_selectors:
+                for element in soup.select(selector):
+                    element.decompose()
+            
+            # 2. Targeted Removal of ticker-specific lists (using find_all for robustness)
+            for ul in soup.find_all("ul", attrs={"aria-label": "tickerValue"}):
+                ul.decompose()
+            
+            # 3. Heuristic: Remove items containing multiple common ADX tickers (noise lists)
+            ticker_keywords = ["2POINTZERO", "ADAVIATION", "ADNOCGAS", "LULU", "FAB", "ADCB", "ALDAR", "IHC", "EAND", "ADIB"]
+            pattern = re.compile("|".join(ticker_keywords))
+            
+            for item in soup.find_all(["li", "tr", "div"]):
+                # If a small container contains multiple tickers, it's noise
+                txt = item.get_text()
+                if 2 < len(txt) < 300:
+                    matches = pattern.findall(txt)
+                    if len(set(matches)) >= 2: # At least 2 different noise tickers
+                        item.decompose()
+
+            return str(soup)
+        except Exception as e:
+            logger.warning(f"Error cleaning ADX content: {e}")
+            return html_content
+
     async def _interact_and_extract_financials(self, page: Page, ticker: str, page_type: str) -> dict:
         """
         Interact with financial page to download all English documents.
         Enhanced with DownloadManager for reliable downloads with retry, validation, and date filtering.
-        Supports: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX
         """
-        logger.info("Interacting with Financials page...")
+        logger.info(f"Interacting with Financials page for {ticker}...")
         
         # Check for bot detection
         if self.bot_handler and await self.bot_handler.detect_bot_challenge(page):
             await self.bot_handler.handle_bot_detection(page, severity='medium')
         
         # 1. Click on Report Type buttons to load different sections
+        # We try to prioritize 'Annual' as it usually has the most data
         try:
-            buttons = await page.locator('button, a[role="tab"]').filter(has_text=re.compile(r'annual|quarterly|interim', re.IGNORECASE)).all()
-            for btn in buttons[:5]:
+            # Look for tab buttons
+            tab_selectors = [
+                'button:has-text("Annual")', 
+                '.adx-tab_item:has-text("Annual")',
+                'button:has-text("Yearly")',
+                'a[role="tab"]:has-text("Annual")'
+            ]
+            
+            clicked_any = False
+            for selector in tab_selectors:
+                btn = page.locator(selector).first
                 if await btn.is_visible():
-                    try:
+                    logger.info(f"Clicking specific tab: {await btn.inner_text()}")
+                    await btn.click()
+                    clicked_any = True
+                    break
+            
+            if not clicked_any:
+                # Fallback to general tab buttons
+                buttons = await page.locator('button, a[role="tab"]').filter(has_text=re.compile(r'annual|yearly|quarterly|interim', re.IGNORECASE)).all()
+                for btn in buttons[:1]: # Just click the first one if not clicked yet
+                    if await btn.is_visible():
                         await btn.click()
-                        if self.bot_handler:
-                            await self.bot_handler.add_human_delay(1000, 2000)
-                        else:
-                            await page.wait_for_timeout(2000)
-                    except: 
-                        pass
+                        clicked_any = True
+
+            if clicked_any:
+                await page.wait_for_timeout(3000)
+                await page.wait_for_load_state("networkidle", timeout=5000)
         except Exception as e:
-            logger.warning(f"Error clicking report type buttons: {e}")
+            logger.warning(f"Error navigating tabs: {e}")
+
+        # Ensure we wait for the table to be visible after clicking
+        try:
+            await page.wait_for_selector(".adx-table, table", timeout=10000)
+        except: pass
 
         # 2. Find all document links (PDF and Office formats)
         document_links = await page.evaluate('''() => {
@@ -448,19 +552,18 @@ class ADXScraper:
         skipped_old = []
         
         # Directory for all files
-        structured_dir = os.path.join(config.DATA_DIR, "adx", ticker, page_type, "structured")
-        os.makedirs(structured_dir, exist_ok=True)
-        logger.info(f"Target directory: {structured_dir}")
+        target_dir = os.path.join(config.DATA_DIR, "adx", ticker, page_type, "structured")
+        os.makedirs(target_dir, exist_ok=True)
+        logger.info(f"Target directory: {target_dir}")
         
         # Use DownloadManager if available, otherwise fallback to old method
         if self.download_manager:
             logger.info("Using enhanced DownloadManager with parallel downloads")
             
-            # Use parallel batch download (much faster!)
             results = await self.download_manager.download_batch_parallel(
                 page=page,
                 documents=english_docs[:50],  # Process up to 50 documents
-                target_dir=structured_dir,
+                target_dir=target_dir,
                 max_concurrent=10,  # 10 concurrent downloads
                 max_retries=3
             )
@@ -575,9 +678,9 @@ class ADXScraper:
         downloaded_count = 0
         failed_downloads = []
         
-        structured_dir = os.path.join(config.DATA_DIR, "adx", ticker, page_type, "structured")
-        os.makedirs(structured_dir, exist_ok=True)
-        logger.info(f"Target directory: {structured_dir}")
+        target_dir = os.path.join(config.DATA_DIR, "adx", ticker, page_type, "structured")
+        os.makedirs(target_dir, exist_ok=True)
+        logger.info(f"Target directory: {target_dir}")
         
         downloaded_files_list = []
         
@@ -589,7 +692,7 @@ class ADXScraper:
             results = await self.download_manager.download_batch_parallel(
                 page=page,
                 documents=english_docs[:50],  # Process up to 50 documents
-                target_dir=structured_dir,
+                target_dir=target_dir,
                 max_concurrent=10,
                 max_retries=3
             )
@@ -636,9 +739,6 @@ if __name__ == "__main__":
     tickers  = [
         'LULU', 
         'ADNOCGAS',
-        # 'ADCB', 
-        # 'FAB', 
-        # 'ADNHC'
         ]
     for ticker in tickers:
         async def main():

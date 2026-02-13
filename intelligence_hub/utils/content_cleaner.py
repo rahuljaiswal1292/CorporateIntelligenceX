@@ -20,14 +20,23 @@ def clean_html_to_markdown(html_content: str) -> str:
     soup = BeautifulSoup(html_content, 'html.parser')
     
     # 1. STRIP BOILERPLATE & NOISE
-    # Remove standard non-content tags
-    for element in soup(["script", "style", "nav", "footer", "header", "aside", "meta", "noscript", "iframe", "object", "embed", "applet", "svg", "button", "input", "form", "select", "option"]):
-        element.decompose()
+    # Remove boilerplate elements
+    boilerplate_selectors = [
+        'header', 'footer', 'nav', 'aside', '.nav', '.footer', '.header',
+        '.sidebar', '.menu', '.ads', '.advertisement', '.social-share',
+        '.adx-market-watch', '.breadcrumbs-nav', '.company-profile-nav',
+        '.pagination', '.adx-pagination', '.newsletter-section',
+        "script", "style", "meta", "noscript", "iframe", "object", "embed", "applet", "svg", "button", "input", "form", "select", "option"
+    ]
+    for selector in boilerplate_selectors:
+        for element in soup.select(selector):
+            element.decompose()
         
     # Remove elements by class/id heuristics (common boilerplate)
     # Be careful not to remove content.
     # Safe to remove: cookie-banner, popup, advertisement, social-share
-    for element in soup.find_all(attrs={"class": re.compile(r"cookie|popup|ad-|advert|banner|social|share|sidebar|widget|menu|navigation", re.I)}):
+    # Updated: changed 'share' to 'share-'/ 'share_' to avoid matching 'shareholders'
+    for element in soup.find_all(attrs={"class": re.compile(r"cookie|popup|ad-|advert|banner|social|share-|share_|sidebar|widget|menu|navigation", re.I)}):
         element.decompose()
         
     # 2. FLATTEN TABLES (Handle colspan/rowspan)
@@ -43,6 +52,9 @@ def clean_html_to_markdown(html_content: str) -> str:
     # DFM SPECIFIC: Flex Tables and Grid Structures
     _process_dfm_flex_table(soup)
     _process_dfm_grid_to_table(soup)
+    
+    # ADX SPECIFIC: Orderbook Grid
+    _process_adx_orderbook_grid(soup)
 
     # Convert <pre> blocks with CSV/Tab data to tables
     for pre in soup.find_all(["pre", "code"]):
@@ -55,6 +67,13 @@ def clean_html_to_markdown(html_content: str) -> str:
     # We want to strip formatting tags but keep structural ones.
     # After our custom processors have converted flex/grid to <table>, 
     # we can safely strip <div> and <span> to get clean text inside table cells.
+    # Note: markdownify can sometimes jumble text if div/span are stripped without spaces.
+    # We'll add a space before and after block-like tags to prevent merging.
+    for tag in soup.find_all(['div', 'span', 'p']):
+        if tag.get_text(strip=True):
+            tag.insert_before(soup.new_string(" "))
+            tag.insert_after(soup.new_string(" "))
+
     strip_tags = ['b', 'strong', 'i', 'em', 'u', 's', 'strike', 'font', 'sup', 'sub', 'big', 'small', 'mark', 'ins', 'del', 'img', 'div', 'span'] 
     
     # 5. CONVERT TO MARKDOWN
@@ -405,5 +424,69 @@ def _process_dfm_grid_to_table(soup):
                 tbody.append(tr)
             
             grid.replace_with(html_table)
+
+def _process_adx_orderbook_grid(soup):
+    """
+    Detects and converts ADX orderbook grid structures to HTML tables.
+    Focuses on col-6 BID/ASK PRICE containers and data rows.
+    """
+    # 1. Look for BID PRICE / ASK PRICE headers
+    # These are usually in row -> col-6 -> report-title
+    rows = soup.find_all(class_="row")
+    for row in rows:
+        titles = row.find_all(class_="report-title")
+        if any("BID PRICE" in t.get_text().upper() for t in titles) and \
+           any("ASK PRICE" in t.get_text().upper() for t in titles):
+            
+            # Found the orderbook section. 
+            # We need to find the data rows sibling to this or within the same container.
+            # ADX orderbooks often have a specific parent for the data.
+            container = row.find_parent(class_="component-table-style") or row.parent
+            
+            # Find all data cells. They might be in a list or another grid.
+            # Typical structure: a series of divs with bid and ask values.
+            # Including 'price-info_count' which was identified in manual inspection.
+            data_cells = container.find_all(class_=re.compile(r"price-info|record|price-info_count", re.I))
+            if not data_cells: continue
+            
+            html_table = soup.new_tag("table")
+            thead = soup.new_tag("thead")
+            tbody = soup.new_tag("tbody")
+            html_table.append(thead)
+            html_table.append(tbody)
+            
+            # Header
+            h_row = soup.new_tag("tr")
+            for h in ["Bid Price", "Ask Price"]:
+                th = soup.new_tag("th")
+                th.string = h
+                h_row.append(th)
+            thead.append(h_row)
+            
+            # This is a bit tricky as BID/ASK are often side-by-side in HTML or alternating.
+            # Let's group them or just list them.
+            # Heuristic: Find all numeric strings in this container and pair them.
+            values = []
+            for cell in data_cells:
+                # Some cells might contain labels, we want pure numbers
+                txt = cell.get_text(strip=True).replace(",", "")
+                if re.match(r"^\d+\.?\d*$", txt):
+                    values.append(txt)
+            
+            # Pair them (assuming Bid-Ask, Bid-Ask...)
+            for i in range(0, len(values) - 1, 2):
+                tr = soup.new_tag("tr")
+                td1 = soup.new_tag("td")
+                td1.string = values[i]
+                td2 = soup.new_tag("td")
+                td2.string = values[i+1]
+                tr.append(td1)
+                tr.append(td2)
+                tbody.append(tr)
+                
+            if len(tbody.find_all("tr")) > 0:
+                row.replace_with(html_table)
+                # Decompose the original container if it's still there
+                # container.decompose() # Risky, let's just replace the header row for now.
 
 

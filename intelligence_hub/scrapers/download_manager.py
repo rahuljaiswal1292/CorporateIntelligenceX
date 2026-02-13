@@ -49,12 +49,14 @@ class DownloadManager:
         """
         self.max_age_years = max_age_years
         self.min_file_size = min_file_size
+        self.downloaded_hashes = {}  # hash -> filepath mapping for deduplication
         self.download_stats = {
             'attempted': 0,
             'successful': 0,
             'failed': 0,
             'skipped_old': 0,
-            'skipped_invalid': 0
+            'skipped_invalid': 0,
+            'skipped_duplicate': 0
         }
     
     async def download_with_retry(
@@ -201,12 +203,23 @@ class DownloadManager:
         """
         Try multiple download strategies in sequence.
         
-        Strategy 1: Click and wait for download event (preferred)
-        Strategy 2: Extract URL and download via context.request
+        Strategy 1: Extract URL and download via context.request (PREFERRED - descriptive names)
+        Strategy 2: Click and wait for download event (FALLBACK - generic browser names)
         Strategy 3: Execute JavaScript to trigger download
         """
         
-        # Strategy 1: Click-based download
+        # Strategy 1: Direct URL download (PREFERRED for descriptive names)
+        try:
+            url = await element.get_attribute('href')
+            if url and url.startswith('http'):
+                # _download_from_url already calls _check_and_handle_duplicate
+                result = await self._download_from_url(page, url, doc_info, target_dir)
+                if result:
+                    return result
+        except Exception as e:
+            logger.debug(f"Strategy 1 (URL) failed: {e}")
+        
+        # Strategy 2: Click-based download (FALLBACK)
         try:
             # Use force=True and moderate timeout to bypass sticky-header interception
             async with page.expect_download(timeout=30000) as download_info:
@@ -219,7 +232,7 @@ class DownloadManager:
             
             # Validate content
             if not await self._validate_file_content(temp_path, doc_info):
-                logger.warning("File validation failed (Strategy 1)")
+                logger.warning("File validation failed (Strategy 2)")
                 return None
             
             # Check date
@@ -233,25 +246,25 @@ class DownloadManager:
             filename = download.suggested_filename
             final_path = os.path.join(target_dir, filename)
             
-            # Avoid overwriting
+            # Avoid overwriting with same filename
             final_path = self._get_unique_filepath(final_path)
             
             await download.save_as(final_path)
-            logger.info(f"Saved via Strategy 1: {filename}")
-            return final_path
+
+            # Important: Check for duplicates by content before returning success
+            # This handles cases where Strategy 2 saves a generic name for a file
+            # that we already have under a descriptive name (or vice versa)
+            deduped_path = self._check_and_handle_duplicate(final_path, target_dir)
+            if not deduped_path:
+                return None # Was a duplicate and was removed
+                
+            logger.info(f"Saved via Strategy 2: {os.path.basename(deduped_path)}")
+            return deduped_path
             
         except PlaywrightTimeoutError:
-            logger.warning("Strategy 1 (click) timed out")
+            logger.warning("Strategy 2 (click) timed out")
         except Exception as e:
-            logger.warning(f"Strategy 1 failed: {e}")
-        
-        # Strategy 2: Direct URL download
-        try:
-            url = await element.get_attribute('href')
-            if url and url.startswith('http'):
-                return await self._download_from_url(page, url, doc_info, target_dir)
-        except Exception as e:
-            logger.debug(f"Strategy 2 failed: {e}")
+            logger.warning(f"Strategy 2 failed: {e}")
         
         # Strategy 3: JavaScript trigger
         try:
@@ -260,7 +273,10 @@ class DownloadManager:
             await page.wait_for_timeout(5000)
             
             # Check if file appeared in target directory
-            return await self._check_latest_download(target_dir)
+            latest = await self._check_latest_download(target_dir)
+            if latest:
+                deduped_latest = self._check_and_handle_duplicate(latest, target_dir)
+                return deduped_latest
         except Exception as e:
             logger.debug(f"Strategy 3 failed: {e}")
         
@@ -302,8 +318,18 @@ class DownloadManager:
                 self.download_stats['skipped_invalid'] += 1
                 return None
             
-            # Generate filename
-            filename = self._generate_filename(url, doc_info, content_type)
+            # Try to get filename from Content-Disposition header
+            filename = None
+            content_disposition = response.headers.get('content-disposition')
+            if content_disposition:
+                import cgi
+                _, params = cgi.parse_header(content_disposition)
+                filename = params.get('filename')
+                
+            # Fallback to generation if no filename in header
+            if not filename:
+                filename = self._generate_filename(url, doc_info, content_type)
+                
             filepath = os.path.join(target_dir, filename)
             filepath = self._get_unique_filepath(filepath)
             
@@ -319,7 +345,12 @@ class DownloadManager:
                 self.download_stats['skipped_old'] += 1
                 return None
             
-            logger.info(f"Saved via Strategy 2: {filename} ({len(content):,} bytes)")
+            # Check for duplicates before finalizing
+            filepath = self._check_and_handle_duplicate(filepath, target_dir)
+            if not filepath:
+                return None # Was a duplicate
+                
+            logger.info(f"Saved via Strategy 1: {os.path.basename(filepath)} ({len(content):,} bytes)")
             return filepath
             
         except Exception as e:
@@ -631,6 +662,95 @@ class DownloadManager:
         import random
         delay = random.randint(min_ms, max_ms) / 1000.0
         await asyncio.sleep(delay)
+
+    def _calculate_file_hash(self, filepath: str) -> str:
+        """Calculate MD5 hash of file for deduplication."""
+        import hashlib
+        hash_md5 = hashlib.md5()
+        with open(filepath, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                hash_md5.update(chunk)
+        return hash_md5.hexdigest()
+
+    def _check_and_handle_duplicate(self, filepath: str, target_dir: str) -> Optional[str]:
+        """
+        Check if file is duplicate based on content hash.
+        Checks both current session memory and the target directory on disk.
+        If duplicate found, keep the one with more descriptive name.
+        Returns: filepath to keep, or None if this file was a duplicate and was removed.
+        """
+        file_hash = self._calculate_file_hash(filepath)
+        
+        # 1. Check current session memory first
+        if file_hash in self.downloaded_hashes:
+            existing_file = self.downloaded_hashes[file_hash]
+            return self._resolve_duplicate(filepath, existing_file, file_hash)
+            
+        # 2. Check target directory on disk if not in session memory
+        # This helps when running the scraper multiple times
+        try:
+            for entry in os.scandir(target_dir):
+                if entry.is_file() and entry.path != os.path.abspath(filepath):
+                    # Check format match to avoid hashing every single file if possible
+                    if os.path.splitext(entry.name)[1].lower() == os.path.splitext(filepath)[1].lower():
+                        # Only hash if sizes are similar (small optimization)
+                        if abs(entry.stat().st_size - os.path.getsize(filepath)) < 1024:
+                            existing_hash = self._calculate_file_hash(entry.path)
+                            if existing_hash == file_hash:
+                                return self._resolve_duplicate(filepath, entry.path, file_hash)
+        except Exception as e:
+            logger.debug(f"Error scanning directory for duplicates: {e}")
+
+        # Not a duplicate, track it
+        self.downloaded_hashes[file_hash] = filepath
+        return filepath
+
+    def _resolve_duplicate(self, new_file: str, existing_file: str, file_hash: str) -> Optional[str]:
+        """Helper to decide which duplicate to keep."""
+        # If the same path, just return it
+        if os.path.abspath(new_file) == os.path.abspath(existing_file):
+            return new_file
+
+        # Compare filenames - prefer longer, more descriptive names
+        new_name = os.path.basename(new_file)
+        existing_name = os.path.basename(existing_file)
+        
+        # Check if either is a generic browser download name (e.g., Download_PDF_1.pdf)
+        is_new_generic = bool(re.match(r'^Download_PDF(_\d+)?\.pdf$', new_name, re.I))
+        is_existing_generic = bool(re.match(r'^Download_PDF(_\d+)?\.pdf$', existing_name, re.I))
+        
+        if is_new_generic and not is_existing_generic:
+            # New file is generic, keep existing
+            logger.debug(f"Duplicate detected: Keeping descriptive '{existing_name}', removing generic '{new_name}'")
+            try: os.remove(new_file)
+            except: pass
+            self.download_stats['skipped_duplicate'] += 1
+            return None
+        elif is_existing_generic and not is_new_generic:
+            # Existing is generic, replace with new descriptive name
+            logger.info(f"Duplicate detected: Replacing generic '{existing_name}' with descriptive '{new_name}'")
+            try:
+                if os.path.exists(existing_file):
+                    os.remove(existing_file)
+            except: pass
+            self.downloaded_hashes[file_hash] = new_file
+            return new_file
+        else:
+            # Both generic or both descriptive - keep the one with longer name
+            if len(new_name) > len(existing_name):
+                logger.debug(f"Duplicate detected: Replacing '{existing_name}' with longer '{new_name}'")
+                try:
+                    if os.path.exists(existing_file):
+                        os.remove(existing_file)
+                except: pass
+                self.downloaded_hashes[file_hash] = new_file
+                return new_file
+            else:
+                logger.debug(f"Duplicate detected: Keeping '{existing_name}', removing '{new_file}'")
+                try: os.remove(new_file)
+                except: pass
+                self.download_stats['skipped_duplicate'] += 1
+                return None
     
     def get_stats(self) -> Dict:
         """Get download statistics."""
@@ -638,10 +758,12 @@ class DownloadManager:
     
     def reset_stats(self):
         """Reset download statistics."""
+        self.downloaded_hashes = {}
         self.download_stats = {
             'attempted': 0,
             'successful': 0,
             'failed': 0,
             'skipped_old': 0,
-            'skipped_invalid': 0
+            'skipped_invalid': 0,
+            'skipped_duplicate': 0
         }

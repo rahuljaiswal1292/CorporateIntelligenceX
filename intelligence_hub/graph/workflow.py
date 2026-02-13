@@ -118,11 +118,11 @@ def create_graph():
     # workflow.add_edge("resolver", "master_enrichment")
 
     # Serialized Execution to avoid State merging conflicts:
-    # MasterEnrichment -> Scraper -> Vectorizer -> PdfAgent -> Analyst
+    # MasterEnrichment -> Scraper -> PdfAgent -> Vectorizer -> Analyst
     workflow.add_edge("master_enrichment", "scraper")
-    workflow.add_edge("scraper", "vectorizer")
-    workflow.add_edge("vectorizer", "pdf_agent")
-    workflow.add_edge("pdf_agent", "analyst")
+    workflow.add_edge("scraper", "pdf_agent")
+    workflow.add_edge("pdf_agent", "vectorizer")
+    workflow.add_edge("vectorizer", "analyst")
 
     # Analyst is the end
     workflow.add_edge("analyst", END)

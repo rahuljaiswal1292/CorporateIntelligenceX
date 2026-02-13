@@ -32,7 +32,7 @@ maes.mohamed@adnhc.ae‎+971 2 4087427https://www.adnhc.meLast Price0.7640.131%
 
 ### ASK SIZE
 
-41,105
+141,105
 
 ## COMPANY OVERVIEW
 
@@ -73,7 +73,7 @@ from100.00%Disclosures[View All](/en/main-market/company-profile/disclosures?sym
 
 | Date | Open (AED) | Low (AED) | High (AED) | Close (AED) | Value (AED) | Volume | Trades |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 13 Feb 2026 | 0.764 | 0.761 | 0.769 | 0.764 | 785,265.06 | 1,028,959 | 73 |
+| 13 Feb 2026 | 0.764 | 0.761 | 0.769 | 0.763 | 786,843.71 | 1,031,028 | 74 |
 | 12 Feb 2026 | 0.763 | 0.762 | 0.763 | 0.763 | 900,894.70 | 1,181,515 | 74 |
 | 11 Feb 2026 | 0.766 | 0.760 | 0.767 | 0.764 | 551,824.44 | 724,043 | 50 |
 | 10 Feb 2026 | 0.766 | 0.758 | 0.768 | 0.765 | 1,409,490.87 | 1,851,046 | 125 |

@@ -1,12 +1,12 @@
-Market open DFMGI 6721.31 
-(6.71 / 0.1%)
- Total Volume 417,553,412 Total Value 1,123,041,787.14 Total Trades 18,126 [Market Watch](https://marketwatch.dfm.ae/)
+Market closed DFMGI 6730.11 
+(15.51 / 0.231%)
+ Total Volume 473,138,409 Total Value 1,328,846,629.71 Total Trades 22,202 [Market Watch](https://marketwatch.dfm.ae/)
 
 # Equities
 
-EMAAR Emaar Properties PJSC 16.40 + 
-0.100
- + 0.614%
+EMAAR Emaar Properties PJSC 16.50 + 
+0.200
+ + 1.23%
 
 * [Trading](/the-exchange/market-information/company/EMAAR/trading)
 * [Profile](/the-exchange/market-information/company/EMAAR/profile)
@@ -17,7 +17,34 @@ EMAAR Emaar Properties PJSC 16.40 +
 
 ## Latest Disclosures
 
- Loading Data..
+ 
+
+| | |
+| --- | --- |
+| Emaar Properties - Feb 12, 2026 04:48:46 PM | Financial statements for the year of 2025 Emaar Properties - Feb 12, 2026 04:48:46 PM |
+| Emaar Properties - Feb 12, 2026 03:09:00 PM | Press release regarding financial results for the year of 2025 Emaar Properties - Feb 12, 2026 03:09:00 PM |
+| Emaar Properties - Feb 12, 2026 03:08:03 PM | Results of BOD Meeting Emaar Properties - Feb 12, 2026 03:08:03 PM |
+| Emaar Properties - Feb 09, 2026 03:24:17 PM | Analysts' Earnings Call Emaar Properties - Feb 09, 2026 03:24:17 PM |
+| Emaar Properties - Feb 09, 2026 03:13:00 PM | BOD meeting Emaar Properties - Feb 09, 2026 03:13:00 PM |
+| Emaar Properties - Dec 16, 2025 10:02:37 PM | News Clarification Emaar Properties - Dec 16, 2025 10:02:37 PM |
+| Emaar Properties - Dec 05, 2025 10:00:11 AM | Press release Emaar Properties - Dec 05, 2025 10:00:11 AM |
+| Emaar Properties - Nov 06, 2025 03:24:57 PM | Press release regarding financial results for the third quarter of 2025 Emaar Properties - Nov 06, 2025 03:24:57 PM |
+| Emaar Properties - Nov 06, 2025 03:23:12 PM | Financial statements for the 3rd QTR of 2025 Emaar Properties - Nov 06, 2025 03:23:12 PM |
+| Emaar Properties - Nov 03, 2025 03:34:08 PM | Notice Regarding the Date of Disclosure of the Financial Statements for the Period Ending September 2025 Emaar Properties - Nov 03, 2025 03:34:08 PM |
+| Emaar Properties - Oct 30, 2025 04:09:16 PM | Analysts’ Earnings Call Emaar Properties - Oct 30, 2025 04:09:16 PM |
+| Emaar Properties - Oct 24, 2025 09:27:11 AM | News Confirmation Emaar Properties - Oct 24, 2025 09:27:11 AM |
+| Emaar Properties - Sep 18, 2025 09:24:37 AM | News Confirmation Emaar Properties - Sep 18, 2025 09:24:37 AM |
+| Emaar Properties - Sep 12, 2025 05:47:00 PM | Notification from the company Emaar Properties - Sep 12, 2025 05:47:00 PM |
+| Emaar Properties - Aug 08, 2025 03:12:02 PM | Earnings Call Emaar Properties - Aug 08, 2025 03:12:02 PM |
+| Emaar Properties - Aug 06, 2025 05:25:00 PM | Financial statements for the 2nd QTR of 2025 Emaar Properties - Aug 06, 2025 05:25:00 PM |
+| Emaar Properties - Aug 06, 2025 04:09:07 PM | Press release regarding financial results for the first half of 2025 Emaar Properties - Aug 06, 2025 04:09:07 PM |
+| Emaar Properties - Aug 01, 2025 08:54:51 AM | Notice Regarding the Date of Disclosure of the Financial Statements for the Period Ending June 2025 Emaar Properties - Aug 01, 2025 08:54:51 AM |
+| Emaar Properties - Jul 22, 2025 09:24:51 AM | Resignation and appointment of a Board member Emaar Properties - Jul 22, 2025 09:24:51 AM |
+| Emaar Properties - Jun 11, 2025 09:17:58 AM | Press release Emaar Properties - Jun 11, 2025 09:17:58 AM |
+
+[View all](/the-exchange/news-disclosures/disclosures?id=EMAAR) Disclaimer
+
+The information provided in this document is only available in Arabic due to the (Dubai court attestations only being in Arabic herein after referred thereto as (“Information”) is provided by way of general information and comment only. While reasonable care has been taken in producing this Information, changes in circumstances may occur at any time and may impact on the accuracy of the Information. The Information does not constitute professional advice or provision of any kind of services and should not be relied upon as such. Dubai Financial Market (“DFM”) and/or its affiliates, officers or employees, does not give any warranty or representation as to the accuracy, reliability, timeliness or completeness of the Information now or in the future. DFM shall not be liable for any loss suffered, directly or indirectly by any person acting in reliance upon the Information contained herein.
 
  AI generated summary 
 \*This information is AI generated, for more detailed info, read the full document.

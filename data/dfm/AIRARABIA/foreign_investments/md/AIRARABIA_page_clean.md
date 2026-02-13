@@ -1,12 +1,12 @@
-Market open DFMGI 6717.23 
-(2.63 / 0.039%)
- Total Volume 393,282,700 Total Value 1,057,828,472.05 Total Trades 16,901 [Market Watch](https://marketwatch.dfm.ae/)
+Market closed DFMGI 6730.11 
+(15.51 / 0.231%)
+ Total Volume 473,138,409 Total Value 1,328,846,629.71 Total Trades 22,202 [Market Watch](https://marketwatch.dfm.ae/)
 
 # Equities
 
-AIRARABIA Air Arabia PJSC 5.32 + 
-0.060
- + 1.14%
+AIRARABIA Air Arabia PJSC 5.35 + 
+0.090
+ + 1.71%
 
 * [Trading](/the-exchange/market-information/company/AIRARABIA/trading)
 * [Profile](/the-exchange/market-information/company/AIRARABIA/profile)
@@ -27,9 +27,9 @@ AIRARABIA Air Arabia PJSC 5.32 +
 | | | | |
 | --- | --- | --- | --- |
 | | Permitted | Actual | Available |
-| National | 100% | 80.25% | 19.75% |
+| National | 100% | 80.24% | 19.76% |
 | GCC | 0 | 0 | 0 |
-| Foreign | 49% | 19.75% | 29.25% |
+| Foreign | 49% | 19.76% | 29.24% |
 
 ### Definitions
 

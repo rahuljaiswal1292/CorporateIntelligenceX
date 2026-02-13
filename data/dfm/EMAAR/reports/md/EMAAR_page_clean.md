@@ -1,12 +1,12 @@
-Market open DFMGI 6717.64 
-(3.04 / 0.045%)
- Total Volume 417,844,274 Total Value 1,123,565,150.96 Total Trades 18,146 [Market Watch](https://marketwatch.dfm.ae/)
+Market closed DFMGI 6730.11 
+(15.51 / 0.231%)
+ Total Volume 473,138,409 Total Value 1,328,846,629.71 Total Trades 22,202 [Market Watch](https://marketwatch.dfm.ae/)
 
 # Equities
 
-EMAAR Emaar Properties PJSC 16.40 + 
-0.100
- + 0.614%
+EMAAR Emaar Properties PJSC 16.50 + 
+0.200
+ + 1.23%
 
 * [Trading](/the-exchange/market-information/company/EMAAR/trading)
 * [Profile](/the-exchange/market-information/company/EMAAR/profile)
@@ -19,7 +19,30 @@ EMAAR Emaar Properties PJSC 16.40 +
 * Corporate Governance Reports
 * Integrated Reports
 
- Loading Data..
+ 
+
+| | |
+| --- | --- |
+| Emaar Properties - Feb 12, 2026 04:48:46 PM | Financial statements for the year of 2025 Emaar Properties - Feb 12, 2026 04:48:46 PM |
+| Emaar Properties - Nov 06, 2025 03:23:12 PM | Financial statements for the 3rd QTR of 2025 Emaar Properties - Nov 06, 2025 03:23:12 PM |
+| Emaar Properties - Aug 06, 2025 05:25:00 PM | Financial statements for the 2nd QTR of 2025 Emaar Properties - Aug 06, 2025 05:25:00 PM |
+| Emaar Properties - May 14, 2025 04:49:33 PM | Financial statements for the 1st QTR of 2025 Emaar Properties - May 14, 2025 04:49:33 PM |
+| Emaar Properties - Feb 14, 2025 06:12:23 PM | Financial statements for the year of 2024 Emaar Properties - Feb 14, 2025 06:12:23 PM |
+| Emaar Properties - Nov 14, 2024 04:05:38 PM | Financial statements for the 3rd QTR of 2024 Emaar Properties - Nov 14, 2024 04:05:38 PM |
+| Emaar Properties - Aug 12, 2024 05:23:00 PM | Financial statements for the 2nd QTR of 2024 Emaar Properties - Aug 12, 2024 05:23:00 PM |
+| Emaar Properties - May 15, 2024 03:57:04 PM | Financial statements for the first QTR of 2024 Emaar Properties - May 15, 2024 03:57:04 PM |
+| Emaar Properties - Mar 15, 2024 01:10:00 AM | Financial statements for the year of 2023 Emaar Properties - Mar 15, 2024 01:10:00 AM |
+| Emaar Properties - Feb 14, 2024 03:52:04 PM | Preliminary financial results for the year of 2023 Emaar Properties - Feb 14, 2024 03:52:04 PM |
+| Emaar Properties - Nov 14, 2023 08:15:00 PM | Financial statements for the third QTR of 2023 Emaar Properties - Nov 14, 2023 08:15:00 PM |
+| Emaar Properties - Aug 14, 2023 06:51:10 PM | Financial statements for the 2nd QTR of 2023 Emaar Properties - Aug 14, 2023 06:51:10 PM |
+| Emaar Properties - May 15, 2023 08:38:00 AM | Financial statements for the 1st QTR of 2023 Emaar Properties - May 15, 2023 08:38:00 AM |
+| Emaar Properties - Mar 17, 2023 07:51:07 AM | Financial statements for the year of 2022 Emaar Properties - Mar 17, 2023 07:51:07 AM |
+| Emaar Properties - Feb 14, 2023 04:30:05 PM | Preliminary financial results for the year of 2022 Emaar Properties - Feb 14, 2023 04:30:05 PM |
+| Emaar Properties - Nov 14, 2022 07:00:08 PM | Financial statements for the 3rd QTR of 2022 Emaar Properties - Nov 14, 2022 07:00:08 PM |
+| Emaar Properties - Aug 12, 2022 04:51:05 PM | Financial statements for the 2nd QTR of 2022 Emaar Properties - Aug 12, 2022 04:51:05 PM |
+| Emaar Properties - May 13, 2022 04:14:00 PM | Financial statements for the 1st QTR of 2022 Emaar Properties - May 13, 2022 04:14:00 PM |
+| Emaar Properties - Mar 18, 2022 08:23:02 AM | Financial statements for the year of 2021 Emaar Properties - Mar 18, 2022 08:23:02 AM |
+| Emaar Properties - Feb 14, 2022 04:07:09 PM | Preliminary financial results for the year of 2021 Emaar Properties - Feb 14, 2022 04:07:09 PM |
 
  AI generated summary 
 \*This information is AI generated, for more detailed info, read the full document.

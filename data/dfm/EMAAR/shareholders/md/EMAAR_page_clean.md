@@ -1,12 +1,12 @@
-Market open DFMGI 6722.74 
-(8.14 / 0.121%)
- Total Volume 417,398,435 Total Value 1,121,875,907.06 Total Trades 18,110 [Market Watch](https://marketwatch.dfm.ae/)
+Market closed DFMGI 6730.11 
+(15.51 / 0.231%)
+ Total Volume 473,138,409 Total Value 1,328,846,629.71 Total Trades 22,202 [Market Watch](https://marketwatch.dfm.ae/)
 
 # Equities
 
-EMAAR Emaar Properties PJSC 16.40 + 
-0.100
- + 0.614%
+EMAAR Emaar Properties PJSC 16.50 + 
+0.200
+ + 1.23%
 
 * [Trading](/the-exchange/market-information/company/EMAAR/trading)
 * [Profile](/the-exchange/market-information/company/EMAAR/profile)
@@ -19,6 +19,15 @@ EMAAR Emaar Properties PJSC 16.40 +
 * [Daily Summary](/the-exchange/market-information/company/EMAAR/trading/daily-summary)
 * [Top Shareholders](/the-exchange/market-information/company/EMAAR/trading/top-shareholders)
 * [Foreign Investments](/the-exchange/market-information/company/EMAAR/trading/foreign-investments)
+
+### Individual Investors
+
+| Shareholders | Percentage |
+| --- | --- |
+| INVESTMENT CORPORATION OF DUBAI | 22.2723 % |
+| EITL DIFC SPC 1 LTD | 7.4563 % |
+
+INVESTMENT CORPORATION OF DUBAIEITL DIFC SPC 1 LTDOthers
 
 ### Notes
 

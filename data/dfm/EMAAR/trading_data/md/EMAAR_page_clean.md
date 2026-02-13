@@ -1,10 +1,12 @@
-loading.. [Market Watch](https://marketwatch.dfm.ae/)
+Market closed DFMGI 6730.11 
+(15.51 / 0.231%)
+ Total Volume 473,138,409 Total Value 1,328,846,629.71 Total Trades 22,202 [Market Watch](https://marketwatch.dfm.ae/)
 
 # Equities
 
-EMAAR Emaar Properties PJSC 16.40 + 
-0.100
- + 0.614%
+EMAAR Emaar Properties PJSC 16.50 + 
+0.200
+ + 1.23%
 
 * [Trading](/the-exchange/market-information/company/EMAAR/trading)
 * [Profile](/the-exchange/market-information/company/EMAAR/profile)
@@ -17,7 +19,19 @@ EMAAR Emaar Properties PJSC 16.40 +
 * [Daily Summary](/the-exchange/market-information/company/EMAAR/trading/daily-summary)
 * [Top Shareholders](/the-exchange/market-information/company/EMAAR/trading/top-shareholders)
 * [Foreign Investments](/the-exchange/market-information/company/EMAAR/trading/foreign-investments)
+
+As of date 13 Feb, 2026Prices
+
+---
+
  
+
+Direct Deals
+
+| | | | |
+| --- | --- | --- | --- |
+| Date | No. of Trades | Volume | Value |
+| 13-10-2023 | 7 | 6,377,213 | 48,913,223.71 |
 
 ---
 

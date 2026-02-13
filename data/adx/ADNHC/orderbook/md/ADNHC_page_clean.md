@@ -4,31 +4,31 @@ Consumer Discretionary
 
 #### A D N H Catering plc
 
-maes.mohamed@adnhc.ae‎+971 2 4087427https://www.adnhc.meLast Price%
+maes.mohamed@adnhc.ae‎+971 2 4087427https://www.adnhc.meLast Price0.7640.131%
 
 ##### PREV CLOSE
 
+0.763
+
 ##### VALUE
+
+785,265.064
 
 ##### VOLUME
 
+1,028,959
+
 ##### TRADES
+
+73
 
 ##### LAST PRICE
 
+0.764
+
 ## ORDERBOOK
 
-BID PRICEASK PRICESharesPrice‌ 
-‌ 
-‌ 
-‌ 
-‌ 
-PriceShares‌ 
-‌ 
-‌ 
-‌ 
-‌ 
-BID PRICEASK PRICESharesPrice‌ 
+BID PRICEASK PRICESharesPrice2,6300.763105,3650.76245,4550.7613,5000.7612,3290.7616,5700.7611,0000.76128,9010.7612,0000.76013,1670.760PriceShares0.76411,0000.76430,1050.764100,0000.76511,0000.76620,0000.76632,0250.76725,0000.76725,0000.76718,9640.76713,000BID PRICEASK PRICESharesPrice‌ 
 ‌ 
 ‌ 
 ‌ 

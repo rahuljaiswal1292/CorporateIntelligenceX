@@ -56,6 +56,14 @@ def run_enrichment_node(state: AgentState):
         exchange = metadata.get("exchange", state.get("exchange"))
         website = metadata.get("website", state.get("website"))
 
+        # Flatten 'enrichments' to top level of profile
+        # User requested bringing DED, Competitor Analysis etc one level up.
+        # Currently: state['enrichments'] -> full_profile -> 'enrichments' -> 'DED'
+        # Target: state['enrichments'] -> 'DED'
+        if "enrichments" in full_profile:
+            inner_enrichments = full_profile.pop("enrichments")
+            full_profile.update(inner_enrichments)
+
         logs.append(f"Enrichment completed. Canonical Name: {canonical_name}")
 
         return {
@@ -126,8 +134,6 @@ def create_graph():
     workflow.add_edge("scraper", "pdf_agent")
     workflow.add_edge("pdf_agent", "vectorizer")
     workflow.add_edge("vectorizer", "analyst")
-
-    # Analyst is the end
     workflow.add_edge("analyst", "presentation_agent")
     workflow.add_edge("presentation_agent", END)
 

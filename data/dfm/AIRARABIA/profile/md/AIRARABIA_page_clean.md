@@ -1,12 +1,14 @@
-Market closed DFMGI 6730.11 
-(15.51 / 0.231%)
- Total Volume 473,138,409 Total Value 1,328,846,629.71 Total Trades 22,202 [Market Watch](https://marketwatch.dfm.ae/)
+Dubai Financial Market - Region’s leading financial exchange
+
+Market  closed DFMGI    6730.11  
+( 15.51 / 0.231% )
+ Total Volume   473,138,409  Total Value   1,328,846,629.71  Total Trades   22,202   [Market Watch](https://marketwatch.dfm.ae/) 
 
 # Equities
 
-AIRARABIA Air Arabia PJSC 5.35 + 
+AIRARABIA Air Arabia PJSC  5.35   + 
 0.090
- + 1.71%
+   +  1.71%
 
 * [Trading](/the-exchange/market-information/company/AIRARABIA/trading)
 * [Profile](/the-exchange/market-information/company/AIRARABIA/profile)
@@ -27,7 +29,7 @@ The licensed activities of the Company and its subsidiaries (together referred t
 
 ### Company Profile
 
-| | |
+|  |  |
 | --- | --- |
 | Market | DFM |
 | Symbol | AIRARABIA |
@@ -40,7 +42,7 @@ The licensed activities of the Company and its subsidiaries (together referred t
 
 ### Equity Profile
 
-| | |
+|  |  |
 | --- | --- |
 | Date of Listing | 16 Jul, 2007 |
 | Authorized Capital | 4,666,700,000 |
@@ -53,7 +55,7 @@ Article of Association - AIRARABIA
 
 ## Contact Details
 
-| | |
+|  |  |
 | --- | --- |
 | Head Office | AONE Building, Sharjah Airport Road |
 | Address | Po Box 132 Sharjah, UAE |
@@ -64,27 +66,27 @@ Article of Association - AIRARABIA
 
 ## Board Members
 
-| | |
+|  |  |
 | --- | --- |
-| CHAIRMAN | Sheikh Abdullah Bin Mohamed Al Thani CHAIRMAN |
-| MEMBERS | Mr. Adel Abdulla Mohamed Ali MEMBERS |
-| MEMBERS | Sheikh Khalid bin Issam Al Qassimi MEMBERS |
-| MEMBERS | Sheikh Mohammed Abdullah Bin Mohamed Al Thani MEMBERS |
-| MEMBERS | Mr. Waleed Ibrahim Al Sayegh MEMBERS |
-| MEMBERS | Mr. Matar Mohamed Murad Mohamed Al Blooshi MEMBERS |
-| MEMBERS | Dr. Ohoud Ali Shuhail MEMBERS |
+| CHAIRMAN | Sheikh Abdullah Bin Mohamed Al Thani |
+| MEMBERS | Mr. Adel Abdulla Mohamed Ali |
+| MEMBERS | Sheikh Khalid bin Issam Al Qassimi |
+| MEMBERS | Sheikh Mohammed Abdullah Bin Mohamed Al Thani |
+| MEMBERS | Mr. Waleed Ibrahim Al Sayegh |
+| MEMBERS | Mr. Matar Mohamed Murad Mohamed Al Blooshi |
+| MEMBERS | Dr. Ohoud Ali Shuhail |
 
 ---
 
 ## Top Management
 
-| | |
+|  |  |
 | --- | --- |
-| Group CEO | Mr. Adel Abdullah Al-Ali Group CEO |
-| Director Engineering | Mr. Ismail Mohammed Director Engineering |
-| Director of Finance | Mr. Vijay Raghavan Director of Finance |
-| Investors Relationship manager | Abdelrahman Bin Taliah Investors Relationship manager |
-| Director HR | Veronica Jung Director HR |
+| Group CEO | Mr. Adel Abdullah Al-Ali |
+| Director Engineering | Mr. Ismail Mohammed |
+| Director of Finance | Mr. Vijay Raghavan |
+| Investors Relationship manager | Abdelrahman Bin Taliah |
+| Director HR | Veronica Jung |
 
 ---
 
@@ -92,9 +94,9 @@ Article of Association - AIRARABIA
 
 50% Sharjah Aviation Services UAE100% Cozmo Travel UAE100% Information Systems Associates FZC UAE100% Air Arabia Academy L.L.C.SP UAE50% Alpha Flight Services UAE
 
-Disclaimer: 
+Disclaimer:   
 Dubai Financial Market herein after referred to as DFM attempts to ensure data and content on the Website is accurate, there is no charge for provision of data and DFM can only devote limited resources to the Website and any data. Content is only made available "AS IS" and on an "AS AVAILABLE" basis and may not always be accurate or up to date. Content may or may not have been prepared by DFM but is made available without responsibility on the part of DFM. DFM does not guarantee the accuracy, timeliness, completeness, performance or fitness for a particular purpose of the Website or any of the content. No responsibility is accepted by or on behalf of DFM for any errors, omissions, or inaccurate content.
 
- AI generated summary 
+  AI generated summary  
 \*This information is AI generated, for more detailed info, read the full document.
  Please review the original documents to validate accuracy, as the analysis does not constitute investment advice and should not replace your own assessment. No warranty is given that the information is accurate, complete, or up to date.

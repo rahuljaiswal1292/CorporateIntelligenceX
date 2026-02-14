@@ -68,7 +68,7 @@ class MasterAgent(BaseAgent):
         self.enable_enrichment = enable_enrichment
         self.llm_connector = llm_connector
 
-        # Initialize worker agents
+        # Initialize SERP API agent (still used by master)
         self.serpapi_agent = SerpAPIProfileAgent(
             company_name=company_name,
             llm_connector=llm_connector,
@@ -76,26 +76,9 @@ class MasterAgent(BaseAgent):
             profile_store=profile_store,
         )
 
-        self.worker_agents = [
-            WikipediaAgent(
-                company_name=company_name,
-                llm_connector=llm_connector,
-                log_callback=log_callback,
-                profile_store=profile_store,
-            ),
-            NewsAgent(
-                company_name=company_name,
-                llm_connector=llm_connector,
-                log_callback=log_callback,
-                profile_store=profile_store,
-            ),
-            DEDAgent(
-                company_name=company_name,
-                llm_connector=llm_connector,
-                log_callback=log_callback,
-                profile_store=profile_store,
-            ),
-        ]
+        # Worker agents (Wikipedia, News, DED) are now workflow nodes
+        # Removed from master_agent initialization - they execute as separate nodes
+        # self.worker_agents = [...]
 
     def resolve_query(self, query: str) -> Dict[str, str]:
         """Phase 0: Entity Resolution"""
@@ -487,49 +470,85 @@ class MasterAgent(BaseAgent):
             )
             self.log(f"Confirmed canonical name for enrichment: {canonical_name}")
 
-        # Phase 2: Parallel Enrichment
-        self.log("PROGRESS:40:Phase 2 - Enrichment with Wikipedia, News, DED")
-        enrichment_results = self.run_enrichment_phase(basic_profile)
+        # Phase 2: Enrichment now handled by workflow nodes (Wikipedia, News, DED)
+        # Removed: enrichment_results = self.run_enrichment_phase(basic_profile)
+        self.log("PROGRESS:40:Phase 2 - Child agents (Wikipedia, News, DED) running as workflow nodes")
+        self.log("Note: Enrichment agents now execute as separate workflow nodes")
 
-        # Phase 3: Aggregate Results
-        self.log("PROGRESS:80:Phase 3 - Aggregating results")
-        final_profile = self.aggregate_results(basic_profile, enrichment_results)
+        # Phase 3: Save basic profile (aggregation now handled by analyst node)
+        self.log("PROGRESS:90:Saving basic profile")
+        self.save_to_disk(basic_profile, "basic_profile.json")
 
-        # Save final profile to disk
-        self.log("PROGRESS:90:Saving final profile")
-        self.save_to_disk(final_profile, "final_profile.json")
-
-        # Save final aggregated profile to ChromaDB
-        self.log("Storing final aggregated profile to ChromaDB...")
+        # Save basic profile to ChromaDB
+        self.log("Storing basic profile to ChromaDB...")
         stored = self.save_to_chromadb(
-            final_profile,
-            "comprehensive_profile",
+            basic_profile,
+            "basic_profile",
         )
 
         if stored:
             self.log(
-                "Final profile stored in ChromaDB",
+                "Basic profile stored in ChromaDB",
                 "SUCCESS",
             )
         else:
             self.log(
-                "Failed to store final profile in ChromaDB",
+                "Failed to store basic profile in ChromaDB",
                 "WARNING",
             )
 
-        self.log("PROGRESS:100:Research workflow complete")
+        self.log("PROGRESS:100:Master agent workflow complete")
+        
+        # === FINAL OUTPUT LOGGING ===
         self.log("")
-        self.log("=" * 60)
-        self.log("Research workflow completed successfully")
-        self.log("=" * 60)
+        self.log("=" * 70)
+        self.log("MASTER AGENT FINAL OUTPUT")
+        self.log("=" * 70)
+        self.log(f"Original Query: {self.original_query}")
+        self.log(f"Canonical Name: {basic_profile.get('canonical_name', 'N/A')}")
+        self.log(f"Confidence Score: {basic_profile.get('confidence_score', 0)}%")
+        self.log(f"Ticker: {resolution.get('ticker', 'N/A')}")
+        self.log(f"Exchange: {resolution.get('exchange', 'N/A')}")
+        self.log(f"Website: {resolution.get('website', 'N/A')}")
+        self.log(f"Has Knowledge Panel: {basic_profile.get('has_knowledge_panel', False)}")
+        self.log(f"Has Official Website: {basic_profile.get('has_official_website', False)}")
+        self.log(f"Stored in ChromaDB: {stored}")
+        self.log(f"Timestamp: {datetime.now().isoformat()}")
+        
+        # Log SERP links used for enrichment
+        serp_links = basic_profile.get("serp_links", [])
+        if serp_links:
+            self.log("")
+            self.log("SERP Links Used for Enrichment:")
+            for idx, link in enumerate(serp_links[:10], 1):  # Show first 10 links
+                link_url = link.get("link", "N/A") if isinstance(link, dict) else link
+                link_title = link.get("title", "Untitled") if isinstance(link, dict) else "Link"
+                self.log(f"  {idx}. {link_title}")
+                self.log(f"     URL: {link_url}")
+            if len(serp_links) > 10:
+                self.log(f"  ... and {len(serp_links) - 10} more links")
+        
+        # Log knowledge panel info if available
+        if basic_profile.get("has_knowledge_panel"):
+            self.log("")
+            self.log("Knowledge Panel Data:")
+            kg_data = basic_profile.get("knowledge_graph", {})
+            if kg_data.get("description"):
+                self.log(f"  Description: {kg_data.get('description')[:100]}...")
+            if kg_data.get("type"):
+                self.log(f"  Type: {kg_data.get('type')}")
+        
+        self.log("=" * 70)
+        self.log("Master agent completed - child agents will execute as workflow nodes")
+        self.log("=" * 70)
+        self.log("")
 
         return {
-            "data": final_profile,
-            "document_type": "comprehensive_profile",
+            "data": basic_profile,
+            "document_type": "basic_profile",
             "metadata": {
-                "canonical_name": final_profile.get("canonical_name", ""),
-                "confidence": final_profile.get("confidence_score", 0),
-                "enrichment_count": len(enrichment_results),
+                "canonical_name": basic_profile.get("canonical_name", ""),
+                "confidence": basic_profile.get("confidence_score", 0),
                 "stored_in_chromadb": stored,
                 "ticker": resolution.get("ticker"),
                 "exchange": resolution.get("exchange"),

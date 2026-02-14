@@ -419,6 +419,14 @@ div[data-testid="stDataFrame"] {
     transition: opacity 0.3s ease;
 }
 
+.feature-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 24px -4px rgba(0, 45, 98, 0.15);
+}
+
+.feature-card:hover::before {
+    opacity: 1;
+}
 
 .feature-card h3 {
     margin: 0 0 10px 0;

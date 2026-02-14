@@ -45,6 +45,10 @@ if "analysis_complete" not in st.session_state:
     st.session_state.analysis_complete = False
 if "progress_stage" not in st.session_state:
     st.session_state.progress_stage = 0
+if "canonical_name" not in st.session_state:
+    st.session_state.canonical_name = None
+if "abort_investigation" not in st.session_state:
+    st.session_state.abort_investigation = False
 
 
 # --- Helper to append logs ---
@@ -70,6 +74,8 @@ def run_investigation(query):
     st.session_state.logs = []
     st.session_state.analysis_complete = False
     st.session_state.progress_stage = 0
+    st.session_state.canonical_name = None
+    st.session_state.abort_investigation = False
 
     # 1. Initialize Baseline (Hybrid Approach)
     base_data = get_company_data(query)
@@ -88,9 +94,19 @@ def run_investigation(query):
         processed_logs = set()  # Track unique logs to avoid dupes in UI
 
         for event in stream:
+            # Check if user requested abort
+            if st.session_state.abort_investigation:
+                st.warning("⚠️ Investigation aborted by user")
+                status.update(label="❌ **Investigation Aborted**", state="error", expanded=False)
+                return
+            
             # Event corresponds to a node finishing
             for node, state in event.items():
                 final_state = state  # Keep updating final state
+                
+                # Capture canonical name from state if available
+                if state.get("canonical_name") and not st.session_state.canonical_name:
+                    st.session_state.canonical_name = state["canonical_name"]
 
                 # Check for new logs
                 current_logs = state.get("logs", [])
@@ -101,19 +117,28 @@ def run_investigation(query):
                         # UI Logic for Logs and Progress
                         if "Resolved" in log:
                             add_log("Resolver", log)
-                            st.session_state.progress_stage = 1
+                            st.session_state.progress_stage = 1  # Canonical Resolution
                             st.write(f"✅ {log}")
+                            # Extract canonical name from log if not already set
+                            if " to " in log and not st.session_state.canonical_name:
+                                parts = log.split(" to ")
+                                if len(parts) > 1:
+                                    st.session_state.canonical_name = parts[1].strip()
+                        elif "SERP" in log or "Profiling" in log:
+                            add_log("SERP Agent", log)
+                            st.session_state.progress_stage = 2  # SERP Profiling
+                            st.write(f"🔍 {log}")
                         elif "Scraping" in log:
                             add_log("Scraper", log)
-                            st.session_state.progress_stage = 2
+                            st.session_state.progress_stage = 3  # Scrape
                             st.write(f"🕸️ {log}")
                         elif "Vectorizer" in log:
                             add_log("Vectorizer", log)
-                            st.session_state.progress_stage = 3
+                            st.session_state.progress_stage = 4  # Vectorize
                             st.write(f"🧠 {log}")
                         elif "Analyst" in log:
                             add_log("Analyst", log)
-                            st.session_state.progress_stage = 4
+                            st.session_state.progress_stage = 5  # Analyze
                             st.write(f"📊 {log}")
                         else:
                             add_log("System", log)
@@ -206,6 +231,9 @@ with st.sidebar:
 # --- Main Layout ---
 render_header()
 
+# Render Progress Chain (Always Visible - Above Search Box)
+render_progress_chain(st.session_state.progress_stage)
+
 # Search Area with ENBD Styling
 c_search, c_btn, c_clear = st.columns([5, 1, 1])
 with c_search:
@@ -219,11 +247,46 @@ with c_btn:
 with c_clear:
     clear_clicked = st.button("❌ Clear", use_container_width=True)
 
+# Display Canonical Name and Abort Button if investigation is in progress
+if st.session_state.canonical_name and not st.session_state.analysis_complete:
+    col_canonical, col_abort = st.columns([4, 1])
+    with col_canonical:
+        st.markdown(
+            f"""
+            <div style="
+                padding: 12px 20px;
+                background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+                border: 2px solid #3B82F6;
+                border-radius: 10px;
+                margin-top: 10px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            ">
+                <span style="font-size: 1.5rem;">🏢</span>
+                <div>
+                    <div style="font-size: 0.75rem; color: #64748B; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Canonical Name</div>
+                    <div style="font-size: 1.1rem; color: #002D62; font-weight: 700; margin-top: 2px;">{st.session_state.canonical_name}</div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    with col_abort:
+        abort_clicked = st.button("🛑 Abort", type="secondary", use_container_width=True, help="Stop the investigation process")
+        if abort_clicked:
+            st.session_state.abort_investigation = True
+            st.session_state.canonical_name = None
+            st.session_state.progress_stage = 0
+            st.rerun()
+
 if clear_clicked:
     st.session_state.data = None
     st.session_state.logs = []
     st.session_state.progress_stage = 0
     st.session_state.analysis_complete = False
+    st.session_state.canonical_name = None
+    st.session_state.abort_investigation = False
     st.rerun()
 
 # Trigger Search
@@ -237,10 +300,6 @@ elif (
     # but sidebar search button is explicit.
     # Let's rely on the button for the "Deep Search" feel requested.
     pass
-
-# Render Progress Chain
-if st.session_state.progress_stage > 0:
-    render_progress_chain(st.session_state.progress_stage)
 
 if st.session_state.analysis_complete and st.session_state.data:
     data = st.session_state.data

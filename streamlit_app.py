@@ -106,9 +106,7 @@ def run_investigation(query):
     # 2. Run Real-Time Graph
     graph = get_cached_graph()
 
-    with st.status("🚀 Orchestrating Intelligent Agents...", expanded=True) as status:
-        st.write("🔌 Connecting to Agent Graph...")
-
+    with st.status("� Analyzing...", expanded=False) as status:
         # Stream the Graph execution for instant feedback
         stream = graph.stream({"query": query, "logs": []})
 
@@ -291,32 +289,33 @@ st.html(
     """
 )
 
-# Search Company Label (matching reference)
+# Search Company Label - professional styling
 st.markdown(
-    '<div class="section-heading">🔍 Search or Select Company</div>',
+    '<div class="ui-section-label"><span class="emoji">🔍</span><span>Search Company</span></div>',
     unsafe_allow_html=True
 )
 
-# Input Box with inline buttons
-col_input, col_search, col_clear = st.columns([6, 2, 2])
+# Input and Buttons in single row
+cols = st.columns([6, 1, 1])
 
-with col_input:
+with cols[0]:
     query_input = st.text_input(
-        "Search Entity",
-        placeholder="Enter company name e.g., Tesla, Emirates NBD, ADNOC, Dubai Islamic Bank...",
+        "company_input",
+        placeholder="Enter company name (e.g., Tesla, Emirates NBD, ADNOC)",
         label_visibility="collapsed",
         key="company_search_input"
     )
 
-with col_search:
-    search_clicked = st.button("🔍 Search", type="primary", use_container_width=True, key="search_button")
+with cols[1]:
+    search_clicked = st.button("🔍 Search", type="primary", use_container_width=True)
 
-with col_clear:
-    abort_clicked = st.button("🛑 Abort", type="secondary", use_container_width=True, key="abort_button_main")
+with cols[2]:
+    abort_clicked = st.button("🛑 Abort", type="secondary", use_container_width=True)
+
 
 # Recent Searches Section
 if st.session_state.search_history:
-    st.markdown('<div style="margin-top: 12px; margin-bottom: 12px; font-size: 13px; color: #64748b;">Recent Searches:</div>', unsafe_allow_html=True)
+    st.markdown('<div class="ui-section-label" style="font-size: 12px; margin-top: 12px;"><span class="emoji">🕒</span><span>Recent Searches</span></div>', unsafe_allow_html=True)
     
     # Display as clickable chips
     cols = st.columns(len(st.session_state.search_history))
@@ -327,13 +326,9 @@ if st.session_state.search_history:
                 run_investigation(search_term)
                 st.rerun()
 
-# Render Progress Chain (Below recent searches)
-with st.expander("📊 Investigation Progress Pipeline", expanded=True):
-    render_progress_chain(st.session_state.progress_stage)
-
-# Canonical Name Label (always visible) - Reduced size
+# Canonical Name Section - professional styling
 st.markdown(
-    '<div style="margin-top: 12px; margin-bottom: 6px; font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em;">Resolved Company Name</div>',
+    '<div class="ui-section-label"><span class="emoji">🏢</span><span>Resolved Company Name</span></div>',
     unsafe_allow_html=True
 )
 
@@ -408,6 +403,13 @@ else:
         unsafe_allow_html=True
     )
 
+# Render Progress Chain (Always visible)
+st.markdown(
+    '<div class="ui-section-label"><span class="emoji">⚙️</span><span>Investigation Pipeline</span></div>',
+    unsafe_allow_html=True
+)
+render_progress_chain(st.session_state.progress_stage)
+
 if abort_clicked:
     # Set abort flag FIRST to stop ongoing workflow
     st.session_state.abort_investigation = True
@@ -428,6 +430,11 @@ if abort_clicked:
 
 # Trigger Search
 if search_clicked and query_input:
+    # Set resolving state immediately
+    st.session_state.is_resolving = True
+    st.session_state.canonical_name = None
+    st.session_state.progress_stage = 1
+    st.rerun()  # Force UI update to show "Resolving..."
     run_investigation(query_input)
     st.rerun()
 elif (
@@ -476,15 +483,5 @@ if st.session_state.analysis_complete and st.session_state.data:
     render_references(data)
 
 elif not st.session_state.analysis_complete and st.session_state.progress_stage == 0:
-    # Empty State - Dashboard View
-    st.subheader("Recent Investigations")
-    col_a, col_b, col_c = st.columns(3)
-    if col_a.button("Emaar Properties", use_container_width=True):
-        run_investigation("Emaar")
-        st.rerun()
-    if col_b.button("Emirates NBD", use_container_width=True):
-        run_investigation("Emirates NBD")
-        st.rerun()
-    if col_c.button("Air Arabia", use_container_width=True):
-        run_investigation("Air Arabia")
-        st.rerun()
+    # Empty State - Show nothing or a welcome message
+    pass

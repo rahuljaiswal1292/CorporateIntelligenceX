@@ -2,6 +2,7 @@ import streamlit as st
 import time
 from datetime import datetime
 import os
+from pathlib import Path
 from intelligence_hub.ui.styles import get_custom_css
 from intelligence_hub.core.mock_data import get_company_data
 from intelligence_hub.graph.workflow import create_graph  # Real-Time Backend
@@ -15,6 +16,7 @@ from intelligence_hub.ui.components import (
     render_insights_strategic,
     render_sources,
     render_pdf_analysis,
+    render_references,
 )
 
 image_path = os.path.join(
@@ -31,6 +33,13 @@ st.set_page_config(
 
 # --- Apply Custom CSS ---
 st.markdown(get_custom_css(), unsafe_allow_html=True)
+
+# Load additional custom CSS from file
+custom_css_path = Path(__file__).parent / "intelligence_hub" / "ui" / "custom_styles.css"
+if custom_css_path.exists():
+    with open(custom_css_path, 'r', encoding='utf-8') as f:
+        custom_css = f"<style>{f.read()}</style>"
+        st.markdown(custom_css, unsafe_allow_html=True)
 
 # --- Session State ---
 if "logs" not in st.session_state:
@@ -49,6 +58,12 @@ if "canonical_name" not in st.session_state:
     st.session_state.canonical_name = None
 if "abort_investigation" not in st.session_state:
     st.session_state.abort_investigation = False
+if "is_resolving" not in st.session_state:
+    st.session_state.is_resolving = False
+if "confidence_score" not in st.session_state:
+    st.session_state.confidence_score = None
+if "search_history" not in st.session_state:
+    st.session_state.search_history = []
 
 
 # --- Helper to append logs ---
@@ -75,7 +90,14 @@ def run_investigation(query):
     st.session_state.analysis_complete = False
     st.session_state.progress_stage = 0
     st.session_state.canonical_name = None
+    st.session_state.confidence_score = None
     st.session_state.abort_investigation = False
+    st.session_state.is_resolving = True
+    
+    # Add to search history (keep last 3)
+    if query not in st.session_state.search_history:
+        st.session_state.search_history.insert(0, query)
+        st.session_state.search_history = st.session_state.search_history[:3]
 
     # 1. Initialize Baseline (Hybrid Approach)
     base_data = get_company_data(query)
@@ -107,6 +129,11 @@ def run_investigation(query):
                 # Capture canonical name from state if available
                 if state.get("canonical_name") and not st.session_state.canonical_name:
                     st.session_state.canonical_name = state["canonical_name"]
+                    # Capture confidence score if available
+                    if state.get("confidence") or state.get("confidence_score"):
+                        confidence = state.get("confidence") or state.get("confidence_score")
+                        st.session_state.confidence_score = round(confidence) if isinstance(confidence, (int, float)) else None
+                    st.session_state.is_resolving = False
 
                 # Check for new logs
                 current_logs = state.get("logs", [])
@@ -124,6 +151,7 @@ def run_investigation(query):
                                 parts = log.split(" to ")
                                 if len(parts) > 1:
                                     st.session_state.canonical_name = parts[1].strip()
+                                    st.session_state.is_resolving = False
                         elif "SERP" in log or "Profiling" in log:
                             add_log("SERP Agent", log)
                             st.session_state.progress_stage = 2  # SERP Profiling
@@ -228,65 +256,174 @@ with st.sidebar:
     st.caption(f"Model: **GPT-4-turbo**")
 
 # --- Main Layout ---
-# --- Main Layout ---
-render_header()
+# Banner with styled heading and tagline (matching reference)
+st.markdown(
+    """
+    <div class="main-banner">
+        <h1 class="main-heading">CorporateIntelligenceX</h1>
+        <p class="main-tagline">A smart GenAI-powered corporate information profiler.</p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
-# Render Progress Chain (Always Visible - Above Search Box)
-render_progress_chain(st.session_state.progress_stage)
+# Feature tiles below banner
+st.html(
+    """
+    <div class="feature-grid">
+        <div class="feature-card">
+            <h3>🤖 Multi-Agent AI</h3>
+            <p>Specialized AI agents work in parallel for different analysis tasks</p>
+        </div>
+        <div class="feature-card">
+            <h3>⚡ Real-time Updates</h3>
+            <p>Live streaming of search progress with instant notifications</p>
+        </div>
+        <div class="feature-card">
+            <h3>🌐 Data Integration</h3>
+            <p>Multiple data sources for comprehensive and accurate insights</p>
+        </div>
+        <div class="feature-card">
+            <h3>📊 Advanced Analytics</h3>
+            <p>Deep insights, trend analysis, and predictive intelligence</p>
+        </div>
+    </div>
+    """
+)
 
-# Search Area with ENBD Styling
-c_search, c_btn, c_clear = st.columns([5, 1, 1])
-with c_search:
+# Search Company Label (matching reference)
+st.markdown(
+    '<div class="section-heading">🔍 Search or Select Company</div>',
+    unsafe_allow_html=True
+)
+
+# Input Box with inline buttons
+col_input, col_search, col_clear = st.columns([6, 2, 2])
+
+with col_input:
     query_input = st.text_input(
         "Search Entity",
-        placeholder="Enter Company Name or Ticker (e.g., 'Emaar', 'Emirates NBD')...",
+        placeholder="Enter company name e.g., Tesla, Emirates NBD, ADNOC, Dubai Islamic Bank...",
         label_visibility="collapsed",
+        key="company_search_input"
     )
-with c_btn:
-    search_clicked = st.button("🔍 Search", type="primary", use_container_width=True)
-with c_clear:
-    clear_clicked = st.button("❌ Clear", use_container_width=True)
 
-# Display Canonical Name and Abort Button if investigation is in progress
-if st.session_state.canonical_name and not st.session_state.analysis_complete:
-    col_canonical, col_abort = st.columns([4, 1])
-    with col_canonical:
+with col_search:
+    search_clicked = st.button("🔍 Search", type="primary", use_container_width=True, key="search_button")
+
+with col_clear:
+    abort_clicked = st.button("🛑 Abort", type="secondary", use_container_width=True, key="abort_button_main")
+
+# Recent Searches Section
+if st.session_state.search_history:
+    st.markdown('<div style="margin-top: 12px; margin-bottom: 12px; font-size: 13px; color: #64748b;">Recent Searches:</div>', unsafe_allow_html=True)
+    
+    # Display as clickable chips
+    cols = st.columns(len(st.session_state.search_history))
+    for idx, search_term in enumerate(st.session_state.search_history):
+        with cols[idx]:
+            if st.button(f"🕒 {search_term}", key=f"recent_{idx}", use_container_width=True):
+                st.session_state.company_search_input = search_term
+                run_investigation(search_term)
+                st.rerun()
+
+# Render Progress Chain (Below recent searches)
+with st.expander("📊 Investigation Progress Pipeline", expanded=True):
+    render_progress_chain(st.session_state.progress_stage)
+
+# Canonical Name Label (always visible) - Reduced size
+st.markdown(
+    '<div style="margin-top: 12px; margin-bottom: 6px; font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em;">Resolved Company Name</div>',
+    unsafe_allow_html=True
+)
+
+# Canonical Name Display
+if st.session_state.is_resolving or st.session_state.canonical_name:
+    # Determine state and display
+    if st.session_state.is_resolving and not st.session_state.canonical_name:
+        # Resolving state with blinking effect
         st.markdown(
-            f"""
-            <div style="
-                padding: 12px 20px;
-                background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
-                border: 2px solid #3B82F6;
-                border-radius: 10px;
-                margin-top: 10px;
-                display: flex;
-                align-items: center;
-                gap: 10px;
-            ">
-                <span style="font-size: 1.5rem;">🏢</span>
-                <div>
-                    <div style="font-size: 0.75rem; color: #64748B; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Canonical Name</div>
-                    <div style="font-size: 1.1rem; color: #002D62; font-weight: 700; margin-top: 2px;">{st.session_state.canonical_name}</div>
+            """
+            <div class="canonical-container">
+                <div class="canonical-label">
+                    <span class="canonical-icon">🏢</span>
+                    <span class="canonical-title">RESOLVED COMPANY NAME</span>
+                </div>
+                <div class="canonical-value resolving">
+                    <span class="canonical-text">Resolving...</span>
                 </div>
             </div>
             """,
             unsafe_allow_html=True
         )
-    with col_abort:
-        abort_clicked = st.button("🛑 Abort", type="secondary", use_container_width=True, help="Stop the investigation process")
-        if abort_clicked:
-            st.session_state.abort_investigation = True
-            st.session_state.canonical_name = None
-            st.session_state.progress_stage = 0
-            st.rerun()
+    elif st.session_state.canonical_name and st.session_state.analysis_complete:
+        # Resolved state with checkmark and confidence score
+        confidence_display = f" (Confidence: {st.session_state.confidence_score}%)" if st.session_state.confidence_score else ""
+        st.markdown(
+            f"""
+            <div class="canonical-container">
+                <div class="canonical-label">
+                    <span class="canonical-icon">🏢</span>
+                    <span class="canonical-title">RESOLVED COMPANY NAME</span>
+                </div>
+                <div class="canonical-value resolved">
+                    <span class="canonical-text">{st.session_state.canonical_name}{confidence_display}</span>
+                    <span class="canonical-check">✓</span>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    elif st.session_state.canonical_name:
+        # In progress (name resolved but analysis not complete)
+        confidence_display = f" (Confidence: {st.session_state.confidence_score}%)" if st.session_state.confidence_score else ""
+        st.markdown(
+            f"""
+            <div class="canonical-container">
+                <div class="canonical-label">
+                    <span class="canonical-icon">🏢</span>
+                    <span class="canonical-title">RESOLVED COMPANY NAME</span>
+                </div>
+                <div class="canonical-value resolved">
+                    <span class="canonical-text">{st.session_state.canonical_name}{confidence_display}</span>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+else:
+    # Default state - ready to search
+    st.markdown(
+        """
+        <div class="canonical-container">
+            <div class="canonical-label">
+                <span class="canonical-icon">🏢</span>
+                <span class="canonical-title">RESOLVED COMPANY NAME</span>
+            </div>
+            <div class="canonical-value">
+                <span class="canonical-text">Ready to search</span>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
-if clear_clicked:
+if abort_clicked:
+    # Set abort flag FIRST to stop ongoing workflow
+    st.session_state.abort_investigation = True
+    
+    # Then clear all state
     st.session_state.data = None
     st.session_state.logs = []
     st.session_state.progress_stage = 0
     st.session_state.analysis_complete = False
     st.session_state.canonical_name = None
-    st.session_state.abort_investigation = False
+    st.session_state.confidence_score = None
+    st.session_state.is_resolving = False
+    
+    # Add log message
+    add_log("System", "Investigation aborted by user")
+    
     st.rerun()
 
 # Trigger Search
@@ -332,6 +469,11 @@ if st.session_state.analysis_complete and st.session_state.data:
 
     # 6. PDF Analysis
     render_pdf_analysis(data)
+
+    st.markdown("---")
+
+    # 7. References & Sources
+    render_references(data)
 
 elif not st.session_state.analysis_complete and st.session_state.progress_stage == 0:
     # Empty State - Dashboard View

@@ -24,7 +24,7 @@ def run_enrichment_node(state: AgentState):
     Executes the Master Coordination Agent for profile enrichment.
     """
     company_name = state.get("company_name") or state.get("query", "Unknown")
-    logs = state.get("logs", [])
+    logs = []
 
     logs.append(f"Starting enrichment (and resolution) for {company_name}...")
 
@@ -82,7 +82,7 @@ def run_enrichment_node(state: AgentState):
 def run_wikipedia_node(state: AgentState):
     """Executes Wikipedia Agent"""
     company_name = state.get("canonical_name") or state.get("company_name") or state.get("query", "Unknown")
-    logs = state.get("logs", [])
+    logs = []
     
     try:
         store = CorporateProfileStore()
@@ -111,7 +111,7 @@ def run_wikipedia_node(state: AgentState):
 def run_news_node(state: AgentState):
     """Executes News Agent"""
     company_name = state.get("canonical_name") or state.get("company_name") or state.get("query", "Unknown")
-    logs = state.get("logs", [])
+    logs = []
     
     try:
         store = CorporateProfileStore()
@@ -140,7 +140,7 @@ def run_news_node(state: AgentState):
 def run_ded_node(state: AgentState):
     """Executes DED Agent"""
     company_name = state.get("canonical_name") or state.get("company_name") or state.get("query", "Unknown")
-    logs = state.get("logs", [])
+    logs = []
     
     try:
         store = CorporateProfileStore()
@@ -166,20 +166,24 @@ def run_ded_node(state: AgentState):
         return {"logs": logs}
 
 
-def create_graph():
-    """
-    Constructs the Intelligence Graph.
-    Flow: MasterEnrichment -> (Wikipedia, News, DED) -> Scraper -> Vectorizer -> PdfAgent -> Analyst
-    """
-    # 1. Initialize shared dependencies
+def create_resolution_graph():
+    """Graph 1: Canonical Resolution Only"""
+    workflow = StateGraph(AgentState)
+    workflow.add_node("master_enrichment", run_enrichment_node)
+    workflow.set_entry_point("master_enrichment")
+    workflow.add_edge("master_enrichment", END)
+    return workflow.compile()
+
+
+def create_enrichment_graph():
+    """Graph 2: Enrichment and beyond"""
+    # Initialize shared dependencies
     llm_connector = LLMConnector()
     store = CorporateProfileStore(persist_directory=CHROMADB_PERSIST_DIRECTORY)
 
-    # 2. Initialize Agents
+    # Initialize Agents
     scraper = ScraperOrchestrator()
     vectorizer = VectorizerAgent()
-
-    # Initialize agents that need llm_connector and profile_store
     analyst = AnalystAgent(
         company_name="placeholder",  # Will be updated from state
         llm_connector=llm_connector,
@@ -190,14 +194,11 @@ def create_graph():
         llm_connector=llm_connector,
         profile_store=store,
     )
-    # Initialize child enrichment agents (not needed anymore - using wrapper functions)
-    # Removed: wikipedia_agent, news_agent, ded_agent initialization
 
-    # 3. Define Graph
     workflow = StateGraph(AgentState)
-
-    # 4. Add Nodes
-    workflow.add_node("master_enrichment", run_enrichment_node)
+    
+    # Nodes
+    workflow.add_node("start_enrichment", lambda state: state)
     workflow.add_node("wikipedia", run_wikipedia_node)
     workflow.add_node("news", run_news_node)
     workflow.add_node("ded", run_ded_node)
@@ -206,24 +207,22 @@ def create_graph():
     workflow.add_node("analyst", analyst.run)
     workflow.add_node("pdf_agent", pdf_agent.run)
 
-    # 5. Define Edges
-    workflow.set_entry_point("master_enrichment")
-
-    # After master enrichment, run child agents in parallel
-    workflow.add_edge("master_enrichment", "wikipedia")
-    workflow.add_edge("master_enrichment", "news")
-    workflow.add_edge("master_enrichment", "ded")
+    # Edges - Parallel Start
+    workflow.set_entry_point("start_enrichment")
     
-    # All child agents feed into scraper
+    workflow.add_edge("start_enrichment", "wikipedia")
+    workflow.add_edge("start_enrichment", "news")
+    workflow.add_edge("start_enrichment", "ded")
+    
+    # Convergence
     workflow.add_edge("wikipedia", "scraper")
     workflow.add_edge("news", "scraper")
     workflow.add_edge("ded", "scraper")
     
-    # Sequential execution after scraper
+    # Sequential
     workflow.add_edge("scraper", "vectorizer")
     workflow.add_edge("vectorizer", "pdf_agent")
     workflow.add_edge("pdf_agent", "analyst")
     workflow.add_edge("analyst", END)
     
-    # 6. Compile
     return workflow.compile()

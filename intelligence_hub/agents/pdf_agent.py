@@ -173,7 +173,7 @@ class PdfAgent(BaseAgent):
         Returns:
             Updated agent state
         """
-        logs = state.get("logs", [])
+        logs = []
 
         # Check if should execute
         should_run, reasoning = self.should_execute(state)

@@ -1,11 +1,22 @@
 import streamlit as st
 import time
 from datetime import datetime
+import textwrap
 import os
+import uuid
 from pathlib import Path
 from intelligence_hub.ui.styles import get_custom_css
 from intelligence_hub.core.mock_data import get_company_data
-from intelligence_hub.graph.workflow import create_graph  # Real-Time Backend
+
+# Force reload backend modules to pick up state changes
+import sys
+import importlib
+if "intelligence_hub.graph.state" in sys.modules:
+    importlib.reload(sys.modules["intelligence_hub.graph.state"])
+if "intelligence_hub.graph.workflow" in sys.modules:
+    importlib.reload(sys.modules["intelligence_hub.graph.workflow"])
+
+from intelligence_hub.graph.workflow import create_resolution_graph, create_enrichment_graph  # Split Graphs
 from intelligence_hub.ui.components import (
     render_header,
     render_progress_chain,
@@ -62,8 +73,13 @@ if "is_resolving" not in st.session_state:
     st.session_state.is_resolving = False
 if "confidence_score" not in st.session_state:
     st.session_state.confidence_score = None
-if "search_history" not in st.session_state:
-    st.session_state.search_history = []
+if "thread_id" not in st.session_state:
+    st.session_state.thread_id = None
+if "investigation_paused" not in st.session_state:
+    st.session_state.investigation_paused = False
+if "intermediate_state" not in st.session_state:
+    st.session_state.intermediate_state = None
+
 
 
 # --- Helper to append logs ---
@@ -73,103 +89,258 @@ def add_log(agent_name, action):
     st.session_state.logs.append(log_entry)
 
 
-# --- Wrapper to Simulate/Fetch Data ---
-# --- Main App Logic ---
-# --- Main App Logic ---
+# Helper to render the resolved name section
+def render_resolved_ui(placeholder=None, key="btn_continue_investigation"):
+    # Use placeholder if provided, else main flow
+    context = placeholder.container() if placeholder else st.container()
+    
+    with context:
+        # Layout: Name Display | Continue Button
+        # Try to use vertical_alignment (Streamlit 1.32+)
+        try:
+             col_display, col_btn = st.columns([0.75, 0.25], gap="small", vertical_alignment="center")
+        except TypeError:
+             # Fallback for older versions
+             col_display, col_btn = st.columns([0.75, 0.25], gap="small")
+        
+        with col_display:
+            if st.session_state.is_resolving and not st.session_state.canonical_name:
+                # Resolving state
+                st.html(
+                    textwrap.dedent("""
+                    <div class="canonical-container" style="margin: 0;">
+                        <div class="canonical-label">
+                            <span class="canonical-icon">🏢</span>
+                            <span class="canonical-title">RESOLVED COMPANY NAME</span>
+                        </div>
+                        <div class="canonical-value resolving">
+                            <span class="canonical-text">Resolving...</span>
+                        </div>
+                    </div>
+                    """)
+                )
+            elif st.session_state.canonical_name:
+                # Resolved state
+                check = '<span class="canonical-check">✓</span>' if st.session_state.analysis_complete else ""
+                status_class = "resolved"
+                confidence_display = f" (Confidence: {st.session_state.confidence_score}%)" if st.session_state.confidence_score else ""
+                
+                st.html(
+                    textwrap.dedent(f"""
+                    <div class="canonical-container" style="margin: 0;">
+                        <div class="canonical-label">
+                            <span class="canonical-icon">🏢</span>
+                            <span class="canonical-title">RESOLVED COMPANY NAME</span>
+                        </div>
+                        <div class="canonical-value {status_class}">
+                            <span class="canonical-text">{st.session_state.canonical_name}{confidence_display}</span>
+                            {check}
+                        </div>
+                    </div>
+                    """)
+                )
+            else:
+                # Default state
+                st.html(
+                    textwrap.dedent("""
+                    <div class="canonical-container" style="margin: 0;">
+                        <div class="canonical-label">
+                            <span class="canonical-icon">🏢</span>
+                            <span class="canonical-title">RESOLVED COMPANY NAME</span>
+                        </div>
+                        <div class="canonical-value">
+                            <span class="canonical-text">Ready to search</span>
+                        </div>
+                    </div>
+                    """)
+                )
+        
+        with col_btn:
+             # Button is enabled only if resolved name exists and NOT currently resolving
+             btn_disabled = (not st.session_state.canonical_name) or st.session_state.is_resolving
+             
+             # Only show button if NOT complete (Resume case)
+             # If complete, we don't need a continue button.
+             if not st.session_state.analysis_complete:
+                 if st.button("▶️ Continue", key=key, type="primary", use_container_width=True, disabled=btn_disabled):
+                     return True
+    return False
+
 
 
 # Cache the Agent Graph to avoid re-initialization overhead (DB connections etc)
+# Cache the Agent Graphs
 @st.cache_resource
-def get_cached_graph():
-    return create_graph()
+def get_cached_resolution_graph_v4():
+    return create_resolution_graph()
+
+@st.cache_resource
+def get_cached_enrichment_graph_v4():
+    return create_enrichment_graph()
 
 
-def run_investigation(query):
-    # Reset State
-    st.session_state.logs = []
-    st.session_state.analysis_complete = False
-    st.session_state.progress_stage = 0
-    st.session_state.canonical_name = None
-    st.session_state.confidence_score = None
-    st.session_state.abort_investigation = False
-    st.session_state.is_resolving = True
+def run_investigation(query_or_resume, pipeline_placeholder=None, resolved_placeholder=None):
+    resume_mode = False
     
-    # Add to search history (keep last 3)
-    if query not in st.session_state.search_history:
-        st.session_state.search_history.insert(0, query)
-        st.session_state.search_history = st.session_state.search_history[:3]
+    # Check if this is a new search or resume
+    if query_or_resume is None or st.session_state.investigation_paused:
+        resume_mode = True
+        query = st.session_state.data.get("query", "Unknown") if st.session_state.data else "Unknown"
+    else:
+        query = query_or_resume
+        # Reset State
+        st.session_state.logs = []
+        st.session_state.analysis_complete = False
+        st.session_state.progress_stage = 0
+        st.session_state.canonical_name = None
+        st.session_state.confidence_score = None
+        st.session_state.abort_investigation = False
+        st.session_state.is_resolving = True # Resolving starts now
+        st.session_state.investigation_paused = False
+        st.session_state.intermediate_state = None
+        st.session_state.thread_id = str(uuid.uuid4())
+        
+        # 1. Initialize Baseline (Hybrid Approach)
+        base_data = get_company_data(query)
+        st.session_state.data = base_data
 
-    # 1. Initialize Baseline (Hybrid Approach)
-    base_data = get_company_data(query)
-    st.session_state.data = base_data
-
-    # 2. Run Real-Time Graph
-    graph = get_cached_graph()
-
-    with st.status("� Analyzing...", expanded=False) as status:
-        # Stream the Graph execution for instant feedback
-        stream = graph.stream({"query": query, "logs": []})
-
-        final_state = {}
-        processed_logs = set()  # Track unique logs to avoid dupes in UI
-
-        for event in stream:
-            # Check if user requested abort
-            if st.session_state.abort_investigation:
-                st.warning("⚠️ Investigation aborted by user")
-                status.update(label="❌ **Investigation Aborted**", state="error", expanded=False)
-                return
+    # UI Helpers
+    def update_pipeline_ui():
+        with pipeline_placeholder.container():
+            render_progress_chain(st.session_state.progress_stage)
             
-            # Event corresponds to a node finishing
-            for node, state in event.items():
-                final_state = state  # Keep updating final state
+    def update_resolved_ui():
+        # Use transient key while resolving to avoid duplicate keys in loop
+        if st.session_state.is_resolving:
+             k = f"btn_resolving_{uuid.uuid4()}"
+        else:
+             # Stable key for interaction when paused
+             k = "btn_continue_investigation"
+        
+        render_resolved_ui(resolved_placeholder, key=k)
+
+    # 2. Select Graph & Input
+    if not resume_mode:
+        graph = get_cached_resolution_graph_v4()
+        input_data = {"query": query, "logs": []}
+        processed_logs = set()
+    else:
+        graph = get_cached_enrichment_graph_v4()
+        input_data = st.session_state.intermediate_state
+        processed_logs = set(input_data.get('logs', []))
+
+    # 3. Setup Stream
+    label = "📝 Live System Logs (Enrichment)" if resume_mode else "📝 Live System Logs (Resolution)"
+
+    # Limit indentation changes by using a dummy block, or just unindent.
+    # User wants to disable live logs.
+    
+    # Stream the Graph execution
+    stream = graph.stream(input_data)       
+    final_state = {}
+    
+    # Initial Pipeline Update
+    update_pipeline_ui()
+    update_resolved_ui() # Initial Blink
+
+    for event in stream:
+        # Check if user requested abort
+        if st.session_state.abort_investigation:
+            st.warning("⚠️ Investigation aborted by user")
+            # status.update removed
+            return
+        
+        # Event corresponds to a node finishing
+        for node, state in event.items():
+            final_state = state  # Keep updating final state
+            
+            # Capture canonical name from state if available
+            state_canonical = state.get("canonical_name") or state.get("company_name")
+            if state_canonical and not st.session_state.canonical_name:
+                st.session_state.canonical_name = state_canonical
+                # Capture confidence score if available
+                if state.get("confidence") or state.get("confidence_score"):
+                    confidence = state.get("confidence") or state.get("confidence_score")
+                    st.session_state.confidence_score = round(confidence) if isinstance(confidence, (int, float)) else None
+                st.session_state.is_resolving = False
                 
-                # Capture canonical name from state if available
-                if state.get("canonical_name") and not st.session_state.canonical_name:
-                    st.session_state.canonical_name = state["canonical_name"]
-                    # Capture confidence score if available
-                    if state.get("confidence") or state.get("confidence_score"):
-                        confidence = state.get("confidence") or state.get("confidence_score")
-                        st.session_state.confidence_score = round(confidence) if isinstance(confidence, (int, float)) else None
-                    st.session_state.is_resolving = False
+                # Mark Stage 1 as Complete (Green) immediately
+                st.session_state.progress_stage = 2 
+                update_pipeline_ui()
+                update_resolved_ui() # Resolved Name!
 
-                # Check for new logs
-                current_logs = state.get("logs", [])
-                for log in current_logs:
-                    if log not in processed_logs:
-                        processed_logs.add(log)
+            # Check for new logs
+            current_logs = state.get("logs", [])
+            for log in current_logs:
+                if log not in processed_logs:
+                    processed_logs.add(log)
 
-                        # UI Logic for Logs and Progress
-                        if "Resolved" in log:
-                            add_log("Resolver", log)
-                            st.session_state.progress_stage = 1  # Canonical Resolution
-                            st.write(f"✅ {log}")
-                            # Extract canonical name from log if not already set
-                            if " to " in log and not st.session_state.canonical_name:
-                                parts = log.split(" to ")
-                                if len(parts) > 1:
-                                    st.session_state.canonical_name = parts[1].strip()
-                                    st.session_state.is_resolving = False
-                        elif "SERP" in log or "Profiling" in log:
-                            add_log("SERP Agent", log)
-                            st.session_state.progress_stage = 2  # SERP Profiling
-                            st.write(f"🔍 {log}")
-                        elif "Scraping" in log:
-                            add_log("Scraper", log)
-                            st.session_state.progress_stage = 3  # Scrape
-                            st.write(f"🕸️ {log}")
-                        elif "Vectorizer" in log:
-                            add_log("Vectorizer", log)
-                            st.session_state.progress_stage = 4  # Vectorize
-                            st.write(f"🧠 {log}")
-                        elif "Analyst" in log:
-                            add_log("Analyst", log)
-                            st.session_state.progress_stage = 5  # Analyze
-                            st.write(f"📊 {log}")
-                        else:
-                            add_log("System", log)
+                    # UI Logic for Logs and Progress
+                    if "Resolved" in log or "Canonical Name" in log:
+                        add_log("Resolver", log)
+                        st.session_state.progress_stage = 1  # Canonical Resolution
+                        update_pipeline_ui()
+                        # st.write(f"✅ {log}") # Disabled
+                        
+                        # Extract canonical name from log if not already set
+                        if "Canonical Name: " in log and not st.session_state.canonical_name:
+                            parts = log.split("Canonical Name: ")
+                            if len(parts) > 1:
+                                st.session_state.canonical_name = parts[1].strip()
+                                st.session_state.is_resolving = False
+                                
+                                # Mark Stage 1 as Complete (Green) immediately
+                                st.session_state.progress_stage = 2 
+                                update_pipeline_ui()
+                                update_resolved_ui() # Resolved via log
+                        elif " to " in log and not st.session_state.canonical_name:
+                            parts = log.split(" to ")
+                            if len(parts) > 1:
+                                st.session_state.canonical_name = parts[1].strip()
+                                st.session_state.is_resolving = False
+                                
+                                # Mark Stage 1 as Complete (Green) immediately
+                                st.session_state.progress_stage = 2 
+                                update_pipeline_ui()
+                                update_resolved_ui() # Resolved via log
+                    elif "SERP" in log or "Profiling" in log:
+                        add_log("SERP Agent", log)
+                        st.session_state.progress_stage = 1  # Merged with Canonical
+                        update_pipeline_ui()
+                        # st.write(f"🔍 {log}") # Disabled
+                    elif "Enrichment" in log or "Scraping" in log:
+                        add_log("Harvester", log)
+                        st.session_state.progress_stage = 2  # Parallel Enrichment & Scraping
+                        update_pipeline_ui()
+                        # st.write(f"⚡ {log}") # Disabled
+                    elif "Vectorizer" in log:
+                        add_log("Vectorizer", log)
+                        st.session_state.progress_stage = 3  # Vectorize
+                        update_pipeline_ui()
+                        # st.write(f"🧠 {log}") # Disabled
+                    elif "Analyst" in log:
+                        add_log("Analyst", log)
+                        st.session_state.progress_stage = 4  # Analyze
+                        update_pipeline_ui()
+                        # st.write(f"📊 {log}") # Disabled
+                    else:
+                        add_log("System", log)
 
-        # 4. Update Data with Real Intelligence (Using final state)
+    # 4. Handle Completion
+    if not resume_mode:
+        # Resolution Complete -> Pause
+        st.session_state.intermediate_state = final_state
+        st.session_state.investigation_paused = True
+        st.session_state.is_resolving = False
+        update_pipeline_ui()
+        st.toast("Canonical Resolution Complete. Click 'Continue' to proceed.", icon="⏸️")
+        # status.update removed
+    else:
+        # Enrichment Complete -> Finish
+        st.session_state.investigation_paused = False
+        st.session_state.analysis_complete = True
+        
+        # Update Data with Real Intelligence (Using final state)
         if final_state.get("financial_data"):
             real_data = final_state["financial_data"]
 
@@ -213,10 +384,8 @@ def run_investigation(query):
         if final_state.get("insights"):
             st.session_state.data["insights"] = final_state["insights"]
 
-        status.update(
-            label="✅ **Investigation Complete**", state="complete", expanded=False
-        )
-        st.session_state.analysis_complete = True
+        # status.update removed as UI disabled
+        update_pipeline_ui()
 
 
 # --- Sidebar ---
@@ -313,18 +482,6 @@ with cols[2]:
     abort_clicked = st.button("🛑 Abort", type="secondary", use_container_width=True)
 
 
-# Recent Searches Section
-if st.session_state.search_history:
-    st.markdown('<div class="ui-section-label" style="font-size: 12px; margin-top: 12px;"><span class="emoji">🕒</span><span>Recent Searches</span></div>', unsafe_allow_html=True)
-    
-    # Display as clickable chips
-    cols = st.columns(len(st.session_state.search_history))
-    for idx, search_term in enumerate(st.session_state.search_history):
-        with cols[idx]:
-            if st.button(f"🕒 {search_term}", key=f"recent_{idx}", use_container_width=True):
-                st.session_state.company_search_input = search_term
-                run_investigation(search_term)
-                st.rerun()
 
 # Canonical Name Section - professional styling
 st.markdown(
@@ -333,82 +490,30 @@ st.markdown(
 )
 
 # Canonical Name Display
-if st.session_state.is_resolving or st.session_state.canonical_name:
-    # Determine state and display
-    if st.session_state.is_resolving and not st.session_state.canonical_name:
-        # Resolving state with blinking effect
-        st.markdown(
-            """
-            <div class="canonical-container">
-                <div class="canonical-label">
-                    <span class="canonical-icon">🏢</span>
-                    <span class="canonical-title">RESOLVED COMPANY NAME</span>
-                </div>
-                <div class="canonical-value resolving">
-                    <span class="canonical-text">Resolving...</span>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-    elif st.session_state.canonical_name and st.session_state.analysis_complete:
-        # Resolved state with checkmark and confidence score
-        confidence_display = f" (Confidence: {st.session_state.confidence_score}%)" if st.session_state.confidence_score else ""
-        st.markdown(
-            f"""
-            <div class="canonical-container">
-                <div class="canonical-label">
-                    <span class="canonical-icon">🏢</span>
-                    <span class="canonical-title">RESOLVED COMPANY NAME</span>
-                </div>
-                <div class="canonical-value resolved">
-                    <span class="canonical-text">{st.session_state.canonical_name}{confidence_display}</span>
-                    <span class="canonical-check">✓</span>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-    elif st.session_state.canonical_name:
-        # In progress (name resolved but analysis not complete)
-        confidence_display = f" (Confidence: {st.session_state.confidence_score}%)" if st.session_state.confidence_score else ""
-        st.markdown(
-            f"""
-            <div class="canonical-container">
-                <div class="canonical-label">
-                    <span class="canonical-icon">🏢</span>
-                    <span class="canonical-title">RESOLVED COMPANY NAME</span>
-                </div>
-                <div class="canonical-value resolved">
-                    <span class="canonical-text">{st.session_state.canonical_name}{confidence_display}</span>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-else:
-    # Default state - ready to search
-    st.markdown(
-        """
-        <div class="canonical-container">
-            <div class="canonical-label">
-                <span class="canonical-icon">🏢</span>
-                <span class="canonical-title">RESOLVED COMPANY NAME</span>
-            </div>
-            <div class="canonical-value">
-                <span class="canonical-text">Ready to search</span>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+# Canonical Name Display
+resolved_placeholder = st.empty()
+continue_clicked = False
+
+# Only render if NOT starting a new search (avoid duplicate key with run_investigation final state)
+if not search_clicked:
+    continue_clicked = render_resolved_ui(resolved_placeholder)
 
 # Render Progress Chain (Always visible)
 st.markdown(
     '<div class="ui-section-label"><span class="emoji">⚙️</span><span>Investigation Pipeline</span></div>',
     unsafe_allow_html=True
 )
-render_progress_chain(st.session_state.progress_stage)
+
+pipeline_placeholder = st.empty()
+with pipeline_placeholder.container():
+    render_progress_chain(st.session_state.progress_stage)
+
+# Action: Continue Investigation
+if continue_clicked:
+    # Ensure invalid states are cleared
+    st.session_state.investigation_paused = False
+    run_investigation(None, pipeline_placeholder, resolved_placeholder)
+    st.rerun()
 
 if abort_clicked:
     # Set abort flag FIRST to stop ongoing workflow
@@ -434,9 +539,16 @@ if search_clicked and query_input:
     st.session_state.is_resolving = True
     st.session_state.canonical_name = None
     st.session_state.progress_stage = 1
-    st.rerun()  # Force UI update to show "Resolving..."
-    run_investigation(query_input)
+    st.session_state.investigation_paused = False
+    
+    # Force UI update for instant feedback
+    with pipeline_placeholder.container():
+        render_progress_chain(1)
+
+    # Run investigation immediately (progress updates will stream)
+    run_investigation(query_input, pipeline_placeholder, resolved_placeholder)
     st.rerun()
+
 elif (
     query_input and not st.session_state.analysis_complete
 ):  # Allow Enter key if simple

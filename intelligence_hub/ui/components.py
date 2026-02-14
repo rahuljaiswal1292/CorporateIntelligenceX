@@ -51,56 +51,45 @@ def render_progress_chain(stage: int):
     """
     Renders the progress chain showing workflow stages including parallel enrichment nodes.
     """
-    # Main sequential steps
-    main_steps = [
+    # Define the linear flow of steps
+    steps = [
         {"icon": "🏷️", "label": "Canonical Resolution", "stage": 1},
         {"icon": "🔍", "label": "SERP Profiling", "stage": 2},
+        {"icon": "⚡", "label": "Enrichment", "stage": 3, "sub_items": ["Wikipedia", "News", "DED"]},
+        {"icon": "🕷️", "label": "Scraping", "stage": 4},
+        {"icon": "🧠", "label": "Vectorization", "stage": 5},
+        {"icon": "📊", "label": "Analysis", "stage": 6},
     ]
     
-    # Parallel enrichment steps
-    parallel_steps = [
-        {"icon": "📖", "label": "Wikipedia", "stage": 3},
-        {"icon": "📰", "label": "News", "stage": 3},
-        {"icon": "🏛️", "label": "DED", "stage": 3},
-    ]
+    html = '<div class="pipeline-wrapper">'
+    html += '<div class="pipeline-track">'
     
-    # Post-enrichment steps
-    post_steps = [
-        {"icon": "🕷️", "label": "Scrape", "stage": 4},
-        {"icon": "🧠", "label": "Vectorize", "stage": 5},
-        {"icon": "📊", "label": "Analyze", "stage": 6},
-    ]
-    
-    html = '<div class="progress-container">'
-    
-    # Main steps
-    for step in main_steps:
-        status_class = ""
-        if stage >= step["stage"]:
-            status_class = "completed" if stage > step["stage"] else "active"
-        html += f'<div class="progress-step {status_class}"><span class="progress-step-icon">{step["icon"]}</span><span>{step["label"]}</span></div>'
-        html += '<div class="progress-arrow">→</div>'
-    
-    # Parallel enrichment section
-    html += '<div style="display: flex; flex-direction: column; gap: 4px; margin: 0 8px;">'
-    for step in parallel_steps:
-        status_class = ""
-        if stage >= step["stage"]:
-            status_class = "completed" if stage > step["stage"] else "active"
-        html += f'<div class="progress-step {status_class}" style="font-size: 12px; padding: 4px 12px;"><span class="progress-step-icon">{step["icon"]}</span><span>{step["label"]}</span></div>'
-    html += '</div>'
-    html += '<div class="progress-arrow">→</div>'
-    
-    # Post-enrichment steps
-    for i, step in enumerate(post_steps):
-        status_class = ""
-        if stage >= step["stage"]:
-            status_class = "completed" if stage > step["stage"] else "active"
-        html += f'<div class="progress-step {status_class}"><span class="progress-step-icon">{step["icon"]}</span><span>{step["label"]}</span></div>'
-        if i < len(post_steps) - 1:
-            html += '<div class="progress-arrow">→</div>'
-    
-    html += "</div>"
+    for i, step in enumerate(steps):
+        # Determine status
+        status = "pending"
+        if stage > step["stage"]:
+            status = "completed"
+        elif stage == step["stage"]:
+            status = "active"
+            
+    # Node HTML
+        pulse = "<div class='step-pulse'></div>" if status == "active" else ""
+        sub_items = f'<div class="step-subitems">{" • ".join(step["sub_items"])}</div>' if "sub_items" in step else ""
+        
+        step_html = f'<div class="pipeline-step {status}">'
+        step_html += f'<div class="step-indicator"><span class="step-icon">{step["icon"]}</span>{pulse}</div>'
+        step_html += f'<div class="step-content"><span class="step-label">{step["label"]}</span>{sub_items}</div>'
+        step_html += '</div>'
+        
+        html += step_html
+        
+        # Connector (if not last step)
+        if i < len(steps) - 1:
+            # Determine connector status (completed if current step is completed)
+            conn_status = "completed" if status == "completed" else "pending"
+            html += f'<div class="pipeline-connector {conn_status}"></div>'
+            
+    html += '</div></div>'
     st.markdown(html, unsafe_allow_html=True)
 
 

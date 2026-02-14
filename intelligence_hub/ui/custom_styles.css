@@ -220,7 +220,7 @@ div.stButton>button[kind="secondary"]:hover,
     overflow: hidden;
     box-shadow: 0 4px 12px rgba(0, 48, 99, 0.2);
     transition: all 0.3s ease;
-    margin: 32px 0 32px 0;
+    margin: 16px 0 24px 0;
 }
 
 .canonical-container:hover {
@@ -230,7 +230,7 @@ div.stButton>button[kind="secondary"]:hover,
 
 .canonical-label {
     background: linear-gradient(135deg, #003366 0%, #00509e 50%, #0077ff 100%);
-    padding: 10px 20px;
+    padding: 6px 16px;
     display: flex;
     color: white;
     align-items: center;
@@ -287,7 +287,7 @@ div.stButton>button[kind="secondary"]:hover,
 
 .canonical-value {
     background: linear-gradient(to bottom, #ffffff 0%, #f8f9fb 100%);
-    padding: 10px 20px;
+    padding: 6px 16px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -341,9 +341,12 @@ div.stButton>button[kind="secondary"]:hover,
 
 .pipeline-track {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
+    /* Center everything vertically */
     justify-content: space-between;
     position: relative;
+    min-height: 120px;
+    /* Ensure enough height for parallel items */
 }
 
 .pipeline-step {
@@ -354,6 +357,60 @@ div.stButton>button[kind="secondary"]:hover,
     z-index: 2;
     min-width: 100px;
 }
+
+/* Parallel Group Container */
+.pipeline-parallel-group {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+}
+
+/* Parallel Item Node */
+.pipeline-step.parallel-item {
+    flex-direction: row;
+    /* Horizontal layout for parallel items */
+    min-width: 140px;
+    align-items: center;
+    gap: 12px;
+}
+
+.step-indicator.small {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+    min-width: 36px;
+    /* Prevent shrink */
+}
+
+.step-content.side {
+    margin-top: 0;
+    text-align: left;
+    align-items: flex-start;
+}
+
+/* Connector as a short, floating line */
+.pipeline-connector {
+    flex-grow: 0;
+    width: 40px;
+    min-width: 40px;
+    height: 4px;
+    background: #e2e8f0;
+    margin: 0 16px;
+    border-radius: 4px;
+    position: relative;
+    z-index: 1;
+    transition: background 0.5s ease;
+}
+
+/* Single Step Adjustment to keep label from throwing off center? 
+   Actually with align-items: center, the whole step is centered.
+   The label below might make the icon appear higher than center.
+   To fix: Make label absolute? Or just accept it.
+   Let's try to keeping simple.
+*/
 
 .step-indicator {
     width: 48px;

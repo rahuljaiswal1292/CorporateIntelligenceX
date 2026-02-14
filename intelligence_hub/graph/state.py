@@ -1,4 +1,5 @@
 from typing import TypedDict, List, Dict, Any, Annotated
+import operator
 from langgraph.graph.message import add_messages
 
 
@@ -13,6 +14,7 @@ class AgentState(TypedDict):
     # Resolver Outputs
     ticker: str
     company_name: str
+    canonical_name: str # Added for UI consistency
     exchange: str  # ADX, DFM, or UNKNOWN
     website: str
 
@@ -32,7 +34,7 @@ class AgentState(TypedDict):
     final_report: str
 
     # Logs for UI
-    logs: List[str]
+    logs: Annotated[List[str], operator.add]
 
     # Enrichment Data
     enrichments: Dict[str, Any]

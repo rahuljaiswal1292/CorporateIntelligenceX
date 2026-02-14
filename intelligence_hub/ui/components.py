@@ -49,43 +49,61 @@ def render_header():
 
 def render_progress_chain(stage: int):
     """
-    Renders the progress chain showing workflow stages including parallel enrichment nodes.
+    Renders the progress chain showing workflow stages with a modern, elegant design.
+    Supports parallel execution visualization.
     """
-    # Define the linear flow of steps
+    # Define the flow of steps with parallel group
     steps = [
-        {"icon": "🏷️", "label": "Canonical Resolution", "stage": 1},
-        {"icon": "🔍", "label": "SERP Profiling", "stage": 2},
-        {"icon": "⚡", "label": "Enrichment", "stage": 3, "sub_items": ["Wikipedia", "News", "DED"]},
-        {"icon": "🕷️", "label": "Scraping", "stage": 4},
-        {"icon": "🧠", "label": "Vectorization", "stage": 5},
-        {"icon": "📊", "label": "Analysis", "stage": 6},
+        {"icon": "🏷️", "label": "Canonical + SERP", "stage": 1},
+        {
+            "type": "parallel",
+            "stage": 2,
+            "items": [
+                {"icon": "⚡", "label": "Enrichment"},
+                {"icon": "🕷️", "label": "Scraping"}
+            ]
+        },
+        {"icon": "🧠", "label": "Vectorization", "stage": 3},
+        {"icon": "📊", "label": "Analysis", "stage": 4},
     ]
     
     html = '<div class="pipeline-wrapper">'
     html += '<div class="pipeline-track">'
     
     for i, step in enumerate(steps):
-        # Determine status
+        # Determine status base
         status = "pending"
         if stage > step["stage"]:
             status = "completed"
         elif stage == step["stage"]:
             status = "active"
             
-    # Node HTML
-        pulse = "<div class='step-pulse'></div>" if status == "active" else ""
-        sub_items = f'<div class="step-subitems">{" • ".join(step["sub_items"])}</div>' if "sub_items" in step else ""
-        
-        step_html = f'<div class="pipeline-step {status}">'
-        step_html += f'<div class="step-indicator"><span class="step-icon">{step["icon"]}</span>{pulse}</div>'
-        step_html += f'<div class="step-content"><span class="step-label">{step["label"]}</span>{sub_items}</div>'
-        step_html += '</div>'
-        
-        html += step_html
+        if step.get("type") == "parallel":
+            # Render Parallel Group
+            html += '<div class="pipeline-parallel-group">'
+            for item in step["items"]:
+                # Render sub-item (inherits group status for now)
+                pulse = "<div class='step-pulse'></div>" if status == "active" else ""
+                
+                parallel_html = f'<div class="pipeline-step {status} parallel-item">'
+                parallel_html += f'<div class="step-indicator small"><span class="step-icon">{item["icon"]}</span>{pulse}</div>'
+                parallel_html += f'<div class="step-content side"><span class="step-label">{item["label"]}</span></div>'
+                parallel_html += '</div>'
+                html += parallel_html
+            html += '</div>'
+        else:
+            # Render Single Step
+            pulse = "<div class='step-pulse'></div>" if status == "active" else ""
+            sub_items = f'<div class="step-subitems">{" • ".join(step["sub_items"])}</div>' if "sub_items" in step else ""
+            
+            step_html = f'<div class="pipeline-step {status}">'
+            step_html += f'<div class="step-indicator"><span class="step-icon">{step["icon"]}</span>{pulse}</div>'
+            step_html += f'<div class="step-content"><span class="step-label">{step["label"]}</span>{sub_items}</div>'
+            step_html += '</div>'
+            html += step_html
         
         # Connector (if not last step)
         if i < len(steps) - 1:
-            # Determine connector status (completed if current step is completed)
             conn_status = "completed" if status == "completed" else "pending"
             html += f'<div class="pipeline-connector {conn_status}"></div>'
             

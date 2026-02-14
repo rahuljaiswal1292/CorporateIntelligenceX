@@ -20,7 +20,7 @@ class VectorizerAgent:
 
     def run(self, state: AgentState) -> AgentState:
         logger.info("Vectorizer: Indexing documents...")
-        logs = state.get("logs", [])
+        logs = []
 
         scraped_data = state.get("financial_data", {})
         ticker = state.get("ticker", "UNKNOWN")

@@ -52,11 +52,11 @@ def render_progress_chain(stage: int):
     Renders the specific XML/DIv structure requested for the progress steps.
     """
     steps = [
-        {"icon": "🔍", "label": "Identify"},
+        {"icon": "🏷️", "label": "Canonical Resolution"},
+        {"icon": "🔍", "label": "SERP Profiling"},
         {"icon": "🕷️", "label": "Scrape"},
         {"icon": "🧠", "label": "Vectorize"},
         {"icon": "📊", "label": "Analyze"},
-        {"icon": "✅", "label": "Ready"},
     ]
 
     html = '<div class="progress-container"><div class="progress-track"></div>'

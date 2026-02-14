@@ -88,7 +88,15 @@ div[data-testid="stTextInput"] input {
     /* Black/Dark Slate */
     caret-color: #0F172A !important;
     /* Cursor color */
-    border: 1px solid #CBD5E1 !important;
+    border: 3px solid #002D62 !important;
+    /* Thick navy border */
+    border-radius: 12px !important;
+    /* Rounded square corners */
+    font-size: 1.2rem !important;
+    /* Bigger font size */
+    padding: 12px 16px !important;
+    /* Extra padding for better spacing */
+    font-weight: 500 !important;
 }
 
 /* Fix hidden 'X' clear button in text input */
@@ -275,9 +283,12 @@ div[data-testid="stDataFrame"] {
 .progress-step {
     position: relative;
     z-index: 1;
-    background-color: white;
-    border: 2px solid #E2E8F0;
-    color: #64748B;
+    background-color: #E5E7EB;
+    /* Grey background for inactive */
+    border: 2px solid #9CA3AF;
+    /* Grey border for inactive */
+    color: #6B7280;
+    /* Grey text for inactive */
     border-radius: 999px;
     /* Rounded pill */
     padding: 8px 24px;
@@ -291,14 +302,14 @@ div[data-testid="stDataFrame"] {
 }
 
 .progress-step.active {
-    border-color: #FFB600;
-    /* ENBD Gold */
-    background-color: #FFF9E6;
-    /* Light Gold BG */
-    color: #002D62;
-    /* ENBD Navy Text */
+    border-color: #10B981;
+    /* Green border */
+    background-color: #D1FAE5;
+    /* Light Green BG */
+    color: #047857;
+    /* Dark Green Text */
     transform: scale(1.05);
-    box-shadow: 0 4px 6px -1px rgba(255, 182, 0, 0.3);
+    box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.4);
 }
 
 .progress-step.completed {

@@ -1,0 +1,76 @@
+{
+  "source": "DFM",
+  "ticker": "AIRARABIA",
+  "scraped_at": "2026-02-13T15:54:22.119142",
+  "profile": {
+    "company_name": "Equities",
+    "sector": "NOT AVAILABLE",
+    "listing_date": "NOT AVAILABLE",
+    "isin": "NOT AVAILABLE"
+  },
+  "financials": {
+    "documents_downloaded": 0,
+    "page_type": "reports",
+    "files": []
+  },
+  "news": {
+    "news_items": [],
+    "files": []
+  },
+  "documents": [
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\AIRARABIA\\daily_summary\\structured\\AIRARABIA Daily Summary.xls"
+  ],
+  "corporate_actions": {
+    "actions": [],
+    "files": []
+  },
+  "shareholders": {
+    "shareholders": [
+      {
+        "name": "\u0627\u0644\u0634\u0627\u0631\u0642\u0647 \u0644\u0627\u062f\u0627\u0631\u0647 \u0627\u0644\u0627\u0635\u0648\u0644 \u0630 \u0645 \u0645",
+        "percentage": "18.5550 %"
+      },
+      {
+        "name": "AL MAHA HOLDING COMPANY (FZE)",
+        "percentage": "9.2059 %"
+      },
+      {
+        "name": "\u0645\u062c\u0645\u0648\u0639\u0647 \u0627\u0644\u0634\u0631\u0642 \u0648 \u0627\u0644\u063a\u0631\u0628 \u0627\u0644\u0639\u0627\u0644\u0645\u064a\u0647 \u0630 \u0645 \u0645",
+        "category": "\u0645\u062c\u0645\u0648\u0639\u0647 \u0627\u0644\u0634\u0631\u0642 \u0648 \u0627\u0644\u063a\u0631\u0628 \u0627\u0644\u0639\u0627\u0644\u0645\u064a\u0647 \u0630 \u0645 \u0645      12.1237\u0628\u0648\u0646\u062f \u0644\u0644\u0627\u0633\u062a\u062b\u0645\u0627\u0631 \u0634 .\u0630.\u0645.\u0645                  7.9064",
+        "col_2": "\u0645\u062c\u0645\u0648\u0639\u0647 \u0627\u0644\u0634\u0631\u0642 \u0648 \u0627\u0644\u063a\u0631\u0628 \u0627\u0644\u0639\u0627\u0644\u0645\u064a\u0647 \u0630 \u0645 \u0645",
+        "col_3": "12.1237",
+        "col_4": "\u0628\u0648\u0646\u062f \u0644\u0644\u0627\u0633\u062a\u062b\u0645\u0627\u0631 \u0634 .\u0630.\u0645.\u0645",
+        "col_5": "7.9064",
+        "percentage": "20.0301 %"
+      },
+      {
+        "name": "\u0645\u062c\u0645\u0648\u0639\u0647 \u0627\u0644\u0634\u0631\u0642 \u0648 \u0627\u0644\u063a\u0631\u0628 \u0627\u0644\u0639\u0627\u0644\u0645\u064a\u0647 \u0630 \u0645 \u0645",
+        "category": "12.1237"
+      },
+      {
+        "name": "\u0628\u0648\u0646\u062f \u0644\u0644\u0627\u0633\u062a\u062b\u0645\u0627\u0631 \u0634 .\u0630.\u0645.\u0645",
+        "category": "7.9064"
+      }
+    ],
+    "files": []
+  },
+  "trading_data": {
+    "documents_downloaded": 0,
+    "page_type": "trading_data",
+    "files": [],
+    "summary": {}
+  },
+  "daily_summary": {
+    "documents_downloaded": 1,
+    "page_type": "daily_summary",
+    "files": [
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\AIRARABIA\\daily_summary\\structured\\AIRARABIA Daily Summary.xls"
+    ]
+  },
+  "foreign_investments": {
+    "foreign_investment_data": {
+      "raw_summary": "Country of Origin Foreigners allowed AE Yes  Permitted Actual Available National 100% 80.24% 19.76% GCC 0 0 0 Foreign 49% 19.76% 29.24% \n              \n               Nationals: Investors who hold the same nationality as the \u201cCountry of Origin\u201d of the symbol.\n              \n               GCC: Investors who hold a GCC nationality, excluding investors from the \u201cCountry of Origin\u201d of the symbol.\n              \n               Foreigners: All other nationalities. \nNote: For companies where GCC Permi"
+    },
+    "files": []
+  }
+}

@@ -1,14 +1,14 @@
-Financials
+Company Profile OverviewFinancials
 
 ## FAB
 
 #### First Abu Dhabi Bank
 
-ir@bankfab.com‎+971 2 305 3012https://www.bankfab.comLast Price20.020.10%
+ir@bankfab.com ‎+971 2 305 3012 https://www.bankfab.comLast Price20.16 0.80%
 
 ### MARKET CAP.
 
-221,173,206,014.000
+222,719,871,790.000
 
 ### OPEN PRICE
 
@@ -20,19 +20,19 @@ ir@bankfab.com‎+971 2 305 3012https://www.bankfab.comLast Price20.020.10%
 
 ### BID
 
-20.020
+19.920
 
 ### BID SIZE
 
-5,682
+1,111
 
 ### ASK
 
-20.040
+20.160
 
 ### ASK SIZE
 
-31,111
+1,000
 
 ## COMPANY OVERVIEW
 
@@ -46,7 +46,7 @@ SHARE CAPITAL11,047,612,688.00LISTING DATE15 Nov 2000INCORPORATION13 Feb 1968COM
 
 ### FOREIGN OWNERSHIP
 
-22.89%
+22.91%
 
 from40.00%
 
@@ -58,21 +58,21 @@ from40.00%
 
 ### UAE NATIONALS
 
-75.47%
+75.45%
 
 from100.00%
 
 ### ARAB COUNTRIES
 
-0.38%
+0.39%
 
-from40.00%Disclosures[View All](/en/main-market/company-profile/disclosures?symbols=FAB&secCode=FAB) 05Feb2026FAB+0.020 (+0.100%)[Invitation to Attend Annual General Meeting on 11/03/2026 at 15:00](#) 05Feb2026FAB+0.020 (+0.100%)[Clarifying Disclosure Regarding the Approval of Agencies](#)28Jan2026FAB+0.020 (+0.100%)[Board Meeting Results held on 27/01/2026 at 15:30](#) 28Jan2026FAB+0.020 (+0.100%)[Financial Results for the Period Ended December 31,2025](#)28Jan2026FAB+0.020 (+0.100%)[Management Discussion and Analysis Report for the Period Ended December 31,2025](#)DisclaimerFinancial Reports[View All](/en/main-market/company-profile/financial-reports?symbols=FAB&secCode=) 28Jan2026FAB+0.020 (+0.100%)[First Abu Dhabi Bank Financial Results for the Period Ended December 31,2025](#)28Jan2026FAB+0.020 (+0.100%)[First Abu Dhabi Bank Management Discussion and Analysis Report for the Period Ended December 31,2025](#)23Oct2025FAB+0.020 (+0.100%)[First Abu Dhabi Bank Integrated Report December 31,2024](#)
+from40.00%Disclosures[View All](/en/main-market/company-profile/disclosures?symbols=FAB&secCode=FAB) 05Feb 2026FAB +0.160 (+0.800%)[Invitation to Attend Annual General Meeting on 11/03/2026 at 15:00](#) 05Feb 2026FAB +0.160 (+0.800%)[Clarifying Disclosure Regarding the Approval of Agencies](#)28Jan 2026FAB +0.160 (+0.800%)[Financial Results for the Period Ended December 31,2025](#)28Jan 2026FAB +0.160 (+0.800%)[Management Discussion and Analysis Report for the Period Ended December 31,2025](#)28Jan 2026FAB +0.160 (+0.800%)[Board Meeting Results held on 27/01/2026 at 15:30](#) DisclaimerFinancial Reports[View All](/en/main-market/company-profile/financial-reports?symbols=FAB&secCode=) 28Jan 2026FAB +0.160 (+0.800%)[First Abu Dhabi Bank Financial Results for the Period Ended December 31,2025](#)28Jan 2026FAB +0.160 (+0.800%)[First Abu Dhabi Bank Management Discussion and Analysis Report for the Period Ended December 31,2025](#)23Oct 2025FAB +0.160 (+0.800%)[First Abu Dhabi Bank Integrated Report December 31,2024](#)
 
 ## RECENT TRADES
 
 | Date | Open (AED) | Low (AED) | High (AED) | Close (AED) | Value (AED) | Volume | Trades |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 13 Feb 2026 | 20.020 | 19.940 | 20.180 | 20.040 | 31,277,742.02 | 1,561,479 | 528 |
+| 13 Feb 2026 | 20.020 | 19.940 | 20.180 | 20.160 | 50,641,858.58 | 2,524,366 | 768 |
 | 12 Feb 2026 | 20.000 | 19.920 | 20.180 | 20.000 | 155,891,594.78 | 7,773,873 | 828 |
 | 11 Feb 2026 | 19.900 | 19.900 | 20.020 | 20.000 | 97,823,892.78 | 4,896,876 | 804 |
 | 10 Feb 2026 | 19.800 | 19.660 | 19.940 | 19.940 | 91,469,268.16 | 4,610,493 | 1,116 |

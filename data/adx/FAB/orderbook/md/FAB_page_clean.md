@@ -1,28 +1,40 @@
-## 
+Company's OrderbookFinancials
 
-#### 
+## FAB
 
-Last Price%
+#### First Abu Dhabi Bank
+
+ir@bankfab.com ‎+971 2 305 3012 https://www.bankfab.comLast Price20.16 0.80%
 
 ##### PREV CLOSE
 
+20.00
+
 ##### VALUE
+
+50,641,858.58
 
 ##### VOLUME
 
+2,524,366
+
 ##### TRADES
+
+768
 
 ##### LAST PRICE
 
+20.16
+
 ## ORDERBOOK
 
-BID PRICEASK PRICESharesPricePriceSharesBID PRICEASK PRICESharesPrice‌ 
-‌ 
-‌ 
-‌ 
-‌ 
-PriceShares‌ 
-‌ 
-‌ 
-‌ 
-‌
+BID PRICEASK PRICESharesPrice1,11119.9201,00019.8402619.7001619.7002519.7001,00019.70020,00019.7002,00019.6401,50019.6002519.600PriceShares20.1601,00020.1805,92720.2006,00020.20015,00020.2001,78020.2002,92920.20010,00020.20019920.2009,70020.2206,000BID PRICEASK PRICESharesPrice ‌   
+ ‌   
+ ‌   
+ ‌   
+ ‌   
+PriceShares ‌   
+ ‌   
+ ‌   
+ ‌   
+ ‌

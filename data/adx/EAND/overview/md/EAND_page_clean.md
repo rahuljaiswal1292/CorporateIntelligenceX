@@ -1,14 +1,14 @@
-Telecommunication
+Company Profile OverviewTelecommunication
 
 ## EAND
 
 #### Emirates Telecommunications Group Company PJSC (e&)
 
-ir@eand.com‎+971 2 6283333https://eand.comLast Price20.8-2.164%
+ir@eand.com ‎+971 2 6283333 https://eand.comLast Price20.9 -1.693%
 
 ### MARKET CAP.
 
-180,892,483,200.000
+181,762,158,600.000
 
 ### OPEN PRICE
 
@@ -24,15 +24,15 @@ ir@eand.com‎+971 2 6283333https://eand.comLast Price20.8-2.164%
 
 ### BID SIZE
 
-14,734
+5,700
 
 ### ASK
 
-20.840
+21.000
 
 ### ASK SIZE
 
-37,184
+300
 
 ## COMPANY OVERVIEW
 
@@ -44,7 +44,7 @@ SHARE CAPITAL8,696,754,000.00LISTING DATE24 Jun 2002INCORPORATION01 Jan 1976COMP
 
 ### FOREIGN OWNERSHIP
 
-9.39%
+9.40%
 
 from49.00%
 
@@ -56,7 +56,7 @@ from49.00%
 
 ### UAE NATIONALS
 
-90.28%
+90.27%
 
 from100.00%
 
@@ -64,13 +64,13 @@ from100.00%
 
 0.07%
 
-from49.00%Disclosures[View All](/en/main-market/company-profile/disclosures?symbols=EAND&secCode=EAND) 12Feb2026EAND-0.460 (-2.164%)[Preliminary Financial Results for the Period Ended December 31,2025](#)31Dec2025EAND-0.460 (-2.164%)[PTCL Group completes the full acquisition of Telenor Pakistan](#)18Dec2025EAND-0.460 (-2.164%) [O2 Slovakia signs an agreement to acquire 100% stake of UPC Slovakia from Liberty Global](#)09Dec2025EAND-0.460 (-2.164%)[Board Meeting Results held on 09/12/2025 at 13:00](#) 04Dec2025EAND-0.460 (-2.164%)[Announcement of Board Meeting to be held on 09/12/2025 at 13:00](#) DisclaimerFinancial Reports[View All](/en/main-market/company-profile/financial-reports?symbols=EAND&secCode=) 12Feb2026EAND-0.460 (-2.164%)[Emirates Telecom. Group Company PJSC Preliminary Financial Results for the Period Ended December 31,2025](#)29Oct2025EAND-0.460 (-2.164%)[Emirates Telecom. Group Company PJSC Financial Results for the Period Ended September 30,2025](#)28Oct2025EAND-0.460 (-2.164%)[Emirates Telecom. Group Company PJSC Management Discussion and Analysis Report for the Period Ended September 30,2025](#)
+from49.00%Disclosures[View All](/en/main-market/company-profile/disclosures?symbols=EAND&secCode=EAND) 12Feb 2026EAND -0.360 (-1.693%)[Preliminary Financial Results for the Period Ended December 31,2025](#)31Dec 2025EAND -0.360 (-1.693%)[PTCL Group completes the full acquisition of Telenor Pakistan](#)18Dec 2025EAND -0.360 (-1.693%) [O2 Slovakia signs an agreement to acquire 100% stake of UPC Slovakia from Liberty Global](#)09Dec 2025EAND -0.360 (-1.693%)[Board Meeting Results held on 09/12/2025 at 13:00](#) 04Dec 2025EAND -0.360 (-1.693%)[Announcement of Board Meeting to be held on 09/12/2025 at 13:00](#) DisclaimerFinancial Reports[View All](/en/main-market/company-profile/financial-reports?symbols=EAND&secCode=) 12Feb 2026EAND -0.360 (-1.693%)[Emirates Telecom. Group Company PJSC Preliminary Financial Results for the Period Ended December 31,2025](#)29Oct 2025EAND -0.360 (-1.693%)[Emirates Telecom. Group Company PJSC Financial Results for the Period Ended September 30,2025](#)28Oct 2025EAND -0.360 (-1.693%)[Emirates Telecom. Group Company PJSC Management Discussion and Analysis Report for the Period Ended September 30,2025](#)
 
 ## RECENT TRADES
 
 | Date | Open (AED) | Low (AED) | High (AED) | Close (AED) | Value (AED) | Volume | Trades |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 13 Feb 2026 | 21.260 | 20.620 | 21.260 | 20.840 | 44,415,467.48 | 2,134,552 | 1,040 |
+| 13 Feb 2026 | 21.260 | 20.620 | 21.260 | 20.900 | 73,419,364.44 | 3,523,624 | 1,395 |
 | 12 Feb 2026 | 21.500 | 20.980 | 21.500 | 21.260 | 93,804,220.76 | 4,420,514 | 1,530 |
 | 11 Feb 2026 | 20.900 | 20.720 | 21.500 | 21.500 | 90,660,919.20 | 4,287,338 | 1,463 |
 | 10 Feb 2026 | 20.840 | 20.760 | 20.980 | 20.960 | 45,788,372.50 | 2,192,206 | 1,078 |

@@ -27,11 +27,13 @@ try:
     from intelligence_hub.utils.storage_manager import StorageManager
     from intelligence_hub.scrapers.download_manager import DownloadManager
     from intelligence_hub.scrapers.bot_handler import BotHandler
+    from intelligence_hub.utils.adx_chart_extractor import ADXChartExtractor
 except ImportError:
     WebScraperConnector = None
     StorageManager = None
     DownloadManager = None
     BotHandler = None
+    ADXChartExtractor = None
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -204,6 +206,18 @@ class ADXScraper:
                     elif page_type == "financials":
                         # This method clicks tabs and triggers data loading
                         extracted_data = await self._interact_and_extract_financials(page, ticker, page_type)
+                    elif page_type == "orderbook":
+                        # Extract chart data using ADXChartExtractor
+                        logger.info(f"Extracting stock chart data for {ticker}...")
+                        try:
+                            if ADXChartExtractor:
+                                chart_extractor = ADXChartExtractor()
+                                await chart_extractor.extract(url)
+                                logger.info(f"Successfully extracted chart data for {ticker}")
+                            else:
+                                logger.warning("ADXChartExtractor not available, skipping chart extraction")
+                        except Exception as e:
+                            logger.error(f"Failed to extract chart data for {ticker}: {e}")
                     elif page_type in ["disclosures", "assembly_meetings", "fundamentals"]:
                         extracted_data = await self._generic_document_extract(page, ticker, page_type)
                     

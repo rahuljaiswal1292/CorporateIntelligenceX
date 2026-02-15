@@ -7,6 +7,7 @@ import uuid
 from pathlib import Path
 from intelligence_hub.ui.styles import get_custom_css
 from intelligence_hub.core.mock_data import get_company_data
+from intelligence_hub.llm.models import LLMModel
 
 # Force reload backend modules to pick up state changes
 import sys
@@ -247,13 +248,27 @@ def run_investigation(query_or_resume, pipeline_placeholder=None, resolved_place
         update_sidebar_logs()
 
     # 2. Select Graph & Input
+    # Extract LLM config from session state (UI sliders)
+    llm_config = {
+        "model": st.session_state.get("llm_model_select", "gpt-4-turbo"),
+        "temperature": st.session_state.get("llm_temperature", 0.0),
+        "top_p": st.session_state.get("llm_top_p", 1.0),
+        "frequency_penalty": st.session_state.get("llm_freq_penalty", 0.0)
+    }
+    
     if not resume_mode:
         graph = get_cached_resolution_graph_v4()
-        input_data = {"query": query, "logs": []}
+        input_data = {
+            "query": query, 
+            "logs": [],
+            "llm_config": llm_config
+        }
         processed_logs = set()
     else:
         graph = get_cached_enrichment_graph_v4()
         input_data = st.session_state.intermediate_state
+        # Update LLM config in case user changed settings before continuing
+        input_data["llm_config"] = llm_config
         processed_logs = set(input_data.get('logs', []))
 
     # 3. Setup Stream
@@ -454,10 +469,10 @@ with st.sidebar:
     # Model Selector
     st.selectbox(
         "LLM Model",
-        ["gpt-4-turbo", "gpt-4o", "gpt-3.5-turbo"],
+        [model.value for model in LLMModel],
         index=0,
         key="llm_model_select",
-        help="Select the underlying Long Language Model for agents."
+        help="Select the underlying Large Language Model for agents."
     )
     
     # Parameters

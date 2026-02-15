@@ -12,7 +12,7 @@ from serpapi import GoogleSearch
 from intelligence_hub.config.config import SERPAPI_API_KEY
 from .base_agent import BaseAgent
 from intelligence_hub.graph.state import AgentState
-from intelligence_hub.connectors.llm import LLMConnector
+from intelligence_hub.llm.connector import LLMConnector
 from intelligence_hub.storage.corporate_profile_store import (
     CorporateProfileStore,
 )

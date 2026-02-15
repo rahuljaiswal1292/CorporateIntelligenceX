@@ -169,6 +169,7 @@ def render_resolved_ui(placeholder=None, key="btn_continue_investigation"):
         kg_html = ""    # Hide KG by default
         show_stakeholders = False
         website_html = "" # Hide website by default
+        qa_html = ""      # Hide Q&A by default
 
         # Override with real data if profile exists
         if st.session_state.canonical_name and st.session_state.company_profile:
@@ -274,6 +275,24 @@ def render_resolved_ui(placeholder=None, key="btn_continue_investigation"):
             if "Headquarters" not in kg_data and profile.get("headquarters"): kg_data["Headquarters"] = profile.get("headquarters")
             if "Type" not in kg_data and (kg_source.get("type") or profile.get("type")): 
                 kg_data["Type"] = kg_source.get("type") or profile.get("type")
+            
+            # 4. Industry/Sector & Stock
+            industry = profile.get("industry") or profile.get("sector")
+            if industry: kg_data["Industry"] = industry
+            
+            ticker = profile.get("ticker")
+            exchange = profile.get("exchange")
+            if ticker and ticker != "N/A":
+                kg_data["Stock"] = f"{exchange}:{ticker}" if exchange else ticker
+            
+            # 4. Industry/Sector & Stock
+            industry = profile.get("industry") or profile.get("sector")
+            if industry: kg_data["Industry"] = industry
+            
+            ticker = profile.get("ticker")
+            exchange = profile.get("exchange")
+            if ticker and ticker != "N/A":
+                kg_data["Stock"] = f"{exchange}:{ticker}" if exchange else ticker
 
             # Subsidiaries
             subs = kg_source.get("subsidiaries") or profile.get("subsidiaries")
@@ -298,6 +317,7 @@ def render_resolved_ui(placeholder=None, key="btn_continue_investigation"):
             # Stakeholders & Shareholders Logic
             leadership_names = []
             shareholders_names = []
+            shareholders = profile.get("major_shareholders") or profile.get("ownership_structure", {}).get("major_shareholders", [])
             
             # Parse Leadership (List or Dict)
             if isinstance(leadership_data, list):
@@ -338,13 +358,23 @@ def render_resolved_ui(placeholder=None, key="btn_continue_investigation"):
                 show_stakeholders = True
                 stakeholders_html = "".join(parts)
             
-            # Insights
-            insights_list = profile.get("key_insights", [])
-            if insights_list and isinstance(insights_list, list):
-                insights_html = ""
-                for insight in insights_list[:3]:
-                    if isinstance(insight, str):
-                        insights_html += f'<div class="insight-item">💡 {insight}</div>'
+            # Common Questions (SERP Q&A)
+            qa_list = profile.get("common_questions", [])
+            if qa_list and isinstance(qa_list, list):
+                qa_items = []
+                for item in qa_list[:3]:
+                    q = item.get("question", "")
+                    a = item.get("answer", "") or item.get("snippet", "")
+                    if q and a:
+                        qa_items.append(f'<div style="margin-bottom:8px;"><strong style="color:#555;">Q: {q}</strong><br><span style="color:#666; font-size:0.9rem;">{a}</span></div>')
+                
+                if qa_items:
+                    qa_html = f'''
+                    <div class="summary-section" style="margin-top:20px; border-top:1px solid #eee; padding-top:10px;">
+                        <h4>Common Questions</h4>
+                        <div>{"".join(qa_items)}</div>
+                    </div>
+                    '''
                 
             # Social Links
             socials = profile.get("social_media", {})
@@ -387,12 +417,9 @@ def render_resolved_ui(placeholder=None, key="btn_continue_investigation"):
                     <h4>Key Stakeholders</h4>
                     <div>{stakeholders_html}</div>
                 </div>''' if show_stakeholders else ''}
-                
-                <div class="summary-section">
-                    <h4>Key Insights</h4>
-                    <div>{insights_html}</div>
-                </div>
             </div>
+            
+            {qa_html}
             
             <div class="summary-section">
                 <h4>Connect</h4>

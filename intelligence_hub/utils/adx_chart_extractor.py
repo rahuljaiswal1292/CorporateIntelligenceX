@@ -118,6 +118,7 @@ class ADXChartExtractor:
                     logger.warning("No chart data captured. Waiting a bit more...")
                     await asyncio.sleep(10)
 
+
                 # Final processing
                 if self.captured_data:
                     self._process_data()
@@ -130,6 +131,87 @@ class ADXChartExtractor:
                 logger.error(f"Error during extraction: {e}")
             finally:
                 await browser.close()
+
+    async def extract_from_page(self, page: Page, url: str):
+        """
+        Extract chart data using an existing page (no new browser instance).
+        This is more efficient when called from an existing scraper session.
+        """
+        self.target_url = url
+        self.symbol = self._extract_symbol_from_url(url)
+        self.target_symbol = self.symbol
+        logger.info(f"Starting extraction from existing page for: {self.symbol}")
+        
+        try:
+            # Setup network listeners
+            page.on("request", self._handle_request)
+            page.on("response", self._handle_response)
+            
+            # The page is already on the orderbook URL, so we don't need to navigate
+            # Just wait for content to load
+            logger.info("Waiting for chart content to load...")
+            await page.wait_for_timeout(2000)
+            
+            # Scroll to bring the chart into view
+            await page.evaluate("window.scrollTo(0, 800)")
+            await asyncio.sleep(3)
+            
+            # Try to trigger 3-month history via interaction
+            await self._trigger_3month_history(page)
+            
+            # If we discovered the API, fetch 3 months (100 records)
+            if self.discovered_api_url:
+                logger.info(f"Using discovered API: {self.discovered_api_url}")
+                
+                # Ensure full_url is constructed safely
+                full_url = self.discovered_api_url
+                if "recordCount=" not in full_url:
+                    if "?" in full_url:
+                        full_url += "&recordCount=100"
+                    else:
+                        full_url += "?recordCount=100"
+                
+                logger.info(f"Fetching 3-month data via request context: {full_url}")
+                try:
+                    response = await page.context.request.get(full_url, headers=self.request_headers)
+                    if response.ok:
+                        history_json = await response.json()
+                        results = history_json.get("response", {}).get("results", [])
+                        if results:
+                            logger.info(f"Successfully captured {len(results)} historical records.")
+                            self.captured_data = [] # Reset to use full history
+                            self._normalize_list_data(results)
+                    else:
+                        logger.error(f"Request context fetch failed: {response.status} {response.status_text}")
+                except Exception as e:
+                    logger.error(f"Failed to fetch history via request context: {e}")
+
+            # If still no data, check for page-level scripts (NEXT_DATA)
+            if not self.captured_data:
+                logger.info("Checking __NEXT_DATA__ for embedded chart data...")
+                next_data = await page.evaluate("() => JSON.stringify(window.__NEXT_DATA__ || {})")
+                if next_data:
+                    try:
+                        self._handle_json_content(json.loads(next_data), "NEXT_DATA")
+                    except: pass
+
+            if not self.captured_data:
+                logger.warning("No chart data captured. Waiting a bit more...")
+                await asyncio.sleep(10)
+
+            # Final processing
+            if self.captured_data:
+                self._process_data()
+                self._save_to_csv()
+                logger.info("Extraction complete.")
+            else:
+                logger.error("Failed to capture any chart data.")
+
+        except Exception as e:
+            logger.error(f"Error during extraction from page: {e}")
+            import traceback
+            traceback.print_exc()
+
 
     def _extract_symbol_from_url(self, url: str) -> str:
         match = re.search(r'symbols=([^&]+)', url)
@@ -333,11 +415,13 @@ if __name__ == "__main__":
     
     # List of tickers to process
     tickers = [
-        'LULU', 
-        'ADNOCGAS',
+        # 'LULU', 
+        # 'ADNOCGAS',
         # 'EAND',
         # 'ADNHC',
         # 'FAB',
+        # 'ALPHADATA',
+        "ALDAR",
     ]
     
     # Allow override from command line

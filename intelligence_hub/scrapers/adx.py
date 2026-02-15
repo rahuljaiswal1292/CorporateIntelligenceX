@@ -27,13 +27,11 @@ try:
     from intelligence_hub.utils.storage_manager import StorageManager
     from intelligence_hub.scrapers.download_manager import DownloadManager
     from intelligence_hub.scrapers.bot_handler import BotHandler
-    from intelligence_hub.utils.adx_chart_extractor import ADXChartExtractor
 except ImportError:
     WebScraperConnector = None
     StorageManager = None
     DownloadManager = None
     BotHandler = None
-    ADXChartExtractor = None
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -47,6 +45,11 @@ try:
     from intelligence_hub.utils.content_cleaner import clean_html_to_markdown
 except ImportError:
     clean_html_to_markdown = lambda x: x # Fallback if cleaner missing
+
+try:
+    from intelligence_hub.utils.adx_chart_extractor import ADXChartExtractor
+except ImportError:
+    ADXChartExtractor = None
 
 # StorageManager imported from utils
 
@@ -191,6 +194,18 @@ class ADXScraper:
 
                 page.on("download", handle_download)
                 
+                # For orderbook pages, setup chart extractor BEFORE navigation
+                chart_extractor = None
+                if page_type == "orderbook" and ADXChartExtractor:
+                    chart_extractor = ADXChartExtractor()
+                    chart_extractor.target_url = url
+                    chart_extractor.symbol = chart_extractor._extract_symbol_from_url(url)
+                    chart_extractor.target_symbol = chart_extractor.symbol
+                    # Attach network listeners BEFORE navigation
+                    page.on("request", chart_extractor._handle_request)
+                    page.on("response", chart_extractor._handle_response)
+                    logger.info(f"Setup chart extractor listeners for {ticker} BEFORE navigation")
+                
                 logger.info(f"Navigating to {page_type}: {url}")
                 try:
                     # Use 'load' for more completeness
@@ -207,17 +222,8 @@ class ADXScraper:
                         # This method clicks tabs and triggers data loading
                         extracted_data = await self._interact_and_extract_financials(page, ticker, page_type)
                     elif page_type == "orderbook":
-                        # Extract chart data using ADXChartExtractor
-                        logger.info(f"Extracting stock chart data for {ticker}...")
-                        try:
-                            if ADXChartExtractor:
-                                chart_extractor = ADXChartExtractor()
-                                await chart_extractor.extract(url)
-                                logger.info(f"Successfully extracted chart data for {ticker}")
-                            else:
-                                logger.warning("ADXChartExtractor not available, skipping chart extraction")
-                        except Exception as e:
-                            logger.error(f"Failed to extract chart data for {ticker}: {e}")
+                        # Extract chart data using pre-configured extractor
+                        extracted_data = await self._extract_orderbook_chart_with_extractor(page, ticker, url, chart_extractor)
                     elif page_type in ["disclosures", "assembly_meetings", "fundamentals"]:
                         extracted_data = await self._generic_document_extract(page, ticker, page_type)
                     
@@ -418,6 +424,95 @@ class ADXScraper:
                 await page.wait_for_selector(".sharecard-title, .companyoverview-pra, h3", timeout=15000)
                 await page.wait_for_timeout(2000)
             except: pass
+            
+    async def _extract_orderbook_chart_with_extractor(self, page: Page, ticker: str, url: str, extractor: 'ADXChartExtractor') -> dict:
+        """
+        Extract chart data from orderbook page using a pre-configured ADXChartExtractor.
+        The extractor should already have network listeners attached BEFORE page navigation.
+        This extracts OHLCV (Open, High, Low, Close, Volume) data and saves it to CSV.
+        """
+        logger.info(f"Extracting orderbook chart data for {ticker} with pre-configured extractor...")
+        
+        if not extractor:
+            logger.warning("ADXChartExtractor not available, skipping chart extraction")
+            return {"chart_extracted": False, "reason": "ADXChartExtractor not available"}
+        
+        try:
+            # The extractor already has listeners attached and has been capturing network traffic
+            # Now we just need to trigger interactions and process the captured data
+            
+            logger.info("Waiting for chart content to load...")
+            await page.wait_for_timeout(2000)
+            
+            # Scroll to bring the chart into view
+            await page.evaluate("window.scrollTo(0, 800)")
+            await asyncio.sleep(3)
+            
+            # Try to trigger 3-month history via interaction
+            await extractor._trigger_3month_history(page)
+            
+            # If we discovered the API, fetch 3 months (100 records)
+            if extractor.discovered_api_url:
+                logger.info(f"Using discovered API: {extractor.discovered_api_url}")
+                
+                # Ensure full_url is constructed safely
+                full_url = extractor.discovered_api_url
+                if "recordCount=" not in full_url:
+                    if "?" in full_url:
+                        full_url += "&recordCount=100"
+                    else:
+                        full_url += "?recordCount=100"
+                
+                logger.info(f"Fetching 3-month data via request context: {full_url}")
+                try:
+                    response = await page.context.request.get(full_url, headers=extractor.request_headers)
+                    if response.ok:
+                        history_json = await response.json()
+                        results = history_json.get("response", {}).get("results", [])
+                        if results:
+                            logger.info(f"Successfully captured {len(results)} historical records.")
+                            extractor.captured_data = [] # Reset to use full history
+                            extractor._normalize_list_data(results)
+                    else:
+                        logger.error(f"Request context fetch failed: {response.status} {response.status_text}")
+                except Exception as e:
+                    logger.error(f"Failed to fetch history via request context: {e}")
+
+            # If still no data, check for page-level scripts (NEXT_DATA)
+            if not extractor.captured_data:
+                logger.info("Checking __NEXT_DATA__ for embedded chart data...")
+                next_data = await page.evaluate("() => JSON.stringify(window.__NEXT_DATA__ || {})")
+                if next_data:
+                    try:
+                        extractor._handle_json_content(json.loads(next_data), "NEXT_DATA")
+                    except: pass
+
+            if not extractor.captured_data:
+                logger.warning("No chart data captured. Waiting a bit more...")
+                await asyncio.sleep(5)
+
+            # Final processing
+            if extractor.captured_data:
+                extractor._process_data()
+                extractor._save_to_csv()
+                logger.info(f"Successfully extracted {len(extractor.processed_df)} chart data points for {ticker}")
+                return {
+                    "chart_extracted": True,
+                    "records_count": len(extractor.processed_df),
+                    "date_range": {
+                        "start": str(extractor.processed_df['Date'].min()),
+                        "end": str(extractor.processed_df['Date'].max())
+                    }
+                }
+            else:
+                logger.warning(f"No chart data extracted for {ticker}")
+                return {"chart_extracted": False, "reason": "No data captured"}
+                
+        except Exception as e:
+            logger.error(f"Error extracting orderbook chart data: {e}")
+            import traceback
+            traceback.print_exc()
+            return {"chart_extracted": False, "reason": str(e)}
             
     def _clean_generic_adx_content(self, html_content: str) -> str:
         """Remove generic ADX noise with maximum prejudice."""
@@ -753,10 +848,10 @@ if __name__ == "__main__":
     tickers  = [
         # 'LULU', 
         # 'ADNOCGAS',
-        'EAND',
+        # 'EAND',
         # 'ADNHC',
-        # 'ALDAR',
-        'FAB',
+        'ALDAR',
+        # 'FAB',
         # 'ALPHADATA'
         ]
     for ticker in tickers:

@@ -40,7 +40,7 @@ st.set_page_config(
     page_title="CorporateIntelligenceX",
     page_icon=image_path,
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 # --- Apply Custom CSS ---
@@ -60,6 +60,8 @@ if "logs" not in st.session_state:
         f"[{datetime.now().strftime('%H:%M:%S')}] **System**: Connected to Vector DB (ChromaDB).",
         f"[{datetime.now().strftime('%H:%M:%S')}] **System**: Ready for Entity Query...",
     ]
+if "company_profile" not in st.session_state:
+    st.session_state.company_profile = None
 if "data" not in st.session_state:
     st.session_state.data = None
 if "analysis_complete" not in st.session_state:
@@ -140,6 +142,83 @@ def render_resolved_ui(placeholder=None, key="btn_continue_investigation"):
                     </div>
                     """)
                 )
+                
+                # Render Company Summary Card if profile exists
+                if st.session_state.company_profile:
+                    profile = st.session_state.company_profile
+                    
+                    # Safe extraction with defaults
+                    desc = profile.get("description", "No description available.")
+                    ticker = profile.get("ticker", "N/A")
+                    exchange = profile.get("exchange", "")
+                    ticker_display = f"{exchange}:{ticker}" if exchange else ticker
+                    
+                    # Stakeholders & Shareholders
+                    leadership = profile.get("leadership", [])
+                    shareholders = profile.get("major_shareholders", [])
+                    # Handle both string lists and detailed lists
+                    stakeholders = []
+                    if isinstance(leadership, list):
+                        stakeholders.extend([p if isinstance(p, str) else p.get("name", str(p)) for p in leadership[:3]])
+                    if isinstance(shareholders, list):
+                        stakeholders.extend([s if isinstance(s, str) else s.get("name", str(s)) for s in shareholders[:3]])
+                    
+                    stakeholders_html = "".join([f'<span class="stakeholder-badge">{s}</span>' for s in stakeholders]) if stakeholders else '<span class="stakeholder-badge">N/A</span>'
+                    
+                    # Insights
+                    insights_list = profile.get("key_insights", [])
+                    insights_html = ""
+                    if insights_list and isinstance(insights_list, list):
+                        for insight in insights_list[:3]:
+                            if isinstance(insight, str):
+                                insights_html += f'<div class="insight-item">💡 {insight}</div>'
+                    else:
+                        insights_html = '<div class="insight-item" style="color:#888;">No specific insights available</div>'
+                        
+                    # Social Links
+                    socials = profile.get("social_media", {})
+                    social_html = ""
+                    if isinstance(socials, dict):
+                         for platform, url in socials.items():
+                             icon = "🌐"
+                             if "linkedin" in platform.lower(): icon = "in"
+                             elif "twitter" in platform.lower() or "x.com" in platform.lower(): icon = "𝕏"
+                             elif "facebook" in platform.lower(): icon = "f"
+                             elif "instagram" in platform.lower(): icon = "📸"
+                             
+                             social_html += f'<a href="{url}" target="_blank" class="social-icon" title="{platform}">{icon}</a>'
+                    
+                    st.html(f"""
+                    <div class="summary-card">
+                        <div class="summary-header">
+                            <div class="summary-title">📊 Company Summary</div>
+                            {f'<div class="summary-ticker">{ticker_display}</div>' if ticker and ticker != "N/A" else ''}
+                        </div>
+                        
+                        <div class="summary-description">
+                            {desc}
+                        </div>
+                        
+                        <div class="summary-grid">
+                            <div class="summary-section">
+                                <h4>Key Stakeholders</h4>
+                                <div>{stakeholders_html}</div>
+                            </div>
+                            
+                            <div class="summary-section">
+                                <h4>Key Insights</h4>
+                                <div>{insights_html}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="summary-section">
+                            <h4>Connect</h4>
+                            <div class="social-links">
+                                {social_html if social_html else '<span style="color:#888; font-size:0.9rem;">No social profiles found</span>'}
+                            </div>
+                        </div>
+                    </div>
+                    """)
             else:
                 # Default state
                 st.html(
@@ -298,6 +377,14 @@ def run_investigation(query_or_resume, pipeline_placeholder=None, resolved_place
             
             # Capture canonical name from state if available
             state_canonical = state.get("canonical_name") or state.get("company_name")
+            
+            # Capture full profile data if available (e.g. from SERP agent)
+            if "data" in state and isinstance(state["data"], dict):
+                 st.session_state.company_profile = state["data"]
+            elif "enrichments" in state and isinstance(state["enrichments"], dict):
+                 # Sometimes under enrichments key
+                 st.session_state.company_profile = state["enrichments"]
+                 
             if state_canonical and not st.session_state.canonical_name:
                 st.session_state.canonical_name = state_canonical
                 # Capture confidence score if available
@@ -570,7 +657,7 @@ with cols[2]:
 
 # Canonical Name Section - professional styling
 st.markdown(
-    '<div class="ui-section-label"><span class="emoji">🏢</span><span>Resolved Company Name</span></div>',
+    '<div class="ui-section-label"></div>',
     unsafe_allow_html=True
 )
 
@@ -585,7 +672,7 @@ if not search_clicked:
 
 # Render Progress Chain (Always visible)
 st.markdown(
-    '<div class="ui-section-label"><span class="emoji">⚙️</span><span>Investigation Pipeline</span></div>',
+    '<div class="ui-section-label"><span class="emoji">⚙️</span><span>Pipeline</span></div>',
     unsafe_allow_html=True
 )
 

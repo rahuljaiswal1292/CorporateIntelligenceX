@@ -170,6 +170,7 @@ def render_resolved_ui(placeholder=None, key="btn_continue_investigation"):
         show_stakeholders = False
         website_html = "" # Hide website by default
         qa_html = ""      # Hide Q&A by default
+        ref_html = ""     # Default empty
 
         # Override with real data if profile exists
         if st.session_state.canonical_name and st.session_state.company_profile:
@@ -500,59 +501,59 @@ def render_resolved_ui(placeholder=None, key="btn_continue_investigation"):
                      </div>
                      '''
         
-            # Render Summary Card HTML (Always Visible)
-            st.html(f"""
-            <div class="summary-card">
-                <div class="summary-header">
-                    <div class="summary-title">
-                        Company Summary
-                        {badge_html}
-                        {f'<div class="summary-ticker" style="margin-left:auto">{ticker_display}</div>' if ticker_display and ticker_display != "N/A" else ''}
-                    </div>
+        # Render Summary Card HTML (Always Visible)
+        st.html(f"""
+        <div class="summary-card">
+            <div class="summary-header">
+                <div class="summary-title">
+                    Company Summary
+                    {badge_html}
+                    {f'<div class="summary-ticker" style="margin-left:auto">{ticker_display}</div>' if ticker_display and ticker_display != "N/A" else ''}
                 </div>
-                
-                <div style="font-size: 0.8rem; color: #666; margin-top: -10px; margin-bottom: 15px; font-style: italic;">
-                    Confidence Reasoning: {reason_text}
+            </div>
+            
+            <div style="font-size: 0.8rem; color: #666; margin-top: -10px; margin-bottom: 15px; font-style: italic;">
+                Confidence Reasoning: {reason_text}
+            </div>
+            
+            <div class="summary-description">
+                {desc}
+            </div>
+            
+            {website_html}
+            
+            {kg_html}
+            
+            <div class="summary-grid">
+                {f'''<div class="summary-section">
+                    <h4>Key Stakeholders</h4>
+                    <div>{stakeholders_html}</div>
+                </div>''' if show_stakeholders else ''}
+            </div>
+            
+            {qa_html}
+            
+            <div class="summary-section">
+                <h4>Connect</h4>
+                <div class="social-links">
+                    {social_html}
                 </div>
-                
-                <div class="summary-description">
-                    {desc}
-                </div>
-                
-                {website_html}
-                
-                {kg_html}
-                
-                <div class="summary-grid">
-                    {f'''<div class="summary-section">
-                        <h4>Key Stakeholders</h4>
-                        <div>{stakeholders_html}</div>
-                    </div>''' if show_stakeholders else ''}
-                </div>
-                
-                {qa_html}
-                
-                <div class="summary-section">
-                    <h4>Connect</h4>
-                    <div class="social-links">
-                        {social_html}
-                    </div>
-                </div>
+            </div>
 
-                {ref_html}
-            </div>
-            </div>
-            """)
-            
-            # Render Continue Button Below Summary Card
-            st.markdown('<div style="margin-top: 15px;"></div>', unsafe_allow_html=True)
-            
-            # Button logic
-            btn_disabled = (not st.session_state.canonical_name) or st.session_state.is_resolving
-            # Only show button if NOT complete (Resume case)
-            if not st.session_state.analysis_complete and st.session_state.canonical_name:
-                 if st.button("Continue Investigation ->", key=key, disabled=btn_disabled, type="primary", use_container_width=True):
-                     return True
+            {ref_html}
+        </div>
+        </div>
+        """)
+        
+        # Render Continue Button Below Summary Card
+        st.markdown('<div style="margin-top: 15px;"></div>', unsafe_allow_html=True)
+        
+        # Button logic
+        btn_disabled = (not st.session_state.canonical_name) or st.session_state.is_resolving
+        # Only show button if NOT complete (Resume case)
+        if not st.session_state.analysis_complete and st.session_state.canonical_name:
+             if st.button("Continue Investigation ->", key=key, disabled=btn_disabled, type="primary", use_container_width=True):
+                 return True
 
     return False
 

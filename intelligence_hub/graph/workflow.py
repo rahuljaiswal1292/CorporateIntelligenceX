@@ -14,7 +14,7 @@ from intelligence_hub.agents.news_agent import NewsAgent
 from intelligence_hub.agents.ded_agent import DEDAgent
 
 # Connectors and storage
-from intelligence_hub.connectors.llm import LLMConnector
+from intelligence_hub.llm.connector import LLMConnector
 from intelligence_hub.storage.corporate_profile_store import CorporateProfileStore
 from intelligence_hub.config.config import CHROMADB_PERSIST_DIRECTORY
 
@@ -31,7 +31,10 @@ def run_enrichment_node(state: AgentState):
     try:
         # Initialize dependencies
         store = CorporateProfileStore()
-        llm_connector = LLMConnector()
+        
+        # Extract LLM config from state (if provided by UI)
+        llm_config = state.get("llm_config", {})
+        llm_connector = LLMConnector(config=llm_config)
 
         # Log collector
         def log_handler(msg):
@@ -86,7 +89,10 @@ def run_wikipedia_node(state: AgentState):
     
     try:
         store = CorporateProfileStore()
-        llm_connector = LLMConnector()
+        
+        # Extract LLM config from state (if provided by UI)
+        llm_config = state.get("llm_config", {})
+        llm_connector = LLMConnector(config=llm_config)
         
         def log_handler(msg):
             logs.append(msg.strip())
@@ -115,7 +121,10 @@ def run_news_node(state: AgentState):
     
     try:
         store = CorporateProfileStore()
-        llm_connector = LLMConnector()
+        
+        # Extract LLM config from state (if provided by UI)
+        llm_config = state.get("llm_config", {})
+        llm_connector = LLMConnector(config=llm_config)
         
         def log_handler(msg):
             logs.append(msg.strip())
@@ -144,7 +153,10 @@ def run_ded_node(state: AgentState):
     
     try:
         store = CorporateProfileStore()
-        llm_connector = LLMConnector()
+        
+        # Extract LLM config from state (if provided by UI)
+        llm_config = state.get("llm_config", {})
+        llm_connector = LLMConnector(config=llm_config)
         
         def log_handler(msg):
             logs.append(msg.strip())
@@ -177,23 +189,43 @@ def create_resolution_graph():
 
 def create_enrichment_graph():
     """Graph 2: Enrichment and beyond"""
-    # Initialize shared dependencies
-    llm_connector = LLMConnector()
+    # Initialize shared dependencies that don't need LLM
     store = CorporateProfileStore(persist_directory=CHROMADB_PERSIST_DIRECTORY)
 
-    # Initialize Agents
+    # Initialize Agents that don't use LLM
     scraper = ScraperOrchestrator()
     vectorizer = VectorizerAgent()
-    analyst = AnalystAgent(
-        company_name="placeholder",  # Will be updated from state
-        llm_connector=llm_connector,
-        profile_store=store,
-    )
-    pdf_agent = PdfAgent(
-        company_name="placeholder",  # Will be updated from state
-        llm_connector=llm_connector,
-        profile_store=store,
-    )
+    
+    # Create wrapper functions for agents that need LLM config from state
+    def run_analyst_node(state: AgentState):
+        """Wrapper for AnalystAgent that extracts LLM config from state"""
+        company_name = state.get("canonical_name") or state.get("company_name") or state.get("query", "Unknown")
+        
+        # Extract LLM config from state
+        llm_config = state.get("llm_config", {})
+        llm_connector = LLMConnector(config=llm_config)
+        
+        analyst = AnalystAgent(
+            company_name=company_name,
+            llm_connector=llm_connector,
+            profile_store=store,
+        )
+        return analyst.run(state)
+    
+    def run_pdf_agent_node(state: AgentState):
+        """Wrapper for PdfAgent that extracts LLM config from state"""
+        company_name = state.get("canonical_name") or state.get("company_name") or state.get("query", "Unknown")
+        
+        # Extract LLM config from state
+        llm_config = state.get("llm_config", {})
+        llm_connector = LLMConnector(config=llm_config)
+        
+        pdf_agent = PdfAgent(
+            company_name=company_name,
+            llm_connector=llm_connector,
+            profile_store=store,
+        )
+        return pdf_agent.run(state)
 
     workflow = StateGraph(AgentState)
     
@@ -204,8 +236,8 @@ def create_enrichment_graph():
     workflow.add_node("ded", run_ded_node)
     workflow.add_node("scraper", scraper.run)
     workflow.add_node("vectorizer", vectorizer.run)
-    workflow.add_node("analyst", analyst.run)
-    workflow.add_node("pdf_agent", pdf_agent.run)
+    workflow.add_node("analyst", run_analyst_node)
+    workflow.add_node("pdf_agent", run_pdf_agent_node)
 
     # Edges - Parallel Start
     workflow.set_entry_point("start_enrichment")

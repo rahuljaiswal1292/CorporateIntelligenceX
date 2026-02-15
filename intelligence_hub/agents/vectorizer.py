@@ -3,7 +3,7 @@ import uuid
 import datetime
 from intelligence_hub.graph.state import AgentState
 from intelligence_hub.storage.corporate_profile_store import CorporateProfileStore
-from intelligence_hub.connectors.llm import LLMConnector
+from intelligence_hub.llm.connector import LLMConnector
 
 logger = logging.getLogger(__name__)
 

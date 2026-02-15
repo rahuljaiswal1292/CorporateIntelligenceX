@@ -4,7 +4,7 @@ from intelligence_hub.scrapers.adx import ADXScraper
 from intelligence_hub.scrapers.dfm import DFMScraper
 from intelligence_hub.scrapers.wiki import WikiScraper
 from intelligence_hub.scrapers.yahoo import YahooFinanceScraper
-from intelligence_hub.connectors.scrapingbee import ScrapingBeeConnector
+from intelligence_hub.scrapers.scrapingbee import ScrapingBeeConnector
 from intelligence_hub.storage.corporate_profile_store import CorporateProfileStore
 
 logger = logging.getLogger(__name__)

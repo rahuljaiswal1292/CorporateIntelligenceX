@@ -19,7 +19,7 @@ from pathlib import Path
 
 from .base_agent import BaseAgent
 from intelligence_hub.graph.state import AgentState
-from intelligence_hub.connectors.llm import LLMConnector
+from intelligence_hub.llm.connector import LLMConnector
 from .serpapi_profile_agent import (
     SerpAPIProfileAgent,
 )
@@ -36,7 +36,7 @@ from intelligence_hub.prompts import load_prompt
 from intelligence_hub.config.settings import config
 from intelligence_hub.scrapers.adx import ADXScraper
 from intelligence_hub.scrapers.dfm import DFMScraper
-from intelligence_hub.connectors.scrapingbee import ScrapingBeeConnector
+from intelligence_hub.scrapers.scrapingbee import ScrapingBeeConnector
 import asyncio
 
 

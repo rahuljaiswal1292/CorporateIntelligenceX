@@ -38,3 +38,6 @@ class AgentState(TypedDict):
 
     # Enrichment Data
     enrichments: Dict[str, Any]
+    
+    # LLM Configuration
+    llm_config: Dict[str, Any]  # Contains: model, temperature, top_p, frequency_penalty

@@ -99,12 +99,10 @@ def render_resolved_ui(placeholder=None, key="btn_continue_investigation"):
     
     with context:
         # Layout: Name Display | Continue Button
-        # Try to use vertical_alignment (Streamlit 1.32+)
-        try:
-             col_display, col_btn = st.columns([0.75, 0.25], gap="small", vertical_alignment="center")
-        except TypeError:
-             # Fallback for older versions
-             col_display, col_btn = st.columns([0.75, 0.25], gap="small")
+        # Use simple columns to keep Button aligned with Name at the top
+        # Layout: Name Display (Full Width)
+        # Use container for cleaner layout
+        col_display = st.container()
         
         with col_display:
             if st.session_state.is_resolving and not st.session_state.canonical_name:
@@ -126,7 +124,6 @@ def render_resolved_ui(placeholder=None, key="btn_continue_investigation"):
                 # Resolved state
                 check = '<span class="canonical-check">✓</span>' if st.session_state.analysis_complete else ""
                 status_class = "resolved"
-                confidence_display = f" (Confidence: {st.session_state.confidence_score}%)" if st.session_state.confidence_score else ""
                 
                 st.html(
                     textwrap.dedent(f"""
@@ -136,89 +133,12 @@ def render_resolved_ui(placeholder=None, key="btn_continue_investigation"):
                             <span class="canonical-title">RESOLVED COMPANY NAME</span>
                         </div>
                         <div class="canonical-value {status_class}">
-                            <span class="canonical-text">{st.session_state.canonical_name}{confidence_display}</span>
+                            <span class="canonical-text">{st.session_state.canonical_name}</span>
                             {check}
                         </div>
                     </div>
                     """)
                 )
-                
-                # Render Company Summary Card if profile exists
-                if st.session_state.company_profile:
-                    profile = st.session_state.company_profile
-                    
-                    # Safe extraction with defaults
-                    desc = profile.get("description", "No description available.")
-                    ticker = profile.get("ticker", "N/A")
-                    exchange = profile.get("exchange", "")
-                    ticker_display = f"{exchange}:{ticker}" if exchange else ticker
-                    
-                    # Stakeholders & Shareholders
-                    leadership = profile.get("leadership", [])
-                    shareholders = profile.get("major_shareholders", [])
-                    # Handle both string lists and detailed lists
-                    stakeholders = []
-                    if isinstance(leadership, list):
-                        stakeholders.extend([p if isinstance(p, str) else p.get("name", str(p)) for p in leadership[:3]])
-                    if isinstance(shareholders, list):
-                        stakeholders.extend([s if isinstance(s, str) else s.get("name", str(s)) for s in shareholders[:3]])
-                    
-                    stakeholders_html = "".join([f'<span class="stakeholder-badge">{s}</span>' for s in stakeholders]) if stakeholders else '<span class="stakeholder-badge">N/A</span>'
-                    
-                    # Insights
-                    insights_list = profile.get("key_insights", [])
-                    insights_html = ""
-                    if insights_list and isinstance(insights_list, list):
-                        for insight in insights_list[:3]:
-                            if isinstance(insight, str):
-                                insights_html += f'<div class="insight-item">💡 {insight}</div>'
-                    else:
-                        insights_html = '<div class="insight-item" style="color:#888;">No specific insights available</div>'
-                        
-                    # Social Links
-                    socials = profile.get("social_media", {})
-                    social_html = ""
-                    if isinstance(socials, dict):
-                         for platform, url in socials.items():
-                             icon = "🌐"
-                             if "linkedin" in platform.lower(): icon = "in"
-                             elif "twitter" in platform.lower() or "x.com" in platform.lower(): icon = "𝕏"
-                             elif "facebook" in platform.lower(): icon = "f"
-                             elif "instagram" in platform.lower(): icon = "📸"
-                             
-                             social_html += f'<a href="{url}" target="_blank" class="social-icon" title="{platform}">{icon}</a>'
-                    
-                    st.html(f"""
-                    <div class="summary-card">
-                        <div class="summary-header">
-                            <div class="summary-title">📊 Company Summary</div>
-                            {f'<div class="summary-ticker">{ticker_display}</div>' if ticker and ticker != "N/A" else ''}
-                        </div>
-                        
-                        <div class="summary-description">
-                            {desc}
-                        </div>
-                        
-                        <div class="summary-grid">
-                            <div class="summary-section">
-                                <h4>Key Stakeholders</h4>
-                                <div>{stakeholders_html}</div>
-                            </div>
-                            
-                            <div class="summary-section">
-                                <h4>Key Insights</h4>
-                                <div>{insights_html}</div>
-                            </div>
-                        </div>
-                        
-                        <div class="summary-section">
-                            <h4>Connect</h4>
-                            <div class="social-links">
-                                {social_html if social_html else '<span style="color:#888; font-size:0.9rem;">No social profiles found</span>'}
-                            </div>
-                        </div>
-                    </div>
-                    """)
             else:
                 # Default state
                 st.html(
@@ -235,15 +155,265 @@ def render_resolved_ui(placeholder=None, key="btn_continue_investigation"):
                     """)
                 )
         
-        with col_btn:
-             # Button is enabled only if resolved name exists and NOT currently resolving
-             btn_disabled = (not st.session_state.canonical_name) or st.session_state.is_resolving
-             
-             # Only show button if NOT complete (Resume case)
-             # If complete, we don't need a continue button.
-             if not st.session_state.analysis_complete:
-                 if st.button("▶️ Continue", key=key, type="primary", use_container_width=True, disabled=btn_disabled):
-                     return True
+        
+        # (Button moved to bottom)
+
+        # Prepare Profile Data (Default: Not Available)
+        desc = "No company profile data available yet. Start a search to generate insights."
+        ticker_display = ""
+        reason_text = "No data available"
+        stakeholders_html = "" 
+        insights_html = '<div class="insight-item" style="color:#888;">No insights generated yet</div>'
+        social_html = '<span style="color:#888; font-size:0.9rem;">Not Available</span>'
+        badge_html = "" # Hide badge by default
+        kg_html = ""    # Hide KG by default
+        show_stakeholders = False
+        website_html = "" # Hide website by default
+
+        # Override with real data if profile exists
+        if st.session_state.canonical_name and st.session_state.company_profile:
+            profile = st.session_state.company_profile
+            
+            # Safe extraction with defaults
+            desc = profile.get("description", "No description available.")
+            ticker = profile.get("ticker", "N/A")
+            exchange = profile.get("exchange", "")
+            ticker_display = f"{exchange}:{ticker}" if exchange else (ticker if ticker else "")
+            
+            # Confidence Logic
+            confidence = profile.get("confidence_score", 0)
+            conf_class = "medium"
+            if confidence >= 90: conf_class = "" # default green
+            elif confidence < 50: conf_class = "low"
+            
+            badge_html = f"""
+            <div class="confidence-badge {conf_class}">
+                <span>{confidence}% Confidence</span>
+            </div>
+            """
+            
+            # Construct reasoning based on available data signals
+            signals = profile.get("data_quality_signals", {})
+            reasons = []
+            if signals.get("knowledge_panel"): reasons.append("Knowledge Panel Verified")
+            if signals.get("official_website"): reasons.append("Official Website")
+            if signals.get("wikipedia_presence"): reasons.append("Wikipedia")
+            reason_text = " • ".join(reasons) if reasons else "Based on search results"
+
+            # Website extraction
+            website_url = profile.get("website") or profile.get("official_website")
+            website_html = ""
+            if website_url:
+                display_url = website_url.replace("https://", "").replace("http://", "").rstrip("/")
+                website_html = f"""
+                <div style="margin-bottom: 20px; font-size: 0.9rem;">
+                    <a href="{website_url}" target="_blank" style="text-decoration: none; color: #0066cc; font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+                        🔗 {display_url}
+                    </a>
+                </div>
+                """
+
+            # Knowledge Graph Extraction (Google Style)
+            # Check nested object first (per new prompt), then fallback to specific fields
+            kg_source = profile.get("knowledge_graph", {})
+            if not isinstance(kg_source, dict): kg_source = {}
+            
+            kg_data = {}
+            
+            # 1. Customer Service (High priority in Google Panel)
+            if kg_source.get("customer_service"): kg_data["Customer service"] = kg_source.get("customer_service")
+            
+            # 2. Leadership (CEO, Founder) - Try KG first, then generic profile
+            ceo = kg_source.get("ceo")
+            founder = kg_source.get("founder")
+            
+            # Fallback to leadership list/dict if not in KG dict
+            leadership_data = profile.get("leadership", [])
+            
+            # Helper to check leadership fields in list or dict
+            if not ceo:
+                if isinstance(leadership_data, dict):
+                    # Try keys like "CEO", "Chief Executive Officer"
+                    for k, v in leadership_data.items():
+                        if "ceo" in k.lower() or "chief executive" in k.lower():
+                            ceo = v
+                            break
+                        if "ceo" in str(v).lower(): 
+                            ceo = v # In case value is "CEO: Name"
+                            break
+                elif isinstance(leadership_data, list):
+                     for person in leadership_data:
+                         p_name = person if isinstance(person, str) else person.get("name", "")
+                         if "ceo" in p_name.lower() or "chief executive" in p_name.lower(): 
+                             ceo = p_name
+                             break
+            
+            if not founder:
+                if isinstance(leadership_data, dict):
+                    # Try keys like "Founder", "Co-Founder"
+                    for k, v in leadership_data.items():
+                        if "founder" in k.lower():
+                            founder = v
+                            break
+                elif isinstance(leadership_data, list):
+                     for person in leadership_data:
+                         p_name = person if isinstance(person, str) else person.get("name", "")
+                         if "founder" in p_name.lower(): 
+                             founder = p_name
+                             break
+
+            if ceo: kg_data["CEO"] = ceo
+            if founder: kg_data["Founder"] = founder
+
+            # 3. Other Core Fields
+            if kg_source.get("founded"): kg_data["Founded"] = kg_source.get("founded")
+            if kg_source.get("headquarters"): kg_data["Headquarters"] = kg_source.get("headquarters")
+            
+            # Check for fallbacks
+            if "Founded" not in kg_data and profile.get("founded"): kg_data["Founded"] = profile.get("founded")
+            if "Headquarters" not in kg_data and profile.get("headquarters"): kg_data["Headquarters"] = profile.get("headquarters")
+            if "Type" not in kg_data and (kg_source.get("type") or profile.get("type")): 
+                kg_data["Type"] = kg_source.get("type") or profile.get("type")
+
+            # Subsidiaries
+            subs = kg_source.get("subsidiaries") or profile.get("subsidiaries")
+            if subs:
+                if isinstance(subs, list):
+                     kg_data["Subsidiaries"] = ", ".join([str(s) for s in subs[:3]]) + ("..." if len(subs)>3 else "")
+                else:
+                     kg_data["Subsidiaries"] = str(subs)
+
+            if kg_data:
+                 rows = []
+                 for k, v in kg_data.items():
+                     # Google Style: Bold Key + Value (Inline)
+                     rows.append(f"""
+                     <div style="margin-bottom: 5px; font-size: 0.9rem; line-height: 1.5; color: #202124;">
+                        <span style="font-weight: 700; color: #202124;">{k}:</span>
+                        <span style="color: #4d5156;">{v}</span>
+                     </div>
+                     """)
+                 kg_html = f'<div style="margin-top: 15px; margin-bottom: 20px;">{"".join(rows)}</div>'
+
+            # Stakeholders & Shareholders Logic
+            leadership_names = []
+            shareholders_names = []
+            
+            # Parse Leadership (List or Dict)
+            if isinstance(leadership_data, list):
+                leadership_names.extend([p if isinstance(p, str) else p.get("name", str(p)) for p in leadership_data[:4]])
+            elif isinstance(leadership_data, dict):
+                 # Flatten dict values: "Name" or "Name (Role)"
+                 for k, v in list(leadership_data.items())[:4]:
+                     # If key is Role (CEO) and value is Name (Amit Jain), show Name
+                     if k.lower() in ["ceo", "founder", "chairman", "president"]:
+                         leadership_names.append(v)
+                     else:
+                         leadership_names.append(f"{v}")
+
+            # Parse Shareholders (List or Dict)
+            if isinstance(shareholders, list):
+                shareholders_names.extend([s if isinstance(s, str) else s.get("name", str(s)) for s in shareholders[:4]])
+            elif isinstance(shareholders, dict):
+                 for k, v in list(shareholders.items())[:4]:
+                     # If key is Name (longer) and value is Role (shorter description)
+                     if len(k) > len(v): 
+                          shareholders_names.append(f"{k} ({v})")
+                     else:
+                          shareholders_names.append(f"{v} ({k})")
+            
+            # Build HTML
+            parts = []
+            if leadership_names:
+                parts.append('<div style="margin-bottom:8px;"><strong style="color:#555;">Leadership:</strong></div>')
+                for name in leadership_names:
+                     parts.append(f'<div style="margin-bottom:4px; padding-left:10px; border-left:2px solid #ddd;">👤 {name}</div>')
+            
+            if shareholders_names:
+                parts.append('<div style="margin-top:12px; margin-bottom:8px;"><strong style="color:#555;">Major Shareholders:</strong></div>')
+                for name in shareholders_names:
+                     parts.append(f'<div style="margin-bottom:4px; padding-left:10px; border-left:2px solid #ddd;">🏢 {name}</div>')
+
+            if parts:
+                show_stakeholders = True
+                stakeholders_html = "".join(parts)
+            
+            # Insights
+            insights_list = profile.get("key_insights", [])
+            if insights_list and isinstance(insights_list, list):
+                insights_html = ""
+                for insight in insights_list[:3]:
+                    if isinstance(insight, str):
+                        insights_html += f'<div class="insight-item">💡 {insight}</div>'
+                
+            # Social Links
+            socials = profile.get("social_media", {})
+            if isinstance(socials, dict) and socials:
+                 social_html = ""
+                 for platform, url in socials.items():
+                     icon = "🌐"
+                     if "linkedin" in platform.lower(): icon = "in"
+                     elif "twitter" in platform.lower() or "x.com" in platform.lower(): icon = "𝕏"
+                     elif "facebook" in platform.lower(): icon = "f"
+                     elif "instagram" in platform.lower(): icon = "📸"
+                     
+                     social_html += f'<a href="{url}" target="_blank" class="social-icon" title="{platform}">{icon}</a>'
+        
+        # Render Summary Card HTML (Always Visible)
+        st.html(f"""
+        <div class="summary-card">
+            <div class="summary-header">
+                <div class="summary-title">
+                    Company Summary
+                    {badge_html}
+                    {f'<div class="summary-ticker" style="margin-left:auto">{ticker_display}</div>' if ticker_display and ticker_display != "N/A" else ''}
+                </div>
+            </div>
+            
+            <div style="font-size: 0.8rem; color: #666; margin-top: -10px; margin-bottom: 15px; font-style: italic;">
+                Confidence Reasoning: {reason_text}
+            </div>
+            
+            <div class="summary-description">
+                {desc}
+            </div>
+            
+            {website_html}
+            
+            {kg_html}
+            
+            <div class="summary-grid">
+                {f'''<div class="summary-section">
+                    <h4>Key Stakeholders</h4>
+                    <div>{stakeholders_html}</div>
+                </div>''' if show_stakeholders else ''}
+                
+                <div class="summary-section">
+                    <h4>Key Insights</h4>
+                    <div>{insights_html}</div>
+                </div>
+            </div>
+            
+            <div class="summary-section">
+                <h4>Connect</h4>
+                <div class="social-links">
+                    {social_html}
+                </div>
+            </div>
+        </div>
+        </div>
+        """)
+        
+        # Render Continue Button Below Summary Card
+        st.markdown('<div style="margin-top: 15px;"></div>', unsafe_allow_html=True)
+        
+        # Button logic
+        btn_disabled = (not st.session_state.canonical_name) or st.session_state.is_resolving
+        # Only show button if NOT complete (Resume case)
+        if not st.session_state.analysis_complete and st.session_state.canonical_name:
+             if st.button("Continue Investigation ->", key=key, disabled=btn_disabled, type="primary", use_container_width=True):
+                 return True
+
     return False
 
 

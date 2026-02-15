@@ -51,5 +51,9 @@ Example Output Structure:
   }},
   "leadership": ["CEO Name", "Founder Name"],
   "social_media": {{"linkedin": "url", "twitter": "url"}},
-  "key_insights": ["Insight 1", "Insight 2"]
+  "key_insights": ["Insight 1", "Insight 2"],
+  "common_questions": [
+    {{"question": "Who owns Company X?", "answer": "Founder Name and Investors..."}},
+    {{"question": "What does Company X do?", "answer": "It provides..."}}
+  ]
 }} with extracted fields and metadata.

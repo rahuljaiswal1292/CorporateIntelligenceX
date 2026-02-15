@@ -80,7 +80,7 @@ class BaseAgent(ABC):
 
     def save_to_disk(self, data: Dict, filename: str) -> str:
         """
-        Save data to company-specific directory with timestamp subdirectory
+        Save data to company-specific directory with timestamp appended to filename
 
         Args:
             data: Data to save
@@ -91,11 +91,12 @@ class BaseAgent(ABC):
         """
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-        # Create timestamped subdirectory
-        timestamped_dir = self.data_dir / timestamp
-        timestamped_dir.mkdir(parents=True, exist_ok=True)
+        # Create combined filename with timestamp
+        name, ext = os.path.splitext(filename)
+        timestamped_filename = f"{name}_{timestamp}{ext}"
 
-        filepath = timestamped_dir / filename
+        # Save directly to company data directory
+        filepath = self.data_dir / timestamped_filename
 
         try:
             with open(filepath, "w", encoding="utf-8") as f:

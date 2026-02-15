@@ -18,6 +18,7 @@ Key extraction priorities:
 - Leadership (CEO, founder, key stakeholders)
 - Major Shareholders/Ownership
 - Key Insights from Search (derived from Q&A/Related Questions)
+- Knowledge Graph Data (Type, Founded, Headquarters, Subsidiaries, Customer Service, etc.)
 - Location (headquarters)
 - Company size (employees, revenue)
 - Stock information (ticker, exchange, market cap)
@@ -30,4 +31,25 @@ Confidence scoring guidelines:
 - 50-69: Some official sources but incomplete data
 - Below 50: Unclear or conflicting information
 
-Output format: JSON with extracted fields and metadata.
+Output format: JSON
+
+Example Output Structure:
+{{
+  "canonical_name": "Exact Legal Name Inc.",
+  "description": "Company description...",
+  "confidence_score": 95,
+  "data_quality_signals": {{
+    "knowledge_panel": true,
+    "official_website": true,
+    "wikipedia_presence": true
+  }},
+  "knowledge_graph": {{
+    "type": "Public Company",
+    "founded": "1997",
+    "headquarters": "City, Country",
+    "subsidiaries": "Sub A, Sub B"
+  }},
+  "leadership": ["CEO Name", "Founder Name"],
+  "social_media": {{"linkedin": "url", "twitter": "url"}},
+  "key_insights": ["Insight 1", "Insight 2"]
+}} with extracted fields and metadata.

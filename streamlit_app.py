@@ -179,7 +179,7 @@ def get_cached_enrichment_graph_v4():
     return create_enrichment_graph()
 
 
-def run_investigation(query_or_resume, pipeline_placeholder=None, resolved_placeholder=None):
+def run_investigation(query_or_resume, pipeline_placeholder=None, resolved_placeholder=None, sidebar_logs_placeholder=None):
     resume_mode = False
     
     # Check if this is a new search or resume
@@ -218,6 +218,33 @@ def run_investigation(query_or_resume, pipeline_placeholder=None, resolved_place
              k = "btn_continue_investigation"
         
         render_resolved_ui(resolved_placeholder, key=k)
+
+    # Helper to update sidebar logs in real-time
+    def update_sidebar_logs():
+        if sidebar_logs_placeholder:
+             html_buffer = []
+             # Limit to recent logs to prevent huge payload if needed, 
+             # but user asked for "all logs". reversed() is efficient iterator.
+             for log in reversed(st.session_state.logs):
+                 prefix_elem = ""
+                 message = log
+                 if ": " in log:
+                     parts = log.split(": ", 1)
+                     # Highlight the component name
+                     prefix_elem = f'<span class="log-prefix">{parts[0]}</span>'
+                     message = parts[1]
+                 
+                 html_buffer.append(f'<div class="log-entry">{prefix_elem}<span class="log-content">{message}</span></div>')
+             
+             full_html = f'<div class="log-scroller">{"".join(html_buffer)}</div>'
+             sidebar_logs_placeholder.markdown(full_html, unsafe_allow_html=True)
+
+    # Shadow global add_log to trigger sidebar updates
+    def add_log(agent_name, action):
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        log_entry = f"[{timestamp}] **{agent_name}**: {action}"
+        st.session_state.logs.append(log_entry)
+        update_sidebar_logs()
 
     # 2. Select Graph & Input
     if not resume_mode:
@@ -390,37 +417,80 @@ def run_investigation(query_or_resume, pipeline_placeholder=None, resolved_place
 
 # --- Sidebar ---
 with st.sidebar:
+    # 1. Live Agent Trace Button (Prominent & Top)
     st.markdown(
         """
-        <h3 style='text-align: center; padding-bottom: 5px;'>
-            CorporateIntelligenceX
-        </h3>
+        <div style='display: flex; justify-content: center; width: 100%; margin-bottom: 24px; margin-top: 10px;'>
+            <a href='https://smith.langchain.com/o/161479c6-ccc7-4a79-ab5b-8142f6f7ffa0/projects/p/c3f23a4a-4ff5-4202-b429-75fcc1fc0bff?timeModel=%7B%22duration%22%3A%227d%22%7D' target='_blank' style='
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+                width: 100%;
+                padding: 14px 20px;
+                background: linear-gradient(135deg, #0077ff 0%, #00509e 100%);
+                color: white;
+                border: none;
+                border-radius: 10px;
+                text-decoration: none;
+                font-family: "Poppins", sans-serif;
+                font-weight: 700;
+                font-size: 16px;
+                letter-spacing: 0.03em;
+                box-shadow: 0 4px 15px rgba(0, 80, 158, 0.3);
+                transition: all 0.3s ease;
+                text-transform: uppercase;
+            ' onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(0, 80, 158, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(0, 80, 158, 0.3)'">
+                <span style='font-size: 18px;'>📡</span> Live Agent Trace
+            </a>
+        </div>
         """,
         unsafe_allow_html=True,
     )
-    st.markdown(
-        """
-    <div style="text-align: center; color: rgba(250, 250, 250, 0.6); font-size: 1rem; line-height: 1.5;">
-        📡 Agent Pulse
-    </div>
-    """,
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        "<div style='display: flex; justify-content: center; width: 100%;'><a id='lang_smith_link' href='https://smith.langchain.com/o/161479c6-ccc7-4a79-ab5b-8142f6f7ffa0/projects/p/c3f23a4a-4ff5-4202-b429-75fcc1fc0bff?timeModel=%7B%22duration%22%3A%227d%22%7D'>Live Agent Trace</a></div>",
-        unsafe_allow_html=True,
-    )
 
-    st.markdown("#### Agent Logs")
-    log_container = st.container(height=400)
-    with log_container:
-        for log in reversed(st.session_state.logs):
-            st.markdown(log)
+    # --- Model Configuration ---
+    st.markdown('<div class="sidebar-heading">🛠️ Model Configuration</div>', unsafe_allow_html=True)
+    
+    # Model Selector
+    st.selectbox(
+        "LLM Model",
+        ["gpt-4-turbo", "gpt-4o", "gpt-3.5-turbo"],
+        index=0,
+        key="llm_model_select",
+        help="Select the underlying Long Language Model for agents."
+    )
+    
+    # Parameters
+    st.slider("Temperature", 0.0, 1.0, 0.0, 0.1, key="llm_temperature", help="Controls randomness.")
+    st.slider("Top P", 0.0, 1.0, 1.0, 0.05, key="llm_top_p", help="Nucleus sampling.")
+    st.slider("Frequency Penalty", 0.0, 2.0, 0.0, 0.1, key="llm_freq_penalty", help="Penalize frequent tokens.")
+
+    st.markdown("---")
+
+    # --- Logs ---
+    st.markdown('<div class="sidebar-heading">📜 Live System Activity</div>', unsafe_allow_html=True)
+    log_container = st.empty()
+    sidebar_logs_placeholder = log_container
+    
+    # Initial Render
+    log_html_buffer = []
+    for log in reversed(st.session_state.logs):
+        # Parse simple prefix for better styling if present
+        message = log
+        prefix_elem = ""
+        if ": " in log:
+                parts = log.split(": ", 1)
+                # Highlight the component name
+                prefix_elem = f'<span class="log-prefix">{parts[0]}</span>'
+                message = parts[1]
+        
+        log_html_buffer.append(f'<div class="log-entry">{prefix_elem}<span class="log-content">{message}</span></div>')
+    
+    sidebar_logs_placeholder.markdown(f'<div class="log-scroller">{"".join(log_html_buffer)}</div>', unsafe_allow_html=True)
 
     st.markdown("---")
     st.caption(f"System Status: **ONLINE**")
     st.caption(f"Vector DB: **ChromaDB**")
-    st.caption(f"Model: **GPT-4-turbo**")
 
 # --- Main Layout ---
 # Banner with styled heading and tagline (matching reference)
@@ -512,7 +582,7 @@ with pipeline_placeholder.container():
 if continue_clicked:
     # Ensure invalid states are cleared
     st.session_state.investigation_paused = False
-    run_investigation(None, pipeline_placeholder, resolved_placeholder)
+    run_investigation(None, pipeline_placeholder, resolved_placeholder, sidebar_logs_placeholder)
     st.rerun()
 
 if abort_clicked:
@@ -546,7 +616,7 @@ if search_clicked and query_input:
         render_progress_chain(1)
 
     # Run investigation immediately (progress updates will stream)
-    run_investigation(query_input, pipeline_placeholder, resolved_placeholder)
+    run_investigation(query_input, pipeline_placeholder, resolved_placeholder, sidebar_logs_placeholder)
     st.rerun()
 
 elif (

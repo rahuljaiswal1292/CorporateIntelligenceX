@@ -55,7 +55,7 @@ def run_enrichment_node(state: AgentState):
         # Extract data
         full_profile = result.get("data", {})
         metadata = result.get("metadata", {})
-        canonical_name = metadata.get("canonical_name", company_name)
+        canonical_name = metadata.get("canonical_name") or company_name
 
         # Extract resolution info
         ticker = metadata.get("ticker", state.get("ticker"))

@@ -631,7 +631,9 @@ def run_investigation(query_or_resume, pipeline_placeholder=None, resolved_place
                                 update_resolved_ui() # Resolved via log
                     elif "SERP" in log or "Profiling" in log:
                         add_log("SERP Agent", log)
-                        st.session_state.progress_stage = 1  # Merged with Canonical
+                        # Only set to 1 if we haven't advanced to later stages (Resolution Done = 2)
+                        if st.session_state.progress_stage < 2:
+                            st.session_state.progress_stage = 1  # Merged with Canonical
                         update_pipeline_ui()
                         # st.write(f"🔍 {log}") # Disabled
                     elif "Enrichment" in log or "Scraping" in log:

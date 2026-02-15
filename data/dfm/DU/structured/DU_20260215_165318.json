@@ -1,0 +1,54 @@
+{
+  "source": "DFM",
+  "ticker": "DU",
+  "scraped_at": "2026-02-15T16:52:18.258758",
+  "profile": {
+    "company_name": "Equities",
+    "sector": "NOT AVAILABLE",
+    "listing_date": "NOT AVAILABLE",
+    "isin": "NOT AVAILABLE"
+  },
+  "financials": {
+    "documents_downloaded": 12,
+    "page_type": "reports",
+    "files": [
+      "Financial statements for the first QTR of 2024",
+      "Financial statements for the 3rd QTR of 2023",
+      "EITC Q1 Condensed Consolidated Financial Statements 2022 28Apr22 English Signed.pdf"
+    ]
+  },
+  "news": {
+    "news_items": [],
+    "files": []
+  },
+  "documents": [
+    "Financial statements for the first QTR of 2024",
+    "Financial statements for the 3rd QTR of 2023",
+    "EITC Q1 Condensed Consolidated Financial Statements 2022 28Apr22 English Signed.pdf"
+  ],
+  "corporate_actions": {
+    "actions": [],
+    "files": []
+  },
+  "shareholders": {
+    "shareholders": [],
+    "files": []
+  },
+  "trading_data": {
+    "documents_downloaded": 0,
+    "page_type": "trading_data",
+    "files": [],
+    "summary": {}
+  },
+  "daily_summary": {
+    "documents_downloaded": 0,
+    "page_type": "daily_summary",
+    "files": []
+  },
+  "foreign_investments": {
+    "foreign_investment_data": {
+      "raw_summary": ""
+    },
+    "files": []
+  }
+}

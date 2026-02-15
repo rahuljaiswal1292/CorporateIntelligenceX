@@ -1,0 +1,40 @@
+Company's OrderbookReal Estate
+
+## ALDAR
+
+#### Aldar Properties PJSC
+
+mabedalrahman@aldar.com ‎0097128105555 https://www.aldar.comLast Price11.26 -2.087%
+
+##### PREV CLOSE
+
+11.50
+
+##### VALUE
+
+121,351,714.48
+
+##### VOLUME
+
+10,645,418
+
+##### TRADES
+
+2,050
+
+##### LAST PRICE
+
+11.26
+
+## ORDERBOOK
+
+BID PRICEASK PRICESharesPrice50011.22050011.20012,00011.14045810.94020,00010.8407,50010.80020010.800200,00010.80062010.76093710.660PriceShares11.34045011.3604,50011.40044011.40020011.40014511.42020011.44020011.46020011.48020011.500200BID PRICEASK PRICESharesPrice ‌   
+ ‌   
+ ‌   
+ ‌   
+ ‌   
+PriceShares ‌   
+ ‌   
+ ‌   
+ ‌   
+ ‌

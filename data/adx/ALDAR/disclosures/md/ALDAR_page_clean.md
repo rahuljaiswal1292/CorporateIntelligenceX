@@ -1,0 +1,7 @@
+Company's DisclosuresReal Estate
+
+## ALDAR
+
+#### Aldar Properties PJSC
+
+mabedalrahman@aldar.com ‎0097128105555 https://www.aldar.comLast Price11.26 -2.087%10Feb 2026ALDAR -0.240 (-2.087%)[BACCARAT RESIDENCES SAADIYAT: ALDAR INTRODUCES AN ICON OF ART DE VIVRE TO THE CULTURAL HEART OF ABU DHABI](#)Type: General Disclosure09Feb 2026ALDAR -0.240 (-2.087%)[Resume trading on Aldar Properties PJSC-ALDAR shares on 09 Feb 2026](#)Type: Other09Feb 2026ALDAR -0.240 (-2.087%)[Financial Results for the Period Ended December 31,2025](#)Type: Financial Reports09Feb 2026ALDAR -0.240 (-2.087%)[Financial Results Press Release for the Period Ended December 31,2025](#)Type: Financial Reports09Feb 2026ALDAR -0.240 (-2.087%)[Board Meeting Results held on 09/02/2026 at 08:30](#) Type: Board Meeting Disclosure06Feb 2026ALDAR -0.240 (-2.087%)[ALDAR AND DUBAI HOLDING EXPAND STRATEGIC JOINT VENTURE WITH AED 38 BILLION IN NEW DEVELOPMENTS IN DUBAI](#)Type: General Disclosure04Feb 2026ALDAR -0.240 (-2.087%)[Suspend trading on Aldar Properties PJSC-ALDAR shares on 09 Feb 2026 at 09:00 AM](#)Type: Other04Feb 2026ALDAR -0.240 (-2.087%)[ALDAR AWARDS DEVELOPMENT CONTRACTS WORTH AED 66 BILLION ACROSS THE UAE IN 2025](#)Type: General DisclosureDisclaimer

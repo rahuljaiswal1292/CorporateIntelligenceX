@@ -1,10 +1,10 @@
-Consumer Discretionary
+Company's Shareholders & BoardConsumer Discretionary
 
 ## ADNHC
 
 #### A D N H Catering plc
 
-maes.mohamed@adnhc.ae‎+971 2 4087427https://www.adnhc.meLast Price0.7640.131%
+maes.mohamed@adnhc.ae ‎+971 2 4087427 https://www.adnhc.meLast Price0.762 -0.131%
 
 ## SHAREHOLDER INFORMATION
 
@@ -54,11 +54,11 @@ Peter Panikos Nichols
 
 Top Management
 
-Evan Gregory Hooper
+Saravanan Santhanam Rajakannu
 
 Top Management
 
-Saravanan Santhanam Rajakannu
+Evan Gregory Hooper
 
 Top Management
 

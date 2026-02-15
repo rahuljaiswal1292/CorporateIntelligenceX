@@ -1,12 +1,14 @@
-Market closed DFMGI 6730.11 
-(15.51 / 0.231%)
- Total Volume 473,138,409 Total Value 1,328,846,629.71 Total Trades 22,202 [Market Watch](https://marketwatch.dfm.ae/)
+Dubai Financial Market - Region’s leading financial exchange
+
+Market  closed DFMGI    6730.11  
+( 15.51 / 0.231% )
+ Total Volume   473,138,409  Total Value   1,328,846,629.71  Total Trades   22,202   [Market Watch](https://marketwatch.dfm.ae/) 
 
 # Equities
 
-EMAAR Emaar Properties PJSC 16.50 + 
+EMAAR Emaar Properties PJSC  16.50   + 
 0.200
- + 1.23%
+   +  1.23%
 
 * [Trading](/the-exchange/market-information/company/EMAAR/trading)
 * [Profile](/the-exchange/market-information/company/EMAAR/profile)
@@ -26,7 +28,7 @@ The principal activities of the Group are property investment and development, s
 
 ### Company Profile
 
-| | |
+|  |  |
 | --- | --- |
 | Market | DFM |
 | Symbol | EMAAR |
@@ -39,7 +41,7 @@ The principal activities of the Group are property investment and development, s
 
 ### Equity Profile
 
-| | |
+|  |  |
 | --- | --- |
 | Date of Listing | 25 Mar, 2000 |
 | Authorized Capital | 8,838,789,849 |
@@ -52,7 +54,7 @@ Article of Association - EMAAR 2025
 
 ## Contact Details
 
-| | |
+|  |  |
 | --- | --- |
 | Head Office | Dubai hills, Business Park, Building No. 1, P.O. Box 9440 - Dubai, UAE |
 | Address | Dubai hills, Business Park, Building No. 1, P.O. Box 9440 - Dubai, UAE |
@@ -63,26 +65,26 @@ Article of Association - EMAAR 2025
 
 ## Board Members
 
-| | |
+|  |  |
 | --- | --- |
-| Chairman | Mr. Jamal Majed Khalfan BinTheniyah Chairman |
-| Vice Chairman | Mr. Ahmed Jamal H Jawa Vice Chairman |
-| Managing Director | H.E. Mohamed Ali Rashed Alabbar Managing Director |
-| Board Member | Mr. Buti Obaid Buti AlMulla Board Member |
-| Board Member | Mrs. Eman Mahmood Abdulrazzaq Board Member |
-| Board Member | H.E. Abdulla Ali Bin Zayed Alfalasi Board Member |
-| Board Member | H.E. Ahmad Saeed Bin Meshar Almheiri Board Member |
-| Board Member | H.E. Matar Saeed Obaid AlHemeiri Board Member |
-| Board Member | Mr. Muhammad Omar Karim Board Member |
+| Chairman | Mr. Jamal Majed Khalfan BinTheniyah |
+| Vice Chairman | Mr. Ahmed Jamal H Jawa |
+| Managing Director | H.E. Mohamed Ali Rashed Alabbar |
+| Board Member | Mr. Buti Obaid Buti AlMulla |
+| Board Member | Mrs. Eman Mahmood Abdulrazzaq |
+| Board Member | H.E. Abdulla Ali Bin Zayed Alfalasi |
+| Board Member | H.E. Ahmad Saeed Bin Meshar Almheiri |
+| Board Member | H.E. Matar Saeed Obaid AlHemeiri |
+| Board Member | Mr. Muhammad Omar Karim |
 
 ---
 
 ## Top Management
 
-| | |
+|  |  |
 | --- | --- |
-| MANAGING DIRECTOR | H.E. Mohamed Ali Rashed Alabbar MANAGING DIRECTOR |
-| GROUP CHIEF EXECUTIVE OFFICER | Mr. Amit Jain GROUP CHIEF EXECUTIVE OFFICER |
+| MANAGING DIRECTOR | H.E. Mohamed Ali Rashed Alabbar |
+| GROUP CHIEF EXECUTIVE OFFICER | Mr. Amit Jain |
 
 ---
 
@@ -90,9 +92,9 @@ Article of Association - EMAAR 2025
 
 80.16% Emaar Development PJSC and its subsidiaries United Arab Emirates100% Emaar Malls Management LLC and its subsidiaries United Arab Emirates100% Dubai Creek Harbour LLC and its subsidiaries United Arab Emirates100% Emaar Hospitality Group LLC United Arab Emirates100% Emaar Hotels & Resorts Group United Arab Emirates50% Dubai Hills Estate Retail LLC United Arab Emirates100% Emaar Entertainment LLC United Arab Emirates73.79% Emaar Misr for Development SAE and its subsidiaries Arab Republic of Egypt77.01% Emaar India Limited and its subsidiaries India100% Emaar Middle East LLC Kingdom of Saudi Arabic100% Emaar Libadye Gayrimenkul Gelistirme A.S. Republic of Turkey
 
-Disclaimer: 
+Disclaimer:   
 Dubai Financial Market herein after referred to as DFM attempts to ensure data and content on the Website is accurate, there is no charge for provision of data and DFM can only devote limited resources to the Website and any data. Content is only made available "AS IS" and on an "AS AVAILABLE" basis and may not always be accurate or up to date. Content may or may not have been prepared by DFM but is made available without responsibility on the part of DFM. DFM does not guarantee the accuracy, timeliness, completeness, performance or fitness for a particular purpose of the Website or any of the content. No responsibility is accepted by or on behalf of DFM for any errors, omissions, or inaccurate content.
 
- AI generated summary 
+  AI generated summary  
 \*This information is AI generated, for more detailed info, read the full document.
  Please review the original documents to validate accuracy, as the analysis does not constitute investment advice and should not replace your own assessment. No warranty is given that the information is accurate, complete, or up to date.

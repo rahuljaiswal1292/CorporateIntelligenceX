@@ -1,0 +1,40 @@
+Company's OrderbookTechnology
+
+## ALPHADATA
+
+#### Alpha Data PJSC
+
+ir@alpha.ae ‎971553444092 https://www.alpha.ae/IPO/Last Price1.55 0.00%
+
+##### PREV CLOSE
+
+1.55
+
+##### VALUE
+
+1,721,501.04
+
+##### VOLUME
+
+1,121,057
+
+##### TRADES
+
+150
+
+##### LAST PRICE
+
+1.55
+
+## ORDERBOOK
+
+BID PRICEASK PRICESharesPrice2,0001.5403,4501.5303,2681.5305,0001.5208,0001.5204,0001.5204,0001.5203,3121.5103321.5106601.510PriceShares1.5507001.5502,5871.5604,0001.56011,9371.56030,0001.5601,0001.5706,0001.57050,0001.5803,9901.580633BID PRICEASK PRICESharesPrice ‌   
+ ‌   
+ ‌   
+ ‌   
+ ‌   
+PriceShares ‌   
+ ‌   
+ ‌   
+ ‌   
+ ‌

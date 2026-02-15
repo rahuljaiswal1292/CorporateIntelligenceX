@@ -1,10 +1,10 @@
-Consumer Discretionary
+Company's Financial ReportsConsumer Discretionary
 
 ## ADNHC
 
 #### A D N H Catering plc
 
-maes.mohamed@adnhc.ae‎+971 2 4087427https://www.adnhc.meLast Price0.7640.131%
+maes.mohamed@adnhc.ae ‎+971 2 4087427 https://www.adnhc.meLast Price0.762 -0.131%
 
 | Financial Information | 2025 (AED) | 2024 (AED) |
 | --- | --- | --- |
@@ -14,4 +14,4 @@ maes.mohamed@adnhc.ae‎+971 2 4087427https://www.adnhc.meLast Price0.7640.131%
 | Earning Per Share | 0.078 | 0.081 |
 | Price To Book Value | 2.790 | 3.700 |
 
-06Feb2026ADNHC+0.001 (+0.131%)[Financial Results for the Period Ended December 31,2025](https://apigateway.adx.ae/adx/cdn/1.0/content/download/4686027)Type: Financial Reports06Feb2026ADNHC+0.001 (+0.131%)[Management Discussion and Analysis Report for the Period Ended December 31,2025](https://apigateway.adx.ae/adx/cdn/1.0/content/download/4686028)Type: Financial Reports06Feb2026ADNHC+0.001 (+0.131%)[Financial Results Press Release for the Period Ended December 31,2025](https://apigateway.adx.ae/adx/cdn/1.0/content/download/4685189)Type: Financial Reports06Nov2025ADNHC+0.001 (+0.131%)[Financial Results Press Release for the Period Ended September 30,2025](https://apigateway.adx.ae/adx/cdn/1.0/content/download/4591007)Type: Financial Reports05Nov2025ADNHC+0.001 (+0.131%)[Financial Results for the Period Ended September 30,2025](https://apigateway.adx.ae/adx/cdn/1.0/content/download/4594448)Type: Financial Reports05Nov2025ADNHC+0.001 (+0.131%)[Management Discussion and Analysis Report for the Period Ended September 30,2025](https://apigateway.adx.ae/adx/cdn/1.0/content/download/4587229)Type: Financial Reports25Jul2025ADNHC+0.001 (+0.131%)[A D N H Catering plc Press Release on the Financial Results for the Period Ended June 30,2025](https://apigateway.adx.ae/adx/cdn/1.0/content/download/4461706)Type: Financial Reports25Jul2025ADNHC+0.001 (+0.131%)[A D N H Catering plc Financial Results for the Period Ended June 30,2025](https://apigateway.adx.ae/adx/cdn/1.0/content/download/4462289)Type: Financial ReportsDisclaimer
+06Feb 2026ADNHC -0.001 (-0.131%)[Financial Results for the Period Ended December 31,2025](https://apigateway.adx.ae/adx/cdn/1.0/content/download/4686027)Type: Financial Reports06Feb 2026ADNHC -0.001 (-0.131%)[Management Discussion and Analysis Report for the Period Ended December 31,2025](https://apigateway.adx.ae/adx/cdn/1.0/content/download/4686028)Type: Financial Reports06Feb 2026ADNHC -0.001 (-0.131%)[Financial Results Press Release for the Period Ended December 31,2025](https://apigateway.adx.ae/adx/cdn/1.0/content/download/4685189)Type: Financial Reports06Nov 2025ADNHC -0.001 (-0.131%)[Financial Results Press Release for the Period Ended September 30,2025](https://apigateway.adx.ae/adx/cdn/1.0/content/download/4591007)Type: Financial Reports05Nov 2025ADNHC -0.001 (-0.131%)[Management Discussion and Analysis Report for the Period Ended September 30,2025](https://apigateway.adx.ae/adx/cdn/1.0/content/download/4587229)Type: Financial Reports05Nov 2025ADNHC -0.001 (-0.131%)[Financial Results for the Period Ended September 30,2025](https://apigateway.adx.ae/adx/cdn/1.0/content/download/4594448)Type: Financial Reports25Jul 2025ADNHC -0.001 (-0.131%)[A D N H Catering plc Financial Results for the Period Ended June 30,2025](https://apigateway.adx.ae/adx/cdn/1.0/content/download/4462289)Type: Financial Reports25Jul 2025ADNHC -0.001 (-0.131%)[A D N H Catering plc Management Discussion and Analysis Report for the Period Ended June 30,2025](https://apigateway.adx.ae/adx/cdn/1.0/content/download/4461995)Type: Financial ReportsDisclaimer

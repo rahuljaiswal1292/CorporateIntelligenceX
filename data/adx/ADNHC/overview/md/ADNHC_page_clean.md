@@ -1,14 +1,14 @@
-Consumer Discretionary
+Company Profile OverviewConsumer Discretionary
 
 ## ADNHC
 
 #### A D N H Catering plc
 
-maes.mohamed@adnhc.ae‎+971 2 4087427https://www.adnhc.meLast Price0.7640.131%
+maes.mohamed@adnhc.ae ‎+971 2 4087427 https://www.adnhc.meLast Price0.762 -0.131%
 
 ### MARKET CAP.
 
-1,719,000,000.000
+1,714,500,000.000
 
 ### OPEN PRICE
 
@@ -20,19 +20,19 @@ maes.mohamed@adnhc.ae‎+971 2 4087427https://www.adnhc.meLast Price0.7640.131%
 
 ### BID
 
-0.763
+0.761
 
 ### BID SIZE
 
-2,630
+3,500
 
 ### ASK
 
-0.764
+0.766
 
 ### ASK SIZE
 
-141,105
+20,000
 
 ## COMPANY OVERVIEW
 
@@ -53,7 +53,7 @@ from100.00%
 
 ### GCC OWNERSHIP
 
-1.07%
+1.08%
 
 from100.00%
 
@@ -67,13 +67,13 @@ from100.00%
 
 1.12%
 
-from100.00%Disclosures[View All](/en/main-market/company-profile/disclosures?symbols=ADNHC&secCode=ADNHC) 06Feb2026ADNHC+0.001 (+0.131%)[Financial Results for the Period Ended December 31,2025](#)06Feb2026ADNHC+0.001 (+0.131%)[Management Discussion and Analysis Report for the Period Ended December 31,2025](#)06Feb2026ADNHC+0.001 (+0.131%)[Financial Results Press Release for the Period Ended December 31,2025](#)05Feb2026ADNHC+0.001 (+0.131%)[Board Meeting Results held on 05/02/2026 at 10:00](#) 29Jan2026ADNHC+0.001 (+0.131%)[Announcement of Board Meeting to be held on 05/02/2026 at 10:00](#) DisclaimerFinancial Reports[View All](/en/main-market/company-profile/financial-reports?symbols=ADNHC&secCode=) 06Feb2026ADNHC+0.001 (+0.131%)[A D N H Catering plc Financial Results for the Period Ended December 31,2025](#)06Feb2026ADNHC+0.001 (+0.131%)[A D N H Catering plc Management Discussion and Analysis Report for the Period Ended December 31,2025](#)06Feb2026ADNHC+0.001 (+0.131%)[A D N H Catering plc Financial Results Press Release for the Period Ended December 31,2025](#)
+from100.00%Disclosures[View All](/en/main-market/company-profile/disclosures?symbols=ADNHC&secCode=ADNHC) 06Feb 2026ADNHC -0.001 (-0.131%)[Financial Results for the Period Ended December 31,2025](#)06Feb 2026ADNHC -0.001 (-0.131%)[Management Discussion and Analysis Report for the Period Ended December 31,2025](#)06Feb 2026ADNHC -0.001 (-0.131%)[Financial Results Press Release for the Period Ended December 31,2025](#)05Feb 2026ADNHC -0.001 (-0.131%)[Board Meeting Results held on 05/02/2026 at 10:00](#) 29Jan 2026ADNHC -0.001 (-0.131%)[Announcement of Board Meeting to be held on 05/02/2026 at 10:00](#) DisclaimerFinancial Reports[View All](/en/main-market/company-profile/financial-reports?symbols=ADNHC&secCode=) 06Feb 2026ADNHC -0.001 (-0.131%)[A D N H Catering plc Financial Results for the Period Ended December 31,2025](#)06Feb 2026ADNHC -0.001 (-0.131%)[A D N H Catering plc Financial Results Press Release for the Period Ended December 31,2025](#)06Feb 2026ADNHC -0.001 (-0.131%)[A D N H Catering plc Management Discussion and Analysis Report for the Period Ended December 31,2025](#)
 
 ## RECENT TRADES
 
 | Date | Open (AED) | Low (AED) | High (AED) | Close (AED) | Value (AED) | Volume | Trades |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 13 Feb 2026 | 0.764 | 0.761 | 0.769 | 0.763 | 786,843.71 | 1,031,028 | 74 |
+| 13 Feb 2026 | 0.764 | 0.761 | 0.769 | 0.762 | 922,231.12 | 1,208,488 | 85 |
 | 12 Feb 2026 | 0.763 | 0.762 | 0.763 | 0.763 | 900,894.70 | 1,181,515 | 74 |
 | 11 Feb 2026 | 0.766 | 0.760 | 0.767 | 0.764 | 551,824.44 | 724,043 | 50 |
 | 10 Feb 2026 | 0.766 | 0.758 | 0.768 | 0.765 | 1,409,490.87 | 1,851,046 | 125 |

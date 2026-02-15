@@ -202,7 +202,29 @@ def render_resolved_ui(placeholder=None, key="btn_continue_investigation"):
             reason_text = " • ".join(reasons) if reasons else "Based on search results"
 
             # Website extraction
-            website_url = profile.get("website") or profile.get("official_website")
+            raw_url = profile.get("website") or profile.get("official_website") or profile.get("url")
+            
+            # Validate URL
+            website_url = None
+            if isinstance(raw_url, str) and raw_url.strip().startswith("http"):
+                website_url = raw_url.strip()
+            
+            # Fallback to KG
+            if not website_url:
+                 kg_tmp = profile.get("knowledge_graph", {})
+                 if isinstance(kg_tmp, dict):
+                      val = kg_tmp.get("website")
+                      if isinstance(val, str) and val.startswith("http"):
+                           website_url = val
+
+            # Fallback to First Organic Result
+            if not website_url:
+                 organic = profile.get("organic_results", [])
+                 if organic and isinstance(organic, list) and len(organic) > 0:
+                      val = organic[0].get("link")
+                      if isinstance(val, str) and val.startswith("http"):
+                           website_url = val
+
             website_html = ""
             if website_url:
                 display_url = website_url.replace("https://", "").replace("http://", "").rstrip("/")
@@ -269,21 +291,14 @@ def render_resolved_ui(placeholder=None, key="btn_continue_investigation"):
             # 3. Other Core Fields
             if kg_source.get("founded"): kg_data["Founded"] = kg_source.get("founded")
             if kg_source.get("headquarters"): kg_data["Headquarters"] = kg_source.get("headquarters")
+            if kg_source.get("hubs"): kg_data["Hubs"] = kg_source.get("hubs")
+            if kg_source.get("parent_organization"): kg_data["Parent Org"] = kg_source.get("parent_organization")
             
             # Check for fallbacks
             if "Founded" not in kg_data and profile.get("founded"): kg_data["Founded"] = profile.get("founded")
             if "Headquarters" not in kg_data and profile.get("headquarters"): kg_data["Headquarters"] = profile.get("headquarters")
             if "Type" not in kg_data and (kg_source.get("type") or profile.get("type")): 
                 kg_data["Type"] = kg_source.get("type") or profile.get("type")
-            
-            # 4. Industry/Sector & Stock
-            industry = profile.get("industry") or profile.get("sector")
-            if industry: kg_data["Industry"] = industry
-            
-            ticker = profile.get("ticker")
-            exchange = profile.get("exchange")
-            if ticker and ticker != "N/A":
-                kg_data["Stock"] = f"{exchange}:{ticker}" if exchange else ticker
             
             # 4. Industry/Sector & Stock
             industry = profile.get("industry") or profile.get("sector")
@@ -301,6 +316,27 @@ def render_resolved_ui(placeholder=None, key="btn_continue_investigation"):
                      kg_data["Subsidiaries"] = ", ".join([str(s) for s in subs[:3]]) + ("..." if len(subs)>3 else "")
                 else:
                      kg_data["Subsidiaries"] = str(subs)
+
+            # Dynamic Facts from LLM 'other_facts' or raw keys
+            other_facts = kg_source.get("other_facts", {})
+            if isinstance(other_facts, dict):
+                 for k, v in other_facts.items():
+                     if k not in kg_data and v:
+                          # Clean key (e.g. "net_income" -> "Net Income")
+                          display_k = k.replace("_", " ").title()
+                          # Clean value (if list)
+                          if isinstance(v, list):
+                               v = ", ".join([str(i) for i in v[:3]])
+                          kg_data[display_k] = v
+
+            # Fallback: Check top-level keys in kg_source we missed
+            ignore_keys = {"title", "description", "source", "links", "kgmid", "type", "founded", "headquarters", "subsidiaries", "hubs", "parent_organization", "other_facts", "founders", "ceo", "stock_price"}
+            for k, v in kg_source.items():
+                key_lower = k.lower()
+                if key_lower not in ignore_keys and k not in kg_data and v:
+                     if isinstance(v, (str, int, float)):
+                          display_k = k.replace("_", " ").title()
+                          kg_data[display_k] = v
 
             if kg_data:
                  rows = []
@@ -377,69 +413,146 @@ def render_resolved_ui(placeholder=None, key="btn_continue_investigation"):
                     '''
                 
             # Social Links
+            social_html = ""
             socials = profile.get("social_media", {})
-            if isinstance(socials, dict) and socials:
-                 social_html = ""
+            if not isinstance(socials, dict): socials = {}
+            socials = socials.copy()
+            
+            # Add Wikipedia to Socials
+            wiki_url = profile.get("wikipedia") or profile.get("wikipedia_url")
+            if not wiki_url:
+                 # Check KG source
+                 kg_tmp = profile.get("knowledge_graph", {})
+                 if isinstance(kg_tmp, dict):
+                     src = kg_tmp.get("source", {})
+                     if src.get("name") and "wikipedia" in str(src.get("name")).lower():
+                          wiki_url = src.get("link")
+            
+            if wiki_url:
+                 socials["Wikipedia"] = wiki_url
+
+            if socials:
                  for platform, url in socials.items():
+                     if not url: continue
                      icon = "🌐"
-                     if "linkedin" in platform.lower(): icon = "in"
-                     elif "twitter" in platform.lower() or "x.com" in platform.lower(): icon = "𝕏"
-                     elif "facebook" in platform.lower(): icon = "f"
-                     elif "instagram" in platform.lower(): icon = "📸"
+                     p_lower = platform.lower()
+                     if "linkedin" in p_lower: icon = "in"
+                     elif "twitter" in p_lower or "x.com" in p_lower: icon = "𝕏"
+                     elif "facebook" in p_lower: icon = "f"
+                     elif "instagram" in p_lower: icon = "📸"
+                     elif "youtube" in p_lower: icon = "▶️"
+                     elif "wikipedia" in p_lower: icon = "W"
                      
-                     social_html += f'<a href="{url}" target="_blank" class="social-icon" title="{platform}">{icon}</a>'
+                     social_html += f'<a href="{url}" target="_blank" class="social-icon" title="{platform}" style="margin-right:12px; text-decoration:none; font-size:1.1rem; color:#555;">{icon}</a>'
+
+            # References Logic
+            ref_html = ""
+            refs = list(profile.get("references", []))
+            
+            # Incorporate Organic Results (SERP Links)
+            organic = profile.get("organic_results", [])
+            seen_urls = {r.get("url") or r.get("link") for r in refs}
+            
+            if organic and isinstance(organic, list):
+                for res in organic[:5]:
+                    link = res.get("link")
+                    if link and link not in seen_urls:
+                        # Attempt to extract a short source name
+                        raw_source = res.get("source") or res.get("title", "Link")
+                        # Simple heuristic: often "Title - Source" or just "Source"
+                        source_name = raw_source
+                        if " - " in source_name:
+                             source_name = source_name.split(" - ")[-1]
+                        
+                        refs.append({"source": source_name[:20], "url": link})
+                        seen_urls.add(link)
+
+            if not refs:
+                 # Fallback to KG Source
+                 kg = profile.get("knowledge_graph", {})
+                 if isinstance(kg, dict):
+                     src = kg.get("source", {})
+                     if src and src.get("link"):
+                          refs.append({"source": src.get("name", "Source"), "url": src.get("link")})
+
+            if refs and isinstance(refs, list):
+                ref_links = []
+                # Collect up to 5 valid references
+                valid_count = 0
+                for r in refs:
+                    if valid_count >= 5:
+                        break
+                    
+                    source = r.get("source", "Link")
+                    url = r.get("url") or r.get("link")
+                    
+                    if url:
+                         # Truncate source name if too long
+                         display_source = source[:25] + "..." if len(source) > 28 else source
+                         ref_links.append(f'<a href="{url}" target="_blank" style="color:#555; text-decoration:none; border-bottom:1px dotted #999; font-size:0.8rem; font-weight:500;">{display_source}</a>')
+                         valid_count += 1
+                
+                if ref_links:
+                     ref_html = f'''
+                     <div style="margin-top:15px; padding-top:12px; border-top:1px solid #e0e0e0;">
+                         <div style="font-size:0.75rem; color:#888; font-weight:700; text-transform:uppercase; margin-bottom:6px; letter-spacing:0.05em;">Sources & References</div>
+                         <div style="display:flex; flex-wrap:wrap; gap:10px; line-height:1.6;">{"  <span style='color:#ccc'>•</span>  ".join(ref_links)}</div>
+                     </div>
+                     '''
         
-        # Render Summary Card HTML (Always Visible)
-        st.html(f"""
-        <div class="summary-card">
-            <div class="summary-header">
-                <div class="summary-title">
-                    Company Summary
-                    {badge_html}
-                    {f'<div class="summary-ticker" style="margin-left:auto">{ticker_display}</div>' if ticker_display and ticker_display != "N/A" else ''}
+            # Render Summary Card HTML (Always Visible)
+            st.html(f"""
+            <div class="summary-card">
+                <div class="summary-header">
+                    <div class="summary-title">
+                        Company Summary
+                        {badge_html}
+                        {f'<div class="summary-ticker" style="margin-left:auto">{ticker_display}</div>' if ticker_display and ticker_display != "N/A" else ''}
+                    </div>
                 </div>
-            </div>
-            
-            <div style="font-size: 0.8rem; color: #666; margin-top: -10px; margin-bottom: 15px; font-style: italic;">
-                Confidence Reasoning: {reason_text}
-            </div>
-            
-            <div class="summary-description">
-                {desc}
-            </div>
-            
-            {website_html}
-            
-            {kg_html}
-            
-            <div class="summary-grid">
-                {f'''<div class="summary-section">
-                    <h4>Key Stakeholders</h4>
-                    <div>{stakeholders_html}</div>
-                </div>''' if show_stakeholders else ''}
-            </div>
-            
-            {qa_html}
-            
-            <div class="summary-section">
-                <h4>Connect</h4>
-                <div class="social-links">
-                    {social_html}
+                
+                <div style="font-size: 0.8rem; color: #666; margin-top: -10px; margin-bottom: 15px; font-style: italic;">
+                    Confidence Reasoning: {reason_text}
                 </div>
+                
+                <div class="summary-description">
+                    {desc}
+                </div>
+                
+                {website_html}
+                
+                {kg_html}
+                
+                <div class="summary-grid">
+                    {f'''<div class="summary-section">
+                        <h4>Key Stakeholders</h4>
+                        <div>{stakeholders_html}</div>
+                    </div>''' if show_stakeholders else ''}
+                </div>
+                
+                {qa_html}
+                
+                <div class="summary-section">
+                    <h4>Connect</h4>
+                    <div class="social-links">
+                        {social_html}
+                    </div>
+                </div>
+
+                {ref_html}
             </div>
-        </div>
-        </div>
-        """)
-        
-        # Render Continue Button Below Summary Card
-        st.markdown('<div style="margin-top: 15px;"></div>', unsafe_allow_html=True)
-        
-        # Button logic
-        btn_disabled = (not st.session_state.canonical_name) or st.session_state.is_resolving
-        # Only show button if NOT complete (Resume case)
-        if not st.session_state.analysis_complete and st.session_state.canonical_name:
-             if st.button("Continue Investigation ->", key=key, disabled=btn_disabled, type="primary", use_container_width=True):
-                 return True
+            </div>
+            """)
+            
+            # Render Continue Button Below Summary Card
+            st.markdown('<div style="margin-top: 15px;"></div>', unsafe_allow_html=True)
+            
+            # Button logic
+            btn_disabled = (not st.session_state.canonical_name) or st.session_state.is_resolving
+            # Only show button if NOT complete (Resume case)
+            if not st.session_state.analysis_complete and st.session_state.canonical_name:
+                 if st.button("Continue Investigation ->", key=key, disabled=btn_disabled, type="primary", use_container_width=True):
+                     return True
 
     return False
 
@@ -448,11 +561,11 @@ def render_resolved_ui(placeholder=None, key="btn_continue_investigation"):
 # Cache the Agent Graph to avoid re-initialization overhead (DB connections etc)
 # Cache the Agent Graphs
 @st.cache_resource
-def get_cached_resolution_graph_v4():
+def get_cached_resolution_graph_v5():
     return create_resolution_graph()
 
 @st.cache_resource
-def get_cached_enrichment_graph_v4():
+def get_cached_enrichment_graph_v5():
     return create_enrichment_graph()
 
 
@@ -491,8 +604,8 @@ def run_investigation(query_or_resume, pipeline_placeholder=None, resolved_place
         if st.session_state.is_resolving:
              k = f"btn_resolving_{uuid.uuid4()}"
         else:
-             # Stable key for interaction when paused
-             k = "btn_continue_investigation"
+             # Stable key (internal) to avoid duplicate key error with main flow
+             k = "btn_continue_investigation_internal"
         
         render_resolved_ui(resolved_placeholder, key=k)
 
@@ -533,7 +646,7 @@ def run_investigation(query_or_resume, pipeline_placeholder=None, resolved_place
     }
     
     if not resume_mode:
-        graph = get_cached_resolution_graph_v4()
+        graph = get_cached_resolution_graph_v5()
         input_data = {
             "query": query, 
             "logs": [],
@@ -541,7 +654,7 @@ def run_investigation(query_or_resume, pipeline_placeholder=None, resolved_place
         }
         processed_logs = set()
     else:
-        graph = get_cached_enrichment_graph_v4()
+        graph = get_cached_enrichment_graph_v5()
         input_data = st.session_state.intermediate_state
         # Update LLM config in case user changed settings before continuing
         input_data["llm_config"] = llm_config

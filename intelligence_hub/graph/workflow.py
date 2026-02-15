@@ -108,7 +108,7 @@ def run_wikipedia_node(state: AgentState):
         result = agent.run(state)
         logs.append(f"Wikipedia Agent: {result.get('status', 'unknown')}")
         
-        return {"logs": logs, "enrichments": state.get("enrichments", {})}
+        return {"logs": logs}
     except Exception as e:
         logs.append(f"Wikipedia Agent failed: {str(e)}")
         return {"logs": logs}
@@ -140,7 +140,7 @@ def run_news_node(state: AgentState):
         result = agent.run(state)
         logs.append(f"News Agent: {result.get('status', 'unknown')}")
         
-        return {"logs": logs, "enrichments": state.get("enrichments", {})}
+        return {"logs": logs}
     except Exception as e:
         logs.append(f"News Agent failed: {str(e)}")
         return {"logs": logs}
@@ -172,7 +172,7 @@ def run_ded_node(state: AgentState):
         result = agent.run(state)
         logs.append(f"DED Agent: {result.get('status', 'unknown')}")
         
-        return {"logs": logs, "enrichments": state.get("enrichments", {})}
+        return {"logs": logs}
     except Exception as e:
         logs.append(f"DED Agent failed: {str(e)}")
         return {"logs": logs}

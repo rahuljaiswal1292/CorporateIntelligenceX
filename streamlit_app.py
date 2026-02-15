@@ -4,8 +4,10 @@ from datetime import datetime
 import textwrap
 import os
 import uuid
+import base64
 from pathlib import Path
 from intelligence_hub.ui.styles import get_custom_css
+from intelligence_hub.ui.dashboard import render_main_dashboard
 from intelligence_hub.core.mock_data import get_company_data
 from intelligence_hub.llm.models import LLMModel
 
@@ -35,10 +37,17 @@ image_path = os.path.join(
     os.path.dirname(__file__), "intelligence_hub", "ui", "favicon.jpg"
 )
 
+# --- Helper for Local Images (Base64) ---
+def get_image_base64(path):
+    with open(path, "rb") as image_file:
+        return base64.b64encode(image_file.read()).decode()
+
+logo_base64 = get_image_base64(image_path_ico := os.path.join(os.path.dirname(__file__), "intelligence_hub", "ui", "favicon.ico"))
+
 # --- Page Configuration ---
 st.set_page_config(
     page_title="CorporateIntelligenceX",
-    page_icon=image_path,
+    page_icon=image_path_ico,
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -506,7 +515,7 @@ def render_resolved_ui(placeholder=None, key="btn_continue_investigation"):
         <div class="summary-card">
             <div class="summary-header">
                 <div class="summary-title">
-                    Company Summary
+                    Summary Card
                     {badge_html}
                     {f'<div class="summary-ticker" style="margin-left:auto">{ticker_display}</div>' if ticker_display and ticker_display != "N/A" else ''}
                 </div>
@@ -570,7 +579,7 @@ def get_cached_enrichment_graph_v5():
     return create_enrichment_graph()
 
 
-def run_investigation(query_or_resume, pipeline_placeholder=None, resolved_placeholder=None, sidebar_logs_placeholder=None):
+def run_investigation(query_or_resume, pipeline_placeholder=None, resolved_placeholder=None, sidebar_logs_placeholder=None, dashboard_placeholder=None):
     resume_mode = False
     
     # Check if this is a new search or resume
@@ -695,6 +704,9 @@ def run_investigation(query_or_resume, pipeline_placeholder=None, resolved_place
             elif "enrichments" in state and isinstance(state["enrichments"], dict):
                  # Sometimes under enrichments key
                  st.session_state.company_profile = state["enrichments"]
+            
+            # Ensure UI reflects key state changes (async population)
+            update_resolved_ui()
                  
             if state_canonical and not st.session_state.canonical_name:
                 st.session_state.canonical_name = state_canonical
@@ -707,7 +719,7 @@ def run_investigation(query_or_resume, pipeline_placeholder=None, resolved_place
                 # Mark Stage 1 as Complete (Green) immediately
                 st.session_state.progress_stage = 2 
                 update_pipeline_ui()
-                update_resolved_ui() # Resolved Name!
+                update_resolved_ui() # Resolved Name + Dashboard Refresh!
 
             # Check for new logs
             current_logs = state.get("logs", [])
@@ -732,7 +744,7 @@ def run_investigation(query_or_resume, pipeline_placeholder=None, resolved_place
                                 # Mark Stage 1 as Complete (Green) immediately
                                 st.session_state.progress_stage = 2 
                                 update_pipeline_ui()
-                                update_resolved_ui() # Resolved via log
+                                update_resolved_ui() # Resolved via log + Dashboard Refresh!
                         elif " to " in log and not st.session_state.canonical_name:
                             parts = log.split(" to ")
                             if len(parts) > 1:
@@ -742,7 +754,7 @@ def run_investigation(query_or_resume, pipeline_placeholder=None, resolved_place
                                 # Mark Stage 1 as Complete (Green) immediately
                                 st.session_state.progress_stage = 2 
                                 update_pipeline_ui()
-                                update_resolved_ui() # Resolved via log
+                                update_resolved_ui() # Resolved via log + Dashboard Refresh!
                     elif "SERP" in log or "Profiling" in log:
                         add_log("SERP Agent", log)
                         # Only set to 1 if we haven't advanced to later stages (Resolution Done = 2)
@@ -907,13 +919,17 @@ with st.sidebar:
     st.caption(f"System Status: **ONLINE**")
     st.caption(f"Vector DB: **ChromaDB**")
 
-# --- Main Layout ---
 # Banner with styled heading and tagline (matching reference)
 st.markdown(
-    """
+    f"""
     <div class="main-banner">
-        <h1 class="main-heading">CorporateIntelligenceX</h1>
-        <p class="main-tagline">A smart GenAI-powered corporate information profiler.</p>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <img src="data:image/x-icon;base64,{logo_base64}" style="width: 50px; height: 50px; border-radius: 8px;">
+            <div>
+                <h1 class="main-heading" style="margin: 0;">CorporateIntelligenceX</h1>
+                <p class="main-tagline" style="margin: 0; margin-top: 4px;">A smart GenAI-powered corporate information profiler.</p>
+            </div>
+        </div>
     </div>
     """,
     unsafe_allow_html=True
@@ -993,11 +1009,14 @@ pipeline_placeholder = st.empty()
 with pipeline_placeholder.container():
     render_progress_chain(st.session_state.progress_stage)
 
+# Main Dashboard Placeholder
+dashboard_placeholder = st.empty()
+
 # Action: Continue Investigation
 if continue_clicked:
     # Ensure invalid states are cleared
     st.session_state.investigation_paused = False
-    run_investigation(None, pipeline_placeholder, resolved_placeholder, sidebar_logs_placeholder)
+    run_investigation(None, pipeline_placeholder, resolved_placeholder, sidebar_logs_placeholder, dashboard_placeholder)
     st.rerun()
 
 if abort_clicked:
@@ -1012,6 +1031,7 @@ if abort_clicked:
     st.session_state.canonical_name = None
     st.session_state.confidence_score = None
     st.session_state.is_resolving = False
+    st.session_state.investigation_error = None  # Clear error state
     
     # Add log message
     add_log("System", "Investigation aborted by user")
@@ -1031,7 +1051,7 @@ if search_clicked and query_input:
         render_progress_chain(1)
 
     # Run investigation immediately (progress updates will stream)
-    run_investigation(query_input, pipeline_placeholder, resolved_placeholder, sidebar_logs_placeholder)
+    run_investigation(query_input, pipeline_placeholder, resolved_placeholder, sidebar_logs_placeholder, dashboard_placeholder)
     st.rerun()
 
 elif (
@@ -1042,42 +1062,9 @@ elif (
     # Let's rely on the button for the "Deep Search" feel requested.
     pass
 
+# Final Dashboard Render (if analysis complete and not running investigation right now)
 if st.session_state.analysis_complete and st.session_state.data:
-    data = st.session_state.data
-
-    # 1. Company Profile
-    render_company_profile(data)
-
-    # 2. Financials (Detailed)
-    render_financials_detailed(data)
-
-    # 3. Charts & Competitors (Stacked Layout)
-    render_chart(data)
-
-    st.markdown("---")
-
-    render_competitors(data)
-
-    st.markdown("---")
-
-    # 4. Strategic Insights (Full Width / Prominent)
-    render_insights_strategic(data)
-
-    st.markdown("---")
-
-    # 5. Sources
-    # 5. Sources
-    render_sources(data)
-
-    st.markdown("---")
-
-    # 6. PDF Analysis
-    render_pdf_analysis(data)
-
-    st.markdown("---")
-
-    # 7. References & Sources
-    render_references(data)
+    render_main_dashboard(dashboard_placeholder)
 
 elif not st.session_state.analysis_complete and st.session_state.progress_stage == 0:
     # Empty State - Show nothing or a welcome message

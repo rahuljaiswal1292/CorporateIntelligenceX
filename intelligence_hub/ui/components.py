@@ -265,7 +265,7 @@ def render_chart(data):
             tickfont=dict(color="#0F172A", size=12), title_font=dict(color="#0F172A")
         ),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, key="stock_performance_chart")
 
 
 def render_competitors(data):

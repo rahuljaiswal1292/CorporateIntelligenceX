@@ -47,7 +47,8 @@ Example Output Structure:
     "type": "Public Company",
     "founded": "1997",
     "headquarters": "City, Country",
-    "subsidiaries": "Sub A, Sub B"
+    "subsidiaries": "Sub A, Sub B",
+    "other_facts": {{"Hubs": "...", "Parent Org": "...", "Awards": "...", "Net Income": "..."}}
   }},
   "leadership": ["CEO Name", "Founder Name"],
   "social_media": {{"linkedin": "url", "twitter": "url"}},

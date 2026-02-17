@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+import textwrap
 
 logo_url = "https://www.emiratesnbd.com/-/media/enbd/images/logos/favicon.png"
 
@@ -147,7 +148,7 @@ def render_company_profile(data):
 
             html = f"""<table style="width:100%; border-collapse:collapse; font-family:sans-serif; border-radius:8px; overflow:hidden; border:1px solid #E2E8F0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);"><thead><tr style="background-color:#002D62; color:#FFFFFF;"><th style="padding:12px; text-align:left; font-weight:700; border-bottom:3px solid #FFB600; font-size:0.9rem;">Shareholder</th><th style="padding:12px; text-align:right; font-weight:700; border-bottom:3px solid #FFB600; font-size:0.9rem;">Stake</th></tr></thead><tbody>{html_rows}</tbody></table>"""
 
-            st.markdown(html, unsafe_allow_html=True)
+            st.html(html)
         else:
             st.write(meta.get("shareholders", "-"))
 
@@ -201,9 +202,8 @@ def render_financials_detailed(data):
     st.subheader(f"📊 Yearly Performance ({last_y['period']} vs {curr['period']})")
 
     # HTML Grid for Yearly - FLATTENED STRING
-    st.markdown(
-        f"""<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px;">{make_metric_card("Revenue (Current)", curr.get("rev"), curr.get("trend"))}{make_metric_card("Revenue (Last Yr)", last_y.get("rev"), "Hist")}{make_metric_card("Net Profit (Current)", curr.get("profit"), "")}{make_metric_card("Net Profit (Last Yr)", last_y.get("profit"), "Hist")}</div>""",
-        unsafe_allow_html=True,
+    st.html(
+        f"""<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px;">{make_metric_card("Revenue (Current)", curr.get("rev"), curr.get("trend"))}{make_metric_card("Revenue (Last Yr)", last_y.get("rev"), "Hist")}{make_metric_card("Net Profit (Current)", curr.get("profit"), "")}{make_metric_card("Net Profit (Last Yr)", last_y.get("profit"), "Hist")}</div>"""
     )
 
     # 2. Quarterly Performance
@@ -540,3 +540,91 @@ def render_references(data):
     with col4:
         has_ded = "✓" if data.get("enrichments", {}).get("ded", {}) else "✗"
         st.metric("DED Data", has_ded)
+
+
+def render_top_news(data):
+    """Renders top news articles in an attractive card layout"""
+    
+    # Extract news from different possible locations
+    news_articles = []
+    
+    # Check enrichments.news.sources
+    if data.get("enrichments", {}).get("news", {}).get("sources"):
+        news_articles = data["enrichments"]["news"]["sources"]
+    # Check news_articles directly
+    elif data.get("news_articles"):
+        news_articles = data["news_articles"]
+    # Check enrichments.news directly
+    elif data.get("enrichments", {}).get("news"):
+        news_data = data["enrichments"]["news"]
+        if isinstance(news_data, list):
+            news_articles = news_data
+        elif isinstance(news_data, dict) and news_data.get("articles"):
+            news_articles = news_data["articles"]
+    
+    if not news_articles:
+        st.info("📰 No recent news articles available")
+        return
+    
+    # Display top 5 news articles
+    top_news = news_articles[:5] if len(news_articles) > 5 else news_articles
+    
+    st.markdown(f"**{len(news_articles)} articles found** • Showing top {len(top_news)}")
+    
+    for idx, article in enumerate(top_news, 1):
+        # Handle different data structures
+        if isinstance(article, dict):
+            title = article.get("title", article.get("headline", "Untitled"))
+            url = article.get("url", article.get("link", "#"))
+            source = article.get("source", article.get("publisher", "Unknown Source"))
+            date = article.get("date", article.get("published", ""))
+            snippet = article.get("snippet", article.get("description", ""))
+        else:
+            # If article is a string or other format
+            title = str(article)
+            url = "#"
+            source = "News Source"
+            date = ""
+            snippet = ""
+        
+        # Create news card
+        with st.container():
+            st.html(textwrap.dedent(f"""
+            <div style="
+                background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%);
+                border-left: 4px solid #0077ff;
+                border-radius: 8px;
+                padding: 16px;
+                margin-bottom: 12px;
+                box-shadow: 0 2px 8px rgba(0, 51, 102, 0.08);
+                transition: all 0.2s ease;
+            ">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                    <span style="
+                        background: linear-gradient(135deg, #003366 0%, #0077ff 100%);
+                        color: white;
+                        padding: 4px 12px;
+                        border-radius: 12px;
+                        font-size: 12px;
+                        font-weight: 600;
+                    ">#{idx}</span>
+                    <span style="color: #64748b; font-size: 12px;">{date}</span>
+                </div>
+                <h4 style="margin: 8px 0; color: #003366; font-size: 16px; font-weight: 600;">
+                    <a href="{url}" target="_blank" style="text-decoration: none; color: inherit;">
+                        {title}
+                    </a>
+                </h4>
+                {f'<p style="color: #64748b; font-size: 14px; margin: 8px 0; line-height: 1.5;">{snippet[:150]}...</p>' if snippet else ''}
+                <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+                    <span style="color: #0077ff; font-size: 12px; font-weight: 600;">📰 {source}</span>
+                    <a href="{url}" target="_blank" style="
+                        color: #0077ff;
+                        font-size: 12px;
+                        text-decoration: none;
+                        margin-left: auto;
+                    ">Read more →</a>
+                </div>
+            </div>
+            """))
+

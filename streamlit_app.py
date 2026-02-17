@@ -7,7 +7,7 @@ import uuid
 import base64
 from pathlib import Path
 from intelligence_hub.ui.styles import get_custom_css
-from intelligence_hub.ui.dashboard import render_main_dashboard
+from intelligence_hub.ui.dashboard import render_main_dashboard, get_test_dashboard_data
 from intelligence_hub.core.mock_data import get_company_data
 from intelligence_hub.llm.models import LLMModel
 
@@ -961,7 +961,7 @@ st.markdown(
 )
 
 # Input and Buttons in single row
-cols = st.columns([6, 1, 1])
+cols = st.columns([5, 1, 1, 1.2])
 
 with cols[0]:
     query_input = st.text_input(
@@ -976,6 +976,9 @@ with cols[1]:
 
 with cols[2]:
     abort_clicked = st.button("🛑 Abort", type="secondary", use_container_width=True)
+
+with cols[3]:
+    test_data_clicked = st.button("📊 Test Dashboard", type="secondary", use_container_width=True)
 
 
 
@@ -1055,6 +1058,18 @@ elif (
     # but sidebar search button is explicit.
     # Let's rely on the button for the "Deep Search" feel requested.
     pass
+
+# Handle Test Data Button
+if test_data_clicked:
+    # Load mock data for testing from dashboard module
+    st.session_state.data = get_test_dashboard_data()
+    st.session_state.canonical_name = "Emirates NBD Bank PJSC"
+    st.session_state.analysis_complete = True
+    st.session_state.progress_stage = 5
+    st.success("✅ Test data loaded! Scroll down to see the dashboard.")
+    st.rerun()
+
+
 
 # Final Dashboard Render (if analysis complete and not running investigation right now)
 if st.session_state.analysis_complete and st.session_state.data:

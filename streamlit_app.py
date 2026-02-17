@@ -102,7 +102,7 @@ def add_log(agent_name, action):
 
 
 # Helper to render the resolved name section
-def render_resolved_ui(placeholder=None, key="btn_continue_investigation"):
+def render_resolved_ui(placeholder=None, key="btn_continue_investigation", show_button=True):
     # Use placeholder if provided, else main flow
     context = placeholder.container() if placeholder else st.container()
     
@@ -560,7 +560,7 @@ def render_resolved_ui(placeholder=None, key="btn_continue_investigation"):
         # Button logic
         btn_disabled = (not st.session_state.canonical_name) or st.session_state.is_resolving
         # Only show button if NOT complete (Resume case)
-        if not st.session_state.analysis_complete and st.session_state.canonical_name:
+        if show_button and not st.session_state.analysis_complete and st.session_state.canonical_name:
              if st.button("Continue Investigation ->", key=key, disabled=btn_disabled, type="primary", use_container_width=True):
                  return True
 
@@ -610,14 +610,9 @@ def run_investigation(query_or_resume, pipeline_placeholder=None, resolved_place
             render_progress_chain(st.session_state.progress_stage)
             
     def update_resolved_ui():
-        # Use transient key while resolving to avoid duplicate keys in loop
-        if st.session_state.is_resolving:
-             k = f"btn_resolving_{uuid.uuid4()}"
-        else:
-             # Stable key (internal) to avoid duplicate key error with main flow
-             k = "btn_continue_investigation_internal"
-        
-        render_resolved_ui(resolved_placeholder, key=k)
+        # Hide button during investigation to avoid duplicate key errors
+        # Button will appear after st.rerun() in main app flow
+        render_resolved_ui(resolved_placeholder, key="btn_continue_investigation_internal", show_button=False)
 
     # Helper to update sidebar logs in real-time
     def update_sidebar_logs():
@@ -1031,7 +1026,6 @@ if abort_clicked:
     st.session_state.canonical_name = None
     st.session_state.confidence_score = None
     st.session_state.is_resolving = False
-    st.session_state.investigation_error = None  # Clear error state
     
     # Add log message
     add_log("System", "Investigation aborted by user")

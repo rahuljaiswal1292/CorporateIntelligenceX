@@ -3,7 +3,7 @@ import uuid
 import datetime
 from intelligence_hub.graph.state import AgentState
 from intelligence_hub.storage.corporate_profile_store import CorporateProfileStore
-from intelligence_hub.connectors.llm import LLMConnector
+from intelligence_hub.llm.connector import LLMConnector
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ class VectorizerAgent:
 
     def run(self, state: AgentState) -> AgentState:
         logger.info("Vectorizer: Indexing documents...")
-        logs = state.get("logs", [])
+        logs = []
 
         scraped_data = state.get("financial_data", {})
         ticker = state.get("ticker", "UNKNOWN")

@@ -5,7 +5,7 @@ import hashlib
 import base64
 from typing import List, Dict, Optional, Callable, Set
 from intelligence_hub.graph.state import AgentState
-from intelligence_hub.connectors.llm import LLMConnector
+from intelligence_hub.llm.connector import LLMConnector
 from intelligence_hub.storage.corporate_profile_store import CorporateProfileStore
 from .base_agent import BaseAgent
 from intelligence_hub.config.config import DATA_DIRECTORY

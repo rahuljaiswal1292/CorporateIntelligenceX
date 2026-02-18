@@ -3,7 +3,7 @@ from typing import Dict, Optional, Callable
 import pandas as pd
 import os
 from intelligence_hub.graph.state import AgentState
-from intelligence_hub.connectors.llm import LLMConnector
+from intelligence_hub.llm.connector import LLMConnector
 from intelligence_hub.storage.corporate_profile_store import CorporateProfileStore
 from intelligence_hub.config.config import DATA_DIRECTORY
 from .base_agent import BaseAgent
@@ -185,7 +185,7 @@ class AnalystAgent(BaseAgent):
         Returns:
             Updated agent state
         """
-        logs = state.get("logs", [])
+        logs = []
 
         # Check if should execute
         should_run, reasoning = self.should_execute(state)

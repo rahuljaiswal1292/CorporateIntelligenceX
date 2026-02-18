@@ -144,49 +144,75 @@ def run_investigation(query, progress_placeholder):
         if final_state.get("financial_data"):
             real_data = final_state["financial_data"]
 
-            # 1. Update Financials
-            if "financials" in real_data:
+            # 1. Update Financials (Overwrite Mock if Scraped Data Exists)
+            if "financials" in real_data and real_data["financials"]:
                 real_fin = real_data["financials"]
-                # Map Revenue
-                if "revenue" in real_fin and real_fin["revenue"]:
-                    val = real_fin["revenue"]
+
+                # Format for UI (Map Scraper keys to UI keys)
+                # Helper to format numbers
+                def format_val(v):
+                    if not v:
+                        return "N/A"
                     try:
-                        val_float = float(val)
-                        st.session_state.data["financials"]["current"]["rev"] = (
+                        val_float = float(v)
+                        return (
                             f"AED {val_float/1_000_000_000:.1f}B"
                             if val_float > 1e9
                             else f"AED {val_float:,.0f}"
                         )
                     except:
-                        st.session_state.data["financials"]["current"]["rev"] = str(val)
+                        return str(v)
 
-                # Map Profit
-                if "net_income" in real_fin and real_fin["net_income"]:
-                    val = real_fin["net_income"]
-                    try:
-                        val_float = float(val)
-                        st.session_state.data["financials"]["current"]["profit"] = (
-                            f"AED {val_float/1_000_000_000:.1f}B"
-                            if val_float > 1e9
-                            else f"AED {val_float:,.0f}"
-                        )
-                    except:
-                        st.session_state.data["financials"]["current"]["profit"] = str(
-                            val
-                        )
+                current_fin = {
+                    "rev": format_val(real_fin.get("revenue")),
+                    "profit": format_val(real_fin.get("net_income")),
+                    "period": "LTM",  # Default to LTM for scraped data
+                    "trend": None,  # clear mock trend
+                    "price": (
+                        format_val(real_fin.get("price"))
+                        if "price" in real_fin
+                        else "N/A"
+                    ),
+                }
 
-            # 2. Update Profile
-            if "profile" in real_data:
+                # Add Daily Summary if available (from Analyst)
+                if "daily_summary" in real_data:
+                    # Storing it for potential future use or display
+                    current_fin["daily_summary"] = real_data["daily_summary"]
+
+                # OVERWRITE with Real Data
+                st.session_state.data["financials"] = {
+                    "current": current_fin,
+                    "last_year": {},  # Clear mock history
+                    "last_quarter": {},  # Clear mock history
+                }
+
+                # Clear Mock Chart (since we don't have real chart data yet)
+                st.session_state.data["chart"] = {}
+
+            # 2. Update Profile (Overwrite Mock)
+            if "profile" in real_data and real_data["profile"]:
                 prof = real_data["profile"]
-                if "profile" not in st.session_state.data:
-                    st.session_state.data["profile"] = {}
+                # Ensure we don't lose the structure if we overwrite,
+                # but we want to replace mock content.
+                # Initialize properly if overwriting
+                st.session_state.data["profile"] = {
+                    "description": prof.get("description", "No description available."),
+                    "sector": prof.get("sector", "Unknown Sector"),
+                    "website": prof.get("website", ""),
+                    # Keep other keys like 'est_date' from mock?
+                    # User said "agent state should be considered".
+                    # If agent didn't find est_date, we probably shouldn't show a fake one.
+                    "est_date": prof.get("est_date", "N/A"),
+                    "shareholders": prof.get("shareholders", []),
+                }
 
-                if "description" in prof:
-                    st.session_state.data["profile"]["description"] = prof[
-                        "description"
-                    ]
-                if "sector" in prof:
-                    st.session_state.data["profile"]["sector"] = prof["sector"]
+                # If we have enrichment data for shareholders/exchange, map it?
+                # PresentationAgent puts it in profile?
+                # PresentationAgent implementation:
+                # if enrichments.get("description"): final...["profile"]["description"] = ...
+                # It doesn't seem to map shareholders explicitly in PresentationAgent.
+                # We stick to what's in real_data["profile"].
 
             # 3. Update Sources
             if "sources" in real_data:

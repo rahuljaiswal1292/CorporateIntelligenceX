@@ -152,6 +152,9 @@ def render_financials_detailed(data):
 
     # --- Helper Helper for Custom Metric Card ---
     def make_metric_card(label, value, delta=None, sub=None):
+        if value is None:
+            value = "-"
+
         delta_html = ""
         if delta:
             # Check for positive/negative trend

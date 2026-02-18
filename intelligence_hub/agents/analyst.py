@@ -240,7 +240,7 @@ class AnalystAgent(BaseAgent):
                 "logs": logs,
             }
 
-    def generate_final_report(self, state: AgentState, insights: list) -> str:
+    def generate_final_report(self, state: AgentState, insights: list) -> Dict:
         """Generates a comprehensive final report."""
         company_name = state.get("company_name", "Unknown")
         ticker = state.get("ticker", "Unknown")
@@ -264,19 +264,20 @@ class AnalystAgent(BaseAgent):
         Strategic Insights & Opportunities:
         {json.dumps(insights, indent=2)}
         
-        Format the report in Markdown being concise and professional.
-        Include sections:
-        1. Executive Summary
-        2. Company Overview
-        3. Strategic Banking Opportunities
-        4. Key Risks & Considerations
+         Return STRICTLY JSON format being concise and professional with the below keys.
+        1. Executive_summary
+        2. Company_overview
+        3. Strategic_banking_opportunities
+        4. Key_risks_and_considerations
         """
 
         try:
-            return self.llm_connector.analyze(prompt)
+            response_text = self.llm_connector.analyze(prompt)
+            clean_text = response_text.replace("```json", "").replace("```", "").strip()
+            return json.loads(clean_text)
         except Exception as e:
             self.log(f"Failed to generate final report: {e}", "ERROR")
-            return "Final report generation failed."
+            return {"error": "Final report generation failed", "details": str(e)}
 
     def summarize_profile(self, text: str) -> str:
         """Summarizes raw text into a company profile."""

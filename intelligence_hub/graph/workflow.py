@@ -256,19 +256,24 @@ def create_enrichment_graph():
         )
         return pdf_agent.run(state)
 
-    # Initialize agents that need llm_connector and profile_store
-    # Note: company_name will be updated from state during execution
-    analyst = AnalystAgent(
-        company_name="placeholder",  # Will be updated from state
-        llm_connector=llm_connector,
-        profile_store=store,
-    )
-    pdf_agent = PdfAgent(
-        company_name="placeholder",  # Will be updated from state
-        llm_connector=llm_connector,
-        profile_store=store,
-    )
-    presentation_agent = PresentationAgent()
+    def run_presentation_agent_node(state: AgentState):
+        """Wrapper for PresentationAgent that extracts LLM config from state"""
+        company_name = (
+            state.get("canonical_name")
+            or state.get("company_name")
+            or state.get("query", "Unknown")
+        )
+
+        # Extract LLM config from state
+        llm_config = state.get("llm_config", {})
+        llm_connector = LLMConnector(config=llm_config)
+
+        presentation_agent = PresentationAgent(
+            company_name=company_name,
+            llm_connector=llm_connector,
+            profile_store=store,
+        )
+        return presentation_agent.run(state)
 
     # 2. Define Graph
     workflow = StateGraph(AgentState)
@@ -280,9 +285,9 @@ def create_enrichment_graph():
     workflow.add_node("ded", run_ded_node)
     workflow.add_node("scraper", scraper.run)
     workflow.add_node("vectorizer", vectorizer.run)
-    workflow.add_node("analyst", analyst.run)
-    workflow.add_node("pdf_agent", pdf_agent.run)
-    workflow.add_node("presentation_agent", presentation_agent.run)
+    workflow.add_node("analyst", run_analyst_node)
+    workflow.add_node("pdf_agent", run_pdf_agent_node)
+    workflow.add_node("presentation_agent", run_presentation_agent_node)
 
     # Sequence: (Resolver removed) MasterEnrichment starts
 
@@ -299,8 +304,7 @@ def create_enrichment_graph():
     workflow.add_edge("ded", "scraper")
 
     # Sequential
-    workflow.add_edge("scraper", "vectorizer")
-    workflow.add_edge("vectorizer", "pdf_agent")
+    workflow.add_edge("scraper", "pdf_agent")
     workflow.add_edge("pdf_agent", "vectorizer")
     workflow.add_edge("vectorizer", "analyst")
     workflow.add_edge("analyst", "presentation_agent")

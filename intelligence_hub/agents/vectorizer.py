@@ -18,7 +18,7 @@ class VectorizerAgent:
         self.store = CorporateProfileStore()
         self.llm = LLMConnector()
 
-    def run(self, state: AgentState) -> AgentState:
+    def run(self, state):
         logger.info("Vectorizer: Indexing documents...")
         logs = []
 

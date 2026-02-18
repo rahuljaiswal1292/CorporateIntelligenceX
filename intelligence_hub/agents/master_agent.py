@@ -521,6 +521,8 @@ class MasterAgent(BaseAgent):
         )
         self.log("Note: Enrichment agents now execute as separate workflow nodes")
 
+        enrichment_results = []
+
         # New: Competitor Analysis
         if self.enable_enrichment:
             self.log("PROGRESS:70:Running Competitor Analysis")

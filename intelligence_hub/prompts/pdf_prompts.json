@@ -1,0 +1,22 @@
+[
+  {
+    "id": "financial_summary",
+    "prompt": "Extract a summary of the financial performance, including revenue, net profit, and key growth drivers.",
+    "category": "Financials"
+  },
+  {
+    "id": "risk_factors",
+    "prompt": "Identify the top 3 risk factors mentioned in the document.",
+    "category": "Risks"
+  },
+  {
+    "id": "strategic_outlook",
+    "prompt": "What are the company's future strategic goals and expansion plans?",
+    "category": "Strategy"
+  },
+  {
+    "id": "project_updates",
+    "prompt": "List any major ongoing projects or recent completions.",
+    "category": "Operations"
+  }
+]

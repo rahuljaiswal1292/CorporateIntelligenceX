@@ -12,7 +12,15 @@ langchain-google-genai
 scrapingbee>=2.0.0
 unstructured>=0.11.0
 pymupdf>=1.23.0
+chromadb>=0.4.0
 pinecone-client>=3.0.0
 google-generativeai>=0.3.0
 curl_cffi>=0.5.10
 playwright>=1.40.0
+trafilatura
+feedparser
+wikipedia
+yfinance
+google-search-results
+langchain-openai
+nest_asyncio

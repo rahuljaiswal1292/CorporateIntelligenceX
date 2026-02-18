@@ -8,7 +8,7 @@ import base64
 from pathlib import Path
 from intelligence_hub.ui.styles import get_custom_css
 from intelligence_hub.ui.dashboard import render_main_dashboard, get_test_dashboard_data
-from intelligence_hub.ui.pipeline_viz import render_agent_pipeline
+from intelligence_hub.ui.pipeline_viz import render_agent_pipeline, get_default_agent_status
 from intelligence_hub.core.mock_data import get_company_data
 from intelligence_hub.llm.models import LLMModel
 
@@ -91,6 +91,8 @@ if "investigation_paused" not in st.session_state:
     st.session_state.investigation_paused = False
 if "intermediate_state" not in st.session_state:
     st.session_state.intermediate_state = None
+if "agent_status" not in st.session_state:
+    st.session_state.agent_status = get_default_agent_status()
 
 
 
@@ -599,6 +601,8 @@ def run_investigation(query_or_resume, pipeline_placeholder=None, resolved_place
         st.session_state.investigation_paused = False
         st.session_state.intermediate_state = None
         st.session_state.thread_id = str(uuid.uuid4())
+        st.session_state.agent_status = get_default_agent_status()
+        st.session_state.agent_status["master_agent"] = "running"
         
         # 1. Initialize Baseline (Hybrid Approach)
         base_data = get_company_data(query)
@@ -666,6 +670,11 @@ def run_investigation(query_or_resume, pipeline_placeholder=None, resolved_place
         # Update LLM config in case user changed settings before continuing
         input_data["llm_config"] = llm_config
         processed_logs = set(input_data.get('logs', []))
+        # Mark master as done, set parallel agents to running
+        st.session_state.agent_status["master_agent"] = "success"
+        st.session_state.agent_status["wikipedia_agent"] = "running"
+        st.session_state.agent_status["news_agent"] = "running"
+        st.session_state.agent_status["ded_agent"] = "running"
 
     # 3. Setup Stream
     label = "📝 Live System Logs (Enrichment)" if resume_mode else "📝 Live System Logs (Resolution)"
@@ -691,6 +700,51 @@ def run_investigation(query_or_resume, pipeline_placeholder=None, resolved_place
         # Event corresponds to a node finishing
         for node, state in event.items():
             final_state = state  # Keep updating final state
+            
+            # ---- Map LangGraph node to agent_status key ----
+            node_to_agent = {
+                "master_enrichment": "master_agent",
+                "wikipedia": "wikipedia_agent",
+                "news": "news_agent",
+                "ded": "ded_agent",
+                "scraper": "scraper",
+                "vectorizer": "vectorizer",
+                "pdf_agent": "pdf_agent",
+                "analyst": "analyst",
+                "start_enrichment": None,  # passthrough node
+            }
+            agent_key = node_to_agent.get(node)
+            if agent_key:
+                # Check if this node had an error
+                node_logs = state.get("logs", [])
+                has_error = any("failed" in l.lower() or "error" in l.lower() for l in node_logs)
+                st.session_state.agent_status[agent_key] = "error" if has_error else "success"
+                
+                # Set next sequential agents to "running"
+                if agent_key == "master_agent" and not has_error:
+                    # After master, resolution graph ends. Enrichment runs on resume.
+                    pass
+                elif node == "start_enrichment":
+                    # Parallel agents start
+                    st.session_state.agent_status["wikipedia_agent"] = "running"
+                    st.session_state.agent_status["news_agent"] = "running"
+                    st.session_state.agent_status["ded_agent"] = "running"
+                elif node in ("wikipedia", "news", "ded"):
+                    # Check if all parallel agents done -> scraper starts
+                    parallel_done = all(
+                        st.session_state.agent_status.get(k) in ("success", "error")
+                        for k in ["wikipedia_agent", "news_agent", "ded_agent"]
+                    )
+                    if parallel_done:
+                        st.session_state.agent_status["scraper"] = "running"
+                elif agent_key == "scraper" and not has_error:
+                    st.session_state.agent_status["vectorizer"] = "running"
+                elif agent_key == "vectorizer" and not has_error:
+                    st.session_state.agent_status["pdf_agent"] = "running"
+                elif agent_key == "pdf_agent" and not has_error:
+                    st.session_state.agent_status["analyst"] = "running"
+                
+                update_pipeline_ui()
             
             # Capture canonical name from state if available
             state_canonical = state.get("canonical_name") or state.get("company_name")
@@ -1033,6 +1087,7 @@ if abort_clicked:
     st.session_state.canonical_name = None
     st.session_state.confidence_score = None
     st.session_state.is_resolving = False
+    st.session_state.agent_status = get_default_agent_status()
     
     # Add log message
     add_log("System", "Investigation aborted by user")
@@ -1072,6 +1127,8 @@ if test_data_clicked:
     st.session_state.canonical_name = "Emirates NBD Bank PJSC"
     st.session_state.analysis_complete = True
     st.session_state.progress_stage = 5
+    # Set all agents to success for test visualization
+    st.session_state.agent_status = {k: "success" for k in get_default_agent_status()}
     st.success("✅ Test data loaded! Scroll down to see the dashboard.")
     st.rerun()
 

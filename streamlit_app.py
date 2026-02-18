@@ -1257,14 +1257,6 @@ if abort_clicked:
     st.rerun()
 
 
-# Progress Chain Placeholder - Always visible if active
-progress_placeholder = st.empty()
-
-# Render Progress Chain if already active (on rerun)
-if st.session_state.progress_stage > 0:
-    with progress_placeholder.container():
-        render_progress_chain(st.session_state.progress_stage)
-
 # Trigger Search
 if search_clicked and query_input:
     # Set resolving state immediately

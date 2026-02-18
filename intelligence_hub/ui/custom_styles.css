@@ -6,7 +6,7 @@
     padding: 15px 30px 18px 30px;
     border-radius: 12px;
     box-shadow: 0 10px 20px #00306359;
-    margin-bottom: 24px;
+    margin-bottom: 5px;
 }
 
 .main-heading {
@@ -47,8 +47,8 @@
     color: #003366;
     text-transform: none;
     letter-spacing: 0.05em;
-    margin-top: 48px;
-    margin-bottom: 20px;
+    margin-top: 10px;
+    margin-bottom: 10px;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -853,7 +853,7 @@ button[data-testid*="recent_inv"] {
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.9) 100%);
     border: 1px solid rgba(0, 51, 102, 0.1);
     border-radius: 16px;
-    padding: 24px;
+    padding: 12px;
     transition: all 0.3s ease;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }

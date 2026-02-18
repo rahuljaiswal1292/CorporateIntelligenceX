@@ -1,4 +1,3 @@
-
 import logging
 import asyncio
 import os
@@ -49,13 +48,14 @@ class Config:
     DATA_DIR = DATA_DIRECTORY
     HEADLESS = False
 
+
 config = Config
 
 
 try:
-    from intelligence_hub.utils.adx_chart_extractor import ADXChartExtractor
+    from intelligence_hub.utils.adx_stock_extractor import ADXStockExtractor
 except ImportError:
-    ADXChartExtractor = None
+    ADXStockExtractor = None
 
 # StorageManager imported from utils
 
@@ -363,19 +363,23 @@ class ADXScraper:
         self.base_url = "https://www.adx.ae"
         self.browser: Optional[Browser] = None
         self.playwright = None
-        
+
         # Initialize enhanced download manager and bot handler
         max_age_years = 5
-        self.download_manager = DownloadManager(max_age_years=max_age_years) if 'DownloadManager' in globals() else None
-        self.bot_handler = BotHandler() if 'BotHandler' in globals() else None
-        
-        # known companies map 
+        self.download_manager = (
+            DownloadManager(max_age_years=max_age_years)
+            if "DownloadManager" in globals()
+            else None
+        )
+        self.bot_handler = BotHandler() if "BotHandler" in globals() else None
+
+        # known companies map
         self.known_companies = {
-             "FAB": "First Abu Dhabi Bank",
-             "FBI": "First Abu Dhabi Bank (Legacy)", # Example mapping
-             "CBD": "Commercial Bank of Dubai"
+            "FAB": "First Abu Dhabi Bank",
+            "FBI": "First Abu Dhabi Bank (Legacy)",  # Example mapping
+            "CBD": "Commercial Bank of Dubai",
         }
-        
+
         # Concurrency control
         self.semaphore = asyncio.Semaphore(3)
 
@@ -383,36 +387,39 @@ class ADXScraper:
         """Initialize Playwright browser with stealth settings"""
         logger.info("Initializing Playwright Browser with ENHANCED STEALTH...")
         self.playwright = await async_playwright().start()
-        
+
         # Launch with arguments that mimic a real user session
         self.browser = await self.playwright.chromium.launch(
-            headless=config.HEADLESS, # Must be False for best results
-            channel="chrome", 
+            headless=config.HEADLESS,  # Must be False for best results
+            channel="chrome",
             args=[
                 "--disable-blink-features=AutomationControlled",
-                "--no-sandbox", 
+                "--no-sandbox",
                 "--disable-setuid-sandbox",
                 "--disable-infobars",
                 "--window-size=1920,1080",
                 "--start-maximized",
                 "--disable-extensions",
-                "--disable-gpu"
-            ]
+                "--disable-gpu",
+            ],
         )
-    
+
     async def _create_stealth_page(self, context):
         """Create a page with stealth injections"""
         page = await context.new_page()
-        
+
         # Injection 1: Overwrite the `webdriver` property
-        await page.add_init_script("""
+        await page.add_init_script(
+            """
             Object.defineProperty(navigator, 'webdriver', {
                 get: () => undefined
             });
-        """)
-        
+        """
+        )
+
         # Injection 2: Mock Chrome/Plugins
-        await page.add_init_script("""
+        await page.add_init_script(
+            """
             window.chrome = {
                 runtime: {}
             };
@@ -422,10 +429,11 @@ class ADXScraper:
             Object.defineProperty(navigator, 'languages', {
                 get: () => ['en-US', 'en']
             });
-        """)
-        
+        """
+        )
+
         return page
-    
+
     async def _teardown_browser(self):
         if self.browser:
             await self.browser.close()
@@ -446,28 +454,30 @@ class ADXScraper:
             "orderbook": f"https://www.adx.ae/main-market/company-profile/orderbook?symbols={ticker}",
             "assembly_meetings": f"https://www.adx.ae/main-market/company-profile/assembly-meetings?symbols={ticker}",
         }
-        
+
         data = {}
 
         try:
             await self._setup_browser()
-            
+
             # Create a context with downloads enabled
             context = await self.browser.new_context(
                 accept_downloads=True,
                 viewport={"width": 1920, "height": 1080},
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             )
-            
+
             # Define processing function for each page type
             async def process_page(url, page_type):
                 async with self.semaphore:
                     page = await self._create_stealth_page(context)
-                
+
                     # Setup page-specific download handler (in 'structured' subfolder)
-                    page_download_dir = os.path.join(config.DATA_DIR, "adx", ticker, page_type, "structured")
+                    page_download_dir = os.path.join(
+                        config.DATA_DIR, "adx", ticker, page_type, "structured"
+                    )
                     os.makedirs(page_download_dir, exist_ok=True)
-                    
+
                     async def handle_download(download):
                         try:
                             suggested_filename = download.suggested_filename
@@ -478,67 +488,98 @@ class ADXScraper:
                             logger.error(f"Download failed in {page_type}: {e}")
 
                     page.on("download", handle_download)
-                    
+
                     # For orderbook and overview pages, setup chart extractor BEFORE navigation
                     chart_extractor = None
-                    if page_type in ["orderbook", "overview"] and ADXChartExtractor:
-                        chart_extractor = ADXChartExtractor()
+                    if page_type in ["orderbook", "overview"] and ADXStockExtractor:
+                        chart_extractor = ADXStockExtractor()
                         chart_extractor.target_url = url
-                        chart_extractor.symbol = chart_extractor._extract_symbol_from_url(url)
+                        chart_extractor.symbol = (
+                            chart_extractor._extract_symbol_from_url(url)
+                        )
                         chart_extractor.target_symbol = chart_extractor.symbol
                         # Attach network listeners BEFORE navigation
                         page.on("request", chart_extractor._handle_request)
                         page.on("response", chart_extractor._handle_response)
-                        logger.info(f"Setup chart extractor listeners for {ticker} on {page_type} BEFORE navigation")
-                    
+                        logger.info(
+                            f"Setup chart extractor listeners for {ticker} on {page_type} BEFORE navigation"
+                        )
+
                     logger.info(f"Navigating to {page_type}: {url}")
                     try:
                         # Use 'load' for more completeness
                         await page.goto(url, wait_until="load", timeout=90000)
-                        
+
                         # Prepare page (scroll, wait)
                         await self._prepare_page_content(page, page_type)
-                        
+
                         # Extract structured data FIRST for pages that need interaction (like financials)
                         extracted_data = {}
                         if page_type == "overview":
-                            extracted_data = await self._extract_overview(page, ticker, page_type)
+                            extracted_data = await self._extract_overview(
+                                page, ticker, page_type
+                            )
                             # Also attempt chart extraction on overview as a primary source
                             if chart_extractor:
-                                chart_res = await self._extract_orderbook_chart_with_extractor(page, ticker, url, chart_extractor)
+                                chart_res = (
+                                    await self._extract_orderbook_chart_with_extractor(
+                                        page, ticker, url, chart_extractor
+                                    )
+                                )
                                 if chart_res and chart_res.get("chart_extracted"):
                                     extracted_data["chart_data"] = chart_res
                         elif page_type == "financials":
                             # This method clicks tabs and triggers data loading
-                            extracted_data = await self._interact_and_extract_financials(page, ticker, page_type)
+                            extracted_data = (
+                                await self._interact_and_extract_financials(
+                                    page, ticker, page_type
+                                )
+                            )
                         elif page_type == "orderbook":
                             # Extract chart data using pre-configured extractor
-                            extracted_data = await self._extract_orderbook_chart_with_extractor(page, ticker, url, chart_extractor)
+                            extracted_data = (
+                                await self._extract_orderbook_chart_with_extractor(
+                                    page, ticker, url, chart_extractor
+                                )
+                            )
                         elif page_type == "shareholders":
-                            extracted_data = await self._extract_shareholders(page, ticker, page_type)
-                        elif page_type in ["disclosures", "assembly_meetings", "fundamentals"]:
-                            extracted_data = await self._generic_document_extract(page, ticker, page_type)
-                        
+                            extracted_data = await self._extract_shareholders(
+                                page, ticker, page_type
+                            )
+                        elif page_type in [
+                            "disclosures",
+                            "assembly_meetings",
+                            "fundamentals",
+                        ]:
+                            extracted_data = await self._generic_document_extract(
+                                page, ticker, page_type
+                            )
+
                         # Capture content AFTER interaction to ensure dynamic data is present
                         content = await page.content()
-                        
+
                         # Save Raw HTML
-                        StorageManager.save_page_content(content, "adx", ticker, page_type, "html", "page")
+                        StorageManager.save_page_content(
+                            content, "adx", ticker, page_type, "html", "page"
+                        )
 
                         # Convert and Store Clean Markdown (using raw HTML for best results)
                         try:
                             md_content = clean_html_to_markdown(content)
-                            StorageManager.save_page_content(md_content, "adx", ticker, page_type, "md", "page_clean")
+                            StorageManager.save_page_content(
+                                md_content, "adx", ticker, page_type, "md", "page_clean"
+                            )
                         except Exception as e:
-                            logger.warning(f"Failed to convert/save markdown for {page_type}: {e}")
-                            
+                            logger.warning(
+                                f"Failed to convert/save markdown for {page_type}: {e}"
+                            )
+
                         await page.close()
                         return (page_type, extracted_data)
                     except Exception as e:
                         logger.error(f"Error processing {page_type}: {e}")
                         await page.close()
                         return (page_type, None)
-                    
 
             # Exec tasks
             tasks = [
@@ -548,11 +589,11 @@ class ADXScraper:
                 process_page(urls["shareholders"], "shareholders"),
                 process_page(urls["orderbook"], "orderbook"),
                 process_page(urls["fundamentals"], "fundamentals"),
-                process_page(urls["assembly_meetings"], "assembly_meetings")
+                process_page(urls["assembly_meetings"], "assembly_meetings"),
             ]
-            
+
             results = await asyncio.gather(*tasks)
-            
+
             # Merge Results
             downloaded_files = []
             for page_type, result in results:
@@ -564,30 +605,34 @@ class ADXScraper:
                         data["financials"] = result.get("financials", {})
                     elif page_type == "shareholders":
                         data["shareholders"] = result.get("shareholders", [])
-                    
+
                     # Generic merge for everything else (disclosures, orderbook, etc)
                     if page_type not in ["overview"]:
-                         data[page_type] = result
-                    
+                        data[page_type] = result
+
                     # Collect any files/documents identified in the result
                     if isinstance(result, dict) and "files" in result:
                         downloaded_files.extend(result["files"])
                     if isinstance(result, dict) and "documents" in result:
                         if isinstance(result["documents"], list):
                             downloaded_files.extend(result["documents"])
-                        elif isinstance(result["documents"], dict) and "files" in result["documents"]:
-                             downloaded_files.extend(result["documents"]["files"])
+                        elif (
+                            isinstance(result["documents"], dict)
+                            and "files" in result["documents"]
+                        ):
+                            downloaded_files.extend(result["documents"]["files"])
 
             data["documents"] = list(set(downloaded_files))
-            
+
             # Save final structured data to disk
             StorageManager.save_structured(data, "adx", ticker)
-            
+
             return data
 
         except Exception as e:
             logger.error(f"Error scraping company {ticker}: {e}")
             import traceback
+
             traceback.print_exc()
             return {}
         finally:
@@ -637,105 +682,131 @@ class ADXScraper:
             await page.wait_for_timeout(1000)
             await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
             await page.wait_for_timeout(2000)
-        except: pass
-        
+        except:
+            pass
+
         # 2. Page Specific Waits
         if page_type == "financials":
             try:
-                 # Check for bot detection
-                 if self.bot_handler and await self.bot_handler.detect_bot_challenge(page):
-                     await self.bot_handler.handle_bot_detection(page)
-                     
-                 # Wait for the tabs or documents to appear
-                 logger.info("Waiting for financial data to render...")
-                 
-                 # Dynamic wait for actual data (PDF links or tables with content)
-                 await page.wait_for_function("""
+                # Check for bot detection
+                if self.bot_handler and await self.bot_handler.detect_bot_challenge(
+                    page
+                ):
+                    await self.bot_handler.handle_bot_detection(page)
+
+                # Wait for the tabs or documents to appear
+                logger.info("Waiting for financial data to render...")
+
+                # Dynamic wait for actual data (PDF links or tables with content)
+                await page.wait_for_function(
+                    """
                     () => {
                         const hasReports = !!document.querySelector('a[href*=".pdf"], a[href*="Download"]');
                         const tables = document.querySelectorAll('table, .adx-table, .table-responsive');
                         let tableHasContent = false;
                         for (const tbl of tables) {
-                            if (tbl.innerText.replace(/[\u200B-\u200D\uFEFF]/g, '').trim().length > 20) {
+                            if (tbl.innerText.replace(/[\u200b-\u200d\ufeff]/g, '').trim().length > 20) {
                                 tableHasContent = true;
                                 break;
                             }
                         }
                         return hasReports || tableHasContent;
                     }
-                 """, timeout=30000)
-                 await page.wait_for_timeout(2000)
+                 """,
+                    timeout=30000,
+                )
+                await page.wait_for_timeout(2000)
             except Exception as e:
                 logger.warning(f"Wait timeout on financials: {e}")
-        
+
         elif page_type == "shareholders":
             logger.info("Waiting for shareholders data mapping...")
             try:
                 # Wait for any of the common shareholder tables or headings
-                await page.wait_for_selector(".adx-shareholders-board, .shareholders-board_content, h2", timeout=15000)
+                await page.wait_for_selector(
+                    ".adx-shareholders-board, .shareholders-board_content, h2",
+                    timeout=15000,
+                )
                 await page.wait_for_timeout(2000)
-            except: pass
-            
+            except:
+                pass
+
         elif page_type == "overview":
             logger.info("Waiting for overview details...")
             try:
                 # Wait for share capital or auditor sections if they appear late
-                await page.wait_for_selector(".sharecard-title, .companyoverview-pra, h3", timeout=15000)
+                await page.wait_for_selector(
+                    ".sharecard-title, .companyoverview-pra, h3", timeout=15000
+                )
                 await page.wait_for_timeout(2000)
-            except: pass
-            
+            except:
+                pass
+
         elif page_type == "orderbook":
             logger.info("Waiting for TradingView chart to render...")
             try:
                 # Wait for the iframe or the chart container
-                await page.wait_for_selector(".tradingview-widget-container, iframe, #tv_chart_container", timeout=20000)
-                await page.wait_for_timeout(5000) # Give extra time for network stabilization
-            except: pass
-            
-    async def _extract_orderbook_chart_with_extractor(self, page: Page, ticker: str, url: str, extractor: 'ADXChartExtractor') -> dict:
+                await page.wait_for_selector(
+                    ".tradingview-widget-container, iframe, #tv_chart_container",
+                    timeout=20000,
+                )
+                await page.wait_for_timeout(
+                    5000
+                )  # Give extra time for network stabilization
+            except:
+                pass
+
+    async def _extract_orderbook_chart_with_extractor(
+        self, page: Page, ticker: str, url: str, extractor: "ADXStockExtractor"
+    ) -> dict:
         """
-        Extract chart data from orderbook page using a pre-configured ADXChartExtractor.
+        Extract chart data from orderbook page using a pre-configured ADXStockExtractor.
         The extractor should already have network listeners attached BEFORE page navigation.
         This extracts OHLCV (Open, High, Low, Close, Volume) data and saves it to CSV.
         """
-        logger.info(f"Extracting orderbook chart data for {ticker} with pre-configured extractor...")
-        
+        logger.info(
+            f"Extracting orderbook chart data for {ticker} with pre-configured extractor..."
+        )
+
         if not extractor:
-            logger.warning("ADXChartExtractor not available, skipping chart extraction")
-            return {"chart_extracted": False, "reason": "ADXChartExtractor not available"}
-        
+            logger.warning("ADXStockExtractor not available, skipping chart extraction")
+            return {
+                "chart_extracted": False,
+                "reason": "ADXStockExtractor not available",
+            }
+
         try:
             # The extractor already has listeners attached and has been capturing network traffic
             # Now we just need to trigger interactions and process the captured data
-            
+
             # Wait for request headers to be captured first (needed for fallback)
             logger.info("Polling for network headers...")
             for _ in range(10):
                 if extractor.request_headers:
                     break
                 await asyncio.sleep(1)
-            
+
             logger.info("Waiting for chart content to load...")
             await page.wait_for_timeout(2000)
-            
+
             # Scroll to bring the chart into view
             await page.evaluate("window.scrollTo(0, 800)")
             await asyncio.sleep(3)
-            
+
             # Try to trigger 3-month history via interaction
             await extractor._trigger_3month_history(page)
-            
+
             # Additional wait for network response to be processed
             logger.info("Polling for captured chart data...")
             for _ in range(10):
                 if extractor.captured_data:
                     break
                 await asyncio.sleep(1)
-            
+
             # If we discovered the API, fetch 3 months (100 records)
             if extractor.discovered_api_url:
                 logger.info(f"Using discovered API: {extractor.discovered_api_url}")
-                
+
                 # Ensure full_url is constructed safely
                 full_url = extractor.discovered_api_url
                 if "recordCount=" not in full_url:
@@ -743,33 +814,45 @@ class ADXScraper:
                         full_url += "&recordCount=100"
                     else:
                         full_url += "?recordCount=100"
-                
+
                 logger.info(f"Fetching 3-month data via request context: {full_url}")
                 try:
-                    response = await page.context.request.get(full_url, headers=extractor.request_headers)
+                    response = await page.context.request.get(
+                        full_url, headers=extractor.request_headers
+                    )
                     if response.ok:
                         history_json = await response.json()
                         results = history_json.get("response", {}).get("results", [])
                         if results:
-                            logger.info(f"Successfully captured {len(results)} historical records.")
-                            extractor.captured_data = [] # Reset to use full history
+                            logger.info(
+                                f"Successfully captured {len(results)} historical records."
+                            )
+                            extractor.captured_data = []  # Reset to use full history
                             extractor._normalize_list_data(results)
                     else:
-                        logger.error(f"Request context fetch failed: {response.status} {response.status_text}")
+                        logger.error(
+                            f"Request context fetch failed: {response.status} {response.status_text}"
+                        )
                 except Exception as e:
                     logger.error(f"Failed to fetch history via request context: {e}")
 
             if not extractor.captured_data:
-                logger.info(f"Falling back to marketwatch API (10-day lookback) for {ticker}...")
+                logger.info(
+                    f"Falling back to marketwatch API (10-day lookback) for {ticker}..."
+                )
                 try:
                     # Clean URL without recordCount (which causes 400 Bad Request on this endpoint)
                     recent_trades_url = f"https://apigateway.adx.ae/adx/marketwatch/1.1/recentTrades/{ticker.upper()}"
-                    response = await page.context.request.get(recent_trades_url, headers=extractor.request_headers)
+                    response = await page.context.request.get(
+                        recent_trades_url, headers=extractor.request_headers
+                    )
                     if response.ok:
                         trades_json = await response.json()
                         results = trades_json.get("response", {}).get("results", [])
                         if results:
-                            logger.info(f"Captured {len(results)} records from recentTrades fallback.")
+                            logger.info(
+                                f"Captured {len(results)} records from recentTrades fallback."
+                            )
                             extractor._normalize_list_data(results)
                 except Exception as e:
                     logger.warning(f"RecentTrades fallback failed: {e}")
@@ -777,11 +860,16 @@ class ADXScraper:
             # If still no data, check for page-level scripts (NEXT_DATA)
             if not extractor.captured_data:
                 logger.info("Checking __NEXT_DATA__ for embedded chart data...")
-                next_data = await page.evaluate("() => JSON.stringify(window.__NEXT_DATA__ || {})")
+                next_data = await page.evaluate(
+                    "() => JSON.stringify(window.__NEXT_DATA__ || {})"
+                )
                 if next_data:
                     try:
-                        extractor._handle_json_content(json.loads(next_data), "NEXT_DATA")
-                    except: pass
+                        extractor._handle_json_content(
+                            json.loads(next_data), "NEXT_DATA"
+                        )
+                    except:
+                        pass
 
             if not extractor.captured_data:
                 logger.warning("No chart data captured. Waiting a bit more...")
@@ -791,58 +879,89 @@ class ADXScraper:
             if extractor.captured_data:
                 extractor._process_data()
                 extractor._save_to_csv()
-                logger.info(f"Successfully extracted {len(extractor.processed_df)} chart data points for {ticker}")
+                logger.info(
+                    f"Successfully extracted {len(extractor.processed_df)} chart data points for {ticker}"
+                )
                 return {
                     "chart_extracted": True,
                     "records_count": len(extractor.processed_df),
                     "date_range": {
-                        "start": str(extractor.processed_df['Date'].min()),
-                        "end": str(extractor.processed_df['Date'].max())
-                    }
+                        "start": str(extractor.processed_df["Date"].min()),
+                        "end": str(extractor.processed_df["Date"].max()),
+                    },
                 }
             else:
                 logger.warning(f"No chart data extracted for {ticker}")
                 return {"chart_extracted": False, "reason": "No data captured"}
-                
+
         except Exception as e:
             logger.error(f"Error extracting orderbook chart data: {e}")
             import traceback
+
             traceback.print_exc()
             return {"chart_extracted": False, "reason": str(e)}
-            
+
     def _clean_generic_adx_content(self, html_content: str) -> str:
         """Remove generic ADX noise with maximum prejudice."""
-        if not html_content: return ""
+        if not html_content:
+            return ""
         try:
-            soup = BeautifulSoup(html_content, 'html.parser')
-            
+            soup = BeautifulSoup(html_content, "html.parser")
+
             # 1. Broad Removal of known noise containers
             noise_selectors = [
-                ".marqueeWrapperTicker", ".ticker-value",
-                ".uae-current-date", ".language-switcher", ".accessbility-container",
-                ".login-btn", ".mw-btn", "header", "footer", ".adx-header", ".adx-footer",
-                ".search-btn-responsive", ".side-bar", ".sidebar", ".breadcrumb",
-                "nav", ".navbar", ".adx-top-nav", ".social-links", ".cookie-banner",
-                "#top-nav", ".sub-footer"
+                ".marqueeWrapperTicker",
+                ".ticker-value",
+                ".uae-current-date",
+                ".language-switcher",
+                ".accessbility-container",
+                ".login-btn",
+                ".mw-btn",
+                "header",
+                "footer",
+                ".adx-header",
+                ".adx-footer",
+                ".search-btn-responsive",
+                ".side-bar",
+                ".sidebar",
+                ".breadcrumb",
+                "nav",
+                ".navbar",
+                ".adx-top-nav",
+                ".social-links",
+                ".cookie-banner",
+                "#top-nav",
+                ".sub-footer",
             ]
             for selector in noise_selectors:
                 for element in soup.select(selector):
                     element.decompose()
-            
+
             # 2. Targeted Removal of ticker-specific lists (using find_all for robustness)
             for ul in soup.find_all("ul", attrs={"aria-label": "tickerValue"}):
                 ul.decompose()
-            
+
             # 3. Heuristic: Remove items containing multiple common ADX tickers (noise lists)
-            ticker_keywords = ["2POINTZERO", "ADAVIATION", "ADNOCGAS", "LULU", "FAB", "ADCB", "ALDAR", "IHC", "EAND", "ADIB"]
+            ticker_keywords = [
+                "2POINTZERO",
+                "ADAVIATION",
+                "ADNOCGAS",
+                "LULU",
+                "FAB",
+                "ADCB",
+                "ALDAR",
+                "IHC",
+                "EAND",
+                "ADIB",
+            ]
             pattern = re.compile("|".join(ticker_keywords))
-            
+
             for item in soup.find_all(["li", "tr", "div"]):
                 # If a small container contains multiple tickers, it's noise
                 txt = item.get_text()
                 if 2 < len(txt) < 300:
                     matches = pattern.findall(txt)
-                    if len(set(matches)) >= 2: # At least 2 different noise tickers
+                    if len(set(matches)) >= 2:  # At least 2 different noise tickers
                         item.decompose()
 
             return str(soup)
@@ -850,28 +969,30 @@ class ADXScraper:
             logger.warning(f"Error cleaning ADX content: {e}")
             return html_content
 
-    async def _interact_and_extract_financials(self, page: Page, ticker: str, page_type: str) -> dict:
+    async def _interact_and_extract_financials(
+        self, page: Page, ticker: str, page_type: str
+    ) -> dict:
         """
         Interact with financial page to download all English documents.
         Enhanced with DownloadManager for reliable downloads with retry, validation, and date filtering.
         """
         logger.info(f"Interacting with Financials page for {ticker}...")
-        
+
         # Check for bot detection
         if self.bot_handler and await self.bot_handler.detect_bot_challenge(page):
-            await self.bot_handler.handle_bot_detection(page, severity='medium')
-        
+            await self.bot_handler.handle_bot_detection(page, severity="medium")
+
         # 1. Click on Report Type buttons to load different sections
         # We try to prioritize 'Annual' as it usually has the most data
         try:
             # Look for tab buttons
             tab_selectors = [
-                'button:has-text("Annual")', 
+                'button:has-text("Annual")',
                 '.adx-tab_item:has-text("Annual")',
                 'button:has-text("Yearly")',
-                'a[role="tab"]:has-text("Annual")'
+                'a[role="tab"]:has-text("Annual")',
             ]
-            
+
             clicked_any = False
             for selector in tab_selectors:
                 btn = page.locator(selector).first
@@ -880,11 +1001,19 @@ class ADXScraper:
                     await btn.click()
                     clicked_any = True
                     break
-            
+
             if not clicked_any:
                 # Fallback to general tab buttons
-                buttons = await page.locator('button, a[role="tab"]').filter(has_text=re.compile(r'annual|yearly|quarterly|interim', re.IGNORECASE)).all()
-                for btn in buttons[:1]: # Just click the first one if not clicked yet
+                buttons = (
+                    await page.locator('button, a[role="tab"]')
+                    .filter(
+                        has_text=re.compile(
+                            r"annual|yearly|quarterly|interim", re.IGNORECASE
+                        )
+                    )
+                    .all()
+                )
+                for btn in buttons[:1]:  # Just click the first one if not clicked yet
                     if await btn.is_visible():
                         await btn.click()
                         clicked_any = True
@@ -898,10 +1027,12 @@ class ADXScraper:
         # Ensure we wait for the table to be visible after clicking
         try:
             await page.wait_for_selector(".adx-table, table", timeout=10000)
-        except: pass
+        except:
+            pass
 
         # 2. Find all document links (PDF and Office formats)
-        document_links = await page.evaluate('''() => {
+        document_links = await page.evaluate(
+            """() => {
             const links = Array.from(document.querySelectorAll('a[href]'));
             const docFormats = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx'];
             return links
@@ -917,65 +1048,73 @@ class ADXScraper:
                     title: a.title || a.getAttribute('aria-label') || '',
                     index: index
                 }));
-        }''')
-        
+        }"""
+        )
+
         logger.info(f"Found {len(document_links)} potential document links.")
-        
+
         # 3. Filter for English documents
         english_docs = []
         for doc in document_links:
             text_combined = f"{doc['text']} {doc['title']} {doc['url']}".upper()
-            
+
             # Exclude Arabic documents
-            if any(ar in text_combined for ar in ['AR', 'ARABIC', 'عربي', '_AR.', '/AR/', 'AR-AE']):
+            if any(
+                ar in text_combined
+                for ar in ["AR", "ARABIC", "عربي", "_AR.", "/AR/", "AR-AE"]
+            ):
                 logger.info(f"Skipping Arabic document: {doc['text'][:50]}")
                 continue
-            
+
             # Check for Arabic unicode in text
-            if any('\u0600' <= char <= '\u06FF' for char in doc['text']):
+            if any("\u0600" <= char <= "\u06ff" for char in doc["text"]):
                 continue
-            
+
             # Determine expected file type
-            url_lower = doc['url'].lower()
-            if '.pdf' in url_lower:
-                doc['expected_type'] = 'pdf'
-            elif '.xlsx' in url_lower or '.xls' in url_lower:
-                doc['expected_type'] = 'xlsx' if '.xlsx' in url_lower else 'xls'
-            elif '.docx' in url_lower or '.doc' in url_lower:
-                doc['expected_type'] = 'docx' if '.docx' in url_lower else 'doc'
+            url_lower = doc["url"].lower()
+            if ".pdf" in url_lower:
+                doc["expected_type"] = "pdf"
+            elif ".xlsx" in url_lower or ".xls" in url_lower:
+                doc["expected_type"] = "xlsx" if ".xlsx" in url_lower else "xls"
+            elif ".docx" in url_lower or ".doc" in url_lower:
+                doc["expected_type"] = "docx" if ".docx" in url_lower else "doc"
             else:
-                doc['expected_type'] = 'pdf'  # default
-            
+                doc["expected_type"] = "pdf"  # default
+
             english_docs.append(doc)
-        
+
         logger.info(f"Filtered to {len(english_docs)} English documents.")
-        
+
         # 4. Download documents using enhanced DownloadManager
         downloaded_count = 0
         failed_downloads = []
         skipped_old = []
-        
+
         # Directory for all files
-        target_dir = os.path.join(config.DATA_DIR, "adx", ticker, page_type, "structured")
+        target_dir = os.path.join(
+            config.DATA_DIR, "adx", ticker, page_type, "structured"
+        )
         os.makedirs(target_dir, exist_ok=True)
         logger.info(f"Target directory: {target_dir}")
-        
+
         # Use DownloadManager if available, otherwise fallback to old method
         if self.download_manager:
             logger.info("Using enhanced DownloadManager with parallel downloads")
-            
+
             results = await self.download_manager.download_batch_parallel(
                 page=page,
                 documents=english_docs[:50],  # Process up to 50 documents
                 target_dir=target_dir,
                 max_concurrent=10,  # 10 concurrent downloads
-                max_retries=3
+                max_retries=3,
             )
-            
+
             # Count successful downloads
             downloaded_count = sum(1 for r in results if r is not None)
-            failed_downloads = [doc for doc, result in zip(english_docs[:50], results) if result is None]
-            
+            failed_downloads = [
+                doc for doc, result in zip(english_docs[:50], results) if result is None
+            ]
+
             # Get statistics
             stats = self.download_manager.get_stats()
             logger.info(f"\n{'='*60}")
@@ -986,36 +1125,39 @@ class ADXScraper:
             logger.info(f"  Skipped (old): {stats['skipped_old']}")
             logger.info(f"  Skipped (invalid): {stats['skipped_invalid']}")
             logger.info(f"{'='*60}\n")
-            
+
         else:
             # Fallback to old method if DownloadManager not available
             logger.warning("DownloadManager not available, using fallback method")
             # ... (keep old code as fallback)
-        
+
         return {
             "financials": {
                 "documents_found": len(english_docs),
                 "documents_downloaded": downloaded_count,
                 "documents_failed": len(failed_downloads),
-                "download_stats": self.download_manager.get_stats() if self.download_manager else {}
+                "download_stats": (
+                    self.download_manager.get_stats() if self.download_manager else {}
+                ),
             }
         }
 
-
-
-    async def _generic_document_extract(self, page: Page, ticker: str, page_type: str) -> dict:
+    async def _generic_document_extract(
+        self, page: Page, ticker: str, page_type: str
+    ) -> dict:
         """
         Generic document extraction for ADX pages (disclosures, assembly meetings, fundamentals).
         Enhanced with DownloadManager for reliable downloads with retry, validation, and date filtering.
         """
         logger.info(f"Starting generic document extraction for {page_type}...")
-        
+
         # Check for bot detection
         if self.bot_handler and await self.bot_handler.detect_bot_challenge(page):
-            await self.bot_handler.handle_bot_detection(page, severity='low')
-        
+            await self.bot_handler.handle_bot_detection(page, severity="low")
+
         # 1. Find all document links
-        document_links = await page.evaluate('''() => {
+        document_links = await page.evaluate(
+            """() => {
             const links = Array.from(document.querySelectorAll('a[href]'));
             const docFormats = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.csv'];
             return links
@@ -1031,72 +1173,82 @@ class ADXScraper:
                     title: a.title || a.getAttribute('aria-label') || '',
                     index: index
                 }));
-        }''')
-        
-        logger.info(f"Found {len(document_links)} potential document links on {page_type} page.")
-        
+        }"""
+        )
+
+        logger.info(
+            f"Found {len(document_links)} potential document links on {page_type} page."
+        )
+
         # 2. Filter for English documents and determine expected type
         english_docs = []
         for doc in document_links:
             text_combined = f"{doc['text']} {doc['title']} {doc['url']}".upper()
-            
+
             # Exclude Arabic documents
-            if any(ar in text_combined for ar in ['AR', 'ARABIC', 'عربي', '_AR.', '/AR/', 'AR-AE']):
+            if any(
+                ar in text_combined
+                for ar in ["AR", "ARABIC", "عربي", "_AR.", "/AR/", "AR-AE"]
+            ):
                 continue
-            
+
             # Check for Arabic unicode range in text
-            if any('\u0600' <= char <= '\u06FF' for char in doc['text']):
+            if any("\u0600" <= char <= "\u06ff" for char in doc["text"]):
                 continue
-            
+
             # Determine expected file type
-            url_lower = doc['url'].lower()
-            if '.pdf' in url_lower:
-                doc['expected_type'] = 'pdf'
-            elif '.xlsx' in url_lower:
-                doc['expected_type'] = 'xlsx'
-            elif '.xls' in url_lower:
-                doc['expected_type'] = 'xls'
-            elif '.csv' in url_lower:
-                doc['expected_type'] = 'csv'
-            elif '.docx' in url_lower:
-                doc['expected_type'] = 'docx'
-            elif '.doc' in url_lower:
-                doc['expected_type'] = 'doc'
+            url_lower = doc["url"].lower()
+            if ".pdf" in url_lower:
+                doc["expected_type"] = "pdf"
+            elif ".xlsx" in url_lower:
+                doc["expected_type"] = "xlsx"
+            elif ".xls" in url_lower:
+                doc["expected_type"] = "xls"
+            elif ".csv" in url_lower:
+                doc["expected_type"] = "csv"
+            elif ".docx" in url_lower:
+                doc["expected_type"] = "docx"
+            elif ".doc" in url_lower:
+                doc["expected_type"] = "doc"
             else:
-                doc['expected_type'] = 'pdf'  # default
-            
+                doc["expected_type"] = "pdf"  # default
+
             english_docs.append(doc)
-        
+
         logger.info(f"Filtered to {len(english_docs)} English documents.")
-        
+
         # 3. Download documents using enhanced DownloadManager
         downloaded_count = 0
         failed_downloads = []
-        
-        target_dir = os.path.join(config.DATA_DIR, "adx", ticker, page_type, "structured")
+
+        target_dir = os.path.join(
+            config.DATA_DIR, "adx", ticker, page_type, "structured"
+        )
         os.makedirs(target_dir, exist_ok=True)
         logger.info(f"Target directory: {target_dir}")
-        
+
         downloaded_files_list = []
-        
+
         # Use DownloadManager if available
         if self.download_manager:
             logger.info("Using enhanced DownloadManager with parallel downloads")
-            
+
             # Use parallel batch download
             results = await self.download_manager.download_batch_parallel(
                 page=page,
                 documents=english_docs[:50],  # Process up to 50 documents
                 target_dir=target_dir,
                 max_concurrent=10,
-                max_retries=3
+                max_retries=3,
             )
-            
+
             # Collect successful downloads
             downloaded_files_list = [r for r in results if r is not None]
             downloaded_count = len(downloaded_files_list)
-            failed_downloads = [doc for doc, result in zip(english_docs[:50], results) if result is None]
-            
+            failed_downloads = [
+                doc for doc, result in zip(english_docs[:50], results) if result is None
+            ]
+
             # Get statistics
             stats = self.download_manager.get_stats()
             logger.info(f"\n{'='*60}")
@@ -1107,7 +1259,7 @@ class ADXScraper:
             logger.info(f"  Skipped (old): {stats['skipped_old']}")
             logger.info(f"  Skipped (invalid): {stats['skipped_invalid']}")
             logger.info(f"{'='*60}\n")
-            
+
         else:
             # Fallback to old method
             logger.warning("DownloadManager not available, using fallback method")
@@ -1119,18 +1271,23 @@ class ADXScraper:
             "documents_failed": len(failed_downloads),
             "page_type": page_type,
             "files": downloaded_files_list,
-            "download_stats": self.download_manager.get_stats() if self.download_manager else {}
+            "download_stats": (
+                self.download_manager.get_stats() if self.download_manager else {}
+            ),
         }
 
-    async def _extract_shareholders(self, page: Page, ticker: str, page_type: str) -> dict:
+    async def _extract_shareholders(
+        self, page: Page, ticker: str, page_type: str
+    ) -> dict:
         """Extract shareholder information using table walking."""
         logger.info(f"Extracting shareholders for {ticker}...")
         try:
             # Wait for any table-like element
             await page.wait_for_selector("table, .adx-table", timeout=10000)
-            
+
             # Simple JS-based table extraction
-            shareholders = await page.evaluate('''() => {
+            shareholders = await page.evaluate(
+                """() => {
                 const results = [];
                 const rows = document.querySelectorAll('tr');
                 rows.forEach(row => {
@@ -1144,15 +1301,13 @@ class ADXScraper:
                     }
                 });
                 return results;
-            }''')
-            
+            }"""
+            )
+
             # Use generic document extraction for any attachments on the shareholder page
             doc_data = await self._generic_document_extract(page, ticker, page_type)
-            
-            return {
-                "shareholders": shareholders,
-                "documents": doc_data
-            }
+
+            return {"shareholders": shareholders, "documents": doc_data}
         except Exception as e:
             logger.error(f"Failed to extract shareholders: {e}")
             return {}
@@ -1160,23 +1315,23 @@ class ADXScraper:
     async def search_ticker(self, query: str) -> tuple:
         return None, None
 
+
 # Run Standalone
 if __name__ == "__main__":
     tickers = [
-        # "ALDAR",
-        # "FBI"
-        # 'LULU', 
-        # 'ADNOCGAS',
-        # 'EAND',
-        # 'ADNHC',
-        # 'ALDAR',
-        'FAB',
-        # 'ALPHADATA'
+        "ADNHC",
+        "ADNOCGAS",
+        "ALDAR",
+        "ALPHADATA",
+        "EAND",
+        "FAB",
+        "LULU",
     ]
-    
+
     # Try loading environment variables
     try:
         from dotenv import load_dotenv
+
         load_dotenv()
     except ImportError:
         pass
@@ -1184,6 +1339,7 @@ if __name__ == "__main__":
     # Try applying nest_asyncio for notebook/IDE support
     try:
         import nest_asyncio
+
         nest_asyncio.apply()
     except ImportError:
         pass
@@ -1201,7 +1357,7 @@ if __name__ == "__main__":
                 print(f"Success: {ticker}")
                 if data:
                     print(f"Profile: {data.get('profile')}")
-                    financials = data.get('financials', {})
+                    financials = data.get("financials", {})
                     if financials:
                         print(f"Financials keys: {list(financials.keys())}")
             except Exception as e:

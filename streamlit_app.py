@@ -8,6 +8,7 @@ import base64
 from pathlib import Path
 from intelligence_hub.ui.styles import get_custom_css
 from intelligence_hub.ui.dashboard import render_main_dashboard, get_test_dashboard_data
+from intelligence_hub.ui.pipeline_viz import render_agent_pipeline
 from intelligence_hub.core.mock_data import get_company_data
 from intelligence_hub.llm.models import LLMModel
 
@@ -22,7 +23,6 @@ if "intelligence_hub.graph.workflow" in sys.modules:
 from intelligence_hub.graph.workflow import create_resolution_graph, create_enrichment_graph  # Split Graphs
 from intelligence_hub.ui.components import (
     render_header,
-    render_progress_chain,
     render_company_profile,
     render_financials_detailed,
     render_chart,
@@ -607,7 +607,9 @@ def run_investigation(query_or_resume, pipeline_placeholder=None, resolved_place
     # UI Helpers
     def update_pipeline_ui():
         with pipeline_placeholder.container():
-            render_progress_chain(st.session_state.progress_stage)
+            # Use new pipeline visualization
+            data = st.session_state.get("data", {})
+            render_agent_pipeline(data, show_details=False)
             
     def update_resolved_ui():
         # Hide button during investigation to avoid duplicate key errors
@@ -1005,7 +1007,9 @@ st.markdown(
 
 pipeline_placeholder = st.empty()
 with pipeline_placeholder.container():
-    render_progress_chain(st.session_state.progress_stage)
+    # Use new pipeline visualization
+    data = st.session_state.get("data", {})
+    render_agent_pipeline(data, show_details=False)
 
 # Main Dashboard Placeholder
 dashboard_placeholder = st.empty()
@@ -1045,7 +1049,9 @@ if search_clicked and query_input:
     
     # Force UI update for instant feedback
     with pipeline_placeholder.container():
-        render_progress_chain(1)
+        # Use new pipeline visualization
+        data = st.session_state.get("data", {})
+        render_agent_pipeline(data, show_details=False)
 
     # Run investigation immediately (progress updates will stream)
     run_investigation(query_input, pipeline_placeholder, resolved_placeholder, sidebar_logs_placeholder, dashboard_placeholder)

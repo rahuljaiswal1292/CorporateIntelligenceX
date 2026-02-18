@@ -1,5 +1,6 @@
 import streamlit as st
 
+
 def get_test_dashboard_data():
     """
     Returns comprehensive test data for dashboard preview.
@@ -131,6 +132,25 @@ def get_test_dashboard_data():
                 "P/E": "8.9",
                 "Rev Growth": "+4.3%"
             }
+        ],
+        "logs": [
+            "Starting enrichment for Emirates NBD Bank PJSC...",
+            "Master Agent: Resolving canonical name...",
+            "Master Agent completed successfully",
+            "Wikipedia Agent: Fetching company information...",
+            "Wikipedia Agent: success",
+            "News Agent: Collecting latest news articles...",
+            "News Agent: success",
+            "DED Agent: Retrieving license information...",
+            "DED Agent: success",
+            "Scraper Orchestrator: Processing documents...",
+            "Scraper Orchestrator completed",
+            "Vectorizer Agent: Indexing documents...",
+            "Vectorizer Agent completed",
+            "PDF Agent: Analyzing financial statements...",
+            "PDF Agent completed",
+            "Analyst Agent: Generating insights...",
+            "Analyst Agent completed successfully"
         ]
     }
 

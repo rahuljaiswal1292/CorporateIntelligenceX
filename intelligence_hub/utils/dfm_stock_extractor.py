@@ -13,13 +13,13 @@ except ImportError:
     DATA_DIR = "data"
 
 try:
-    from intelligence_hub.scrapers.dfm_download_manager import DFMDownloadManager
+    from intelligence_hub.utils.dfm_download_manager import DFMDownloadManager
 except ImportError:
     # Fallback if running standalone without package context
     import sys
 
     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
-    from intelligence_hub.scrapers.dfm_download_manager import DFMDownloadManager
+    from intelligence_hub.utils.dfm_download_manager import DFMDownloadManager
 
 # Configure logging
 logging.basicConfig(

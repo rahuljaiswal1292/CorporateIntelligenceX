@@ -28,8 +28,8 @@ try:
     from intelligence_hub.connectors.web_scraper_connector import WebScraperConnector
     from intelligence_hub.utils.storage_manager import StorageManager
     from intelligence_hub.utils.date_extractor import DateExtractor
-    from intelligence_hub.scrapers.dfm_download_manager import DFMDownloadManager
-    from intelligence_hub.scrapers.bot_handler import BotHandler
+    from intelligence_hub.utils.dfm_download_manager import DFMDownloadManager
+    from intelligence_hub.utils.bot_handler import BotHandler
 except ImportError:
     WebScraperConnector = None
     StorageManager = None

@@ -1,0 +1,27 @@
+Analyze this Google SERP data for the company search query: "{search_query}"
+
+SERP Data:
+{serp_data}
+
+Your task:
+1. Determine if this is a legitimate, identifiable company
+2. Extract the canonical company name
+3. Calculate confidence score (0.0 to 1.0) based on these signals:
+   - Knowledge panel exists: +0.3
+   - Official website exists (matching company name): +0.25
+   - Wikipedia link exists: +0.2
+   - Multiple credible sources mention company: +0.15
+   - Clear company description available: +0.1
+
+4. If confidence < 0.6, suggest a better search query to try next
+
+Return ONLY a JSON object with this exact structure:
+{
+    "canonical_name": "Official Company Name",
+    "confidence_score": 0.85,
+    "reasoning": "Brief explanation of confidence score",
+    "has_knowledge_panel": true,
+    "has_official_website": true,
+    "has_wikipedia": true,
+    "suggested_next_search": "alternative search term if confidence is low, else null"
+}

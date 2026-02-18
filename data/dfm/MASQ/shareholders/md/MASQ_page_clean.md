@@ -22,16 +22,6 @@ MASQ Mashreqbank PJSC  248.85   +
 * [Top Shareholders](/the-exchange/market-information/company/MASQ/trading/top-shareholders)
 * [Foreign Investments](/the-exchange/market-information/company/MASQ/trading/foreign-investments)
 
-### Individual Investors
-
-| Shareholders | Percentage |
-| --- | --- |
-| مجموعه سيف الغرير للاستثمار | 41.7498 % |
-| شركه عبدالله احمد الغرير للاستثمار ذ.م.م | 31.0998 % |
-| مسار للاستثمار المحدوده | 12.7486 % |
-
-مجموعه سيف الغرير للاستثمارشركه عبدالله احمد الغرير للاستثمار ذ.م.ممسار للاستثمار المحدودهOthers
-
 ### Notes
 
 * Are updated daily at the end of every trading day based on date of trade and not settlement date.

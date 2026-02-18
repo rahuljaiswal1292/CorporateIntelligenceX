@@ -22,26 +22,6 @@ DU Emirates Integrated Telecommunications Company PJSC  10.90   +
 * [Top Shareholders](/the-exchange/market-information/company/DU/trading/top-shareholders)
 * [Foreign Investments](/the-exchange/market-information/company/DU/trading/foreign-investments)
 
-### Individual Investors
-
-| Shareholders | Percentage |
-| --- | --- |
-| جهاز الامارات للاستثمار | 50.1164 % |
-|
-
-### Associated Groups
-
-| Group | Shareholders | Percentage |
-| --- | --- | --- |
-| DH 7 L L C | EITL DIFC SPC 3 LTD 4.9164 EITL DIFC SPC 5 LTD 4.9164 EITL DIFC SPC 2 LTD 4.9164 EITL DIFC SPC 4 LTD 4.9164 EITL DIFC SPC 1 LTD 0.0304 | EITL DIFC SPC 3 LTD | 4.9164 | EITL DIFC SPC 5 LTD | 4.9164 | EITL DIFC SPC 2 LTD | 4.9164 | EITL DIFC SPC 4 LTD | 4.9164 | EITL DIFC SPC 1 LTD | 0.0304 | 19.6961 % |
-| EITL DIFC SPC 3 LTD | 4.9164 |
-| EITL DIFC SPC 5 LTD | 4.9164 |
-| EITL DIFC SPC 2 LTD | 4.9164 |
-| EITL DIFC SPC 4 LTD | 4.9164 |
-| EITL DIFC SPC 1 LTD | 0.0304 |
-
-جهاز الامارات للاستثمارDH 7 L L COthers
-
 ### Notes
 
 * Are updated daily at the end of every trading day based on date of trade and not settlement date.

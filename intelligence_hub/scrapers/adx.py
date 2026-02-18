@@ -20,8 +20,8 @@ except ImportError:
 try:
     from intelligence_hub.connectors.web_scraper_connector import WebScraperConnector
     from intelligence_hub.utils.storage_manager import StorageManager
-    from intelligence_hub.scrapers.download_manager import DownloadManager
-    from intelligence_hub.scrapers.bot_handler import BotHandler
+    from intelligence_hub.utils.adx_download_manager import DownloadManager
+    from intelligence_hub.utils.bot_handler import BotHandler
     from intelligence_hub.utils.content_cleaner import clean_html_to_markdown
 except ImportError:
     import requests  # Fallback if not installed, though user added it
@@ -381,7 +381,7 @@ class ADXScraper:
         }
 
         # Concurrency control
-        self.semaphore = asyncio.Semaphore(3)
+        self.semaphore = asyncio.Semaphore(6)
 
     async def _setup_browser(self):
         """Initialize Playwright browser with stealth settings"""
@@ -390,7 +390,7 @@ class ADXScraper:
 
         # Launch with arguments that mimic a real user session
         self.browser = await self.playwright.chromium.launch(
-            headless=config.HEADLESS,  # Must be False for best results
+            headless=True,  # Run headless for speed
             channel="chrome",
             args=[
                 "--disable-blink-features=AutomationControlled",
@@ -679,9 +679,9 @@ class ADXScraper:
         # 1. Universal Scroll to trigger lazy loading
         try:
             await page.evaluate("window.scrollTo(0, document.body.scrollHeight/2)")
-            await page.wait_for_timeout(1000)
+            await page.wait_for_timeout(500)
             await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-            await page.wait_for_timeout(2000)
+            await page.wait_for_timeout(1000)
         except:
             pass
 
@@ -705,7 +705,7 @@ class ADXScraper:
                         const tables = document.querySelectorAll('table, .adx-table, .table-responsive');
                         let tableHasContent = false;
                         for (const tbl of tables) {
-                            if (tbl.innerText.replace(/[\u200b-\u200d\ufeff]/g, '').trim().length > 20) {
+                            if (tbl.innerText.replace(/[\\u200b-\\u200d\\ufeff]/g, '').trim().length > 20) {
                                 tableHasContent = true;
                                 break;
                             }
@@ -715,7 +715,7 @@ class ADXScraper:
                  """,
                     timeout=30000,
                 )
-                await page.wait_for_timeout(2000)
+                await page.wait_for_timeout(1000)
             except Exception as e:
                 logger.warning(f"Wait timeout on financials: {e}")
 
@@ -727,7 +727,7 @@ class ADXScraper:
                     ".adx-shareholders-board, .shareholders-board_content, h2",
                     timeout=15000,
                 )
-                await page.wait_for_timeout(2000)
+                await page.wait_for_timeout(1000)
             except:
                 pass
 
@@ -738,7 +738,7 @@ class ADXScraper:
                 await page.wait_for_selector(
                     ".sharecard-title, .companyoverview-pra, h3", timeout=15000
                 )
-                await page.wait_for_timeout(2000)
+                await page.wait_for_timeout(1000)
             except:
                 pass
 
@@ -750,9 +750,7 @@ class ADXScraper:
                     ".tradingview-widget-container, iframe, #tv_chart_container",
                     timeout=20000,
                 )
-                await page.wait_for_timeout(
-                    5000
-                )  # Give extra time for network stabilization
+                await page.wait_for_timeout(2000)  # Reduced from 5000
             except:
                 pass
 
@@ -761,11 +759,10 @@ class ADXScraper:
     ) -> dict:
         """
         Extract chart data from orderbook page using a pre-configured ADXStockExtractor.
-        The extractor should already have network listeners attached BEFORE page navigation.
-        This extracts OHLCV (Open, High, Low, Close, Volume) data and saves it to CSV.
+        Uses the helper method extract_from_page directly.
         """
         logger.info(
-            f"Extracting orderbook chart data for {ticker} with pre-configured extractor..."
+            f"Extracting orderbook chart data for {ticker} using helper method..."
         )
 
         if not extractor:
@@ -776,109 +773,12 @@ class ADXScraper:
             }
 
         try:
-            # The extractor already has listeners attached and has been capturing network traffic
-            # Now we just need to trigger interactions and process the captured data
+            # Use the helper method from the extractor class
+            # This handles listeners (if any new ones needed), waits, and extraction logic
+            await extractor.extract_from_page(page, url)
 
-            # Wait for request headers to be captured first (needed for fallback)
-            logger.info("Polling for network headers...")
-            for _ in range(10):
-                if extractor.request_headers:
-                    break
-                await asyncio.sleep(1)
-
-            logger.info("Waiting for chart content to load...")
-            await page.wait_for_timeout(2000)
-
-            # Scroll to bring the chart into view
-            await page.evaluate("window.scrollTo(0, 800)")
-            await asyncio.sleep(3)
-
-            # Try to trigger 3-month history via interaction
-            await extractor._trigger_3month_history(page)
-
-            # Additional wait for network response to be processed
-            logger.info("Polling for captured chart data...")
-            for _ in range(10):
-                if extractor.captured_data:
-                    break
-                await asyncio.sleep(1)
-
-            # If we discovered the API, fetch 3 months (100 records)
-            if extractor.discovered_api_url:
-                logger.info(f"Using discovered API: {extractor.discovered_api_url}")
-
-                # Ensure full_url is constructed safely
-                full_url = extractor.discovered_api_url
-                if "recordCount=" not in full_url:
-                    if "?" in full_url:
-                        full_url += "&recordCount=100"
-                    else:
-                        full_url += "?recordCount=100"
-
-                logger.info(f"Fetching 3-month data via request context: {full_url}")
-                try:
-                    response = await page.context.request.get(
-                        full_url, headers=extractor.request_headers
-                    )
-                    if response.ok:
-                        history_json = await response.json()
-                        results = history_json.get("response", {}).get("results", [])
-                        if results:
-                            logger.info(
-                                f"Successfully captured {len(results)} historical records."
-                            )
-                            extractor.captured_data = []  # Reset to use full history
-                            extractor._normalize_list_data(results)
-                    else:
-                        logger.error(
-                            f"Request context fetch failed: {response.status} {response.status_text}"
-                        )
-                except Exception as e:
-                    logger.error(f"Failed to fetch history via request context: {e}")
-
-            if not extractor.captured_data:
-                logger.info(
-                    f"Falling back to marketwatch API (10-day lookback) for {ticker}..."
-                )
-                try:
-                    # Clean URL without recordCount (which causes 400 Bad Request on this endpoint)
-                    recent_trades_url = f"https://apigateway.adx.ae/adx/marketwatch/1.1/recentTrades/{ticker.upper()}"
-                    response = await page.context.request.get(
-                        recent_trades_url, headers=extractor.request_headers
-                    )
-                    if response.ok:
-                        trades_json = await response.json()
-                        results = trades_json.get("response", {}).get("results", [])
-                        if results:
-                            logger.info(
-                                f"Captured {len(results)} records from recentTrades fallback."
-                            )
-                            extractor._normalize_list_data(results)
-                except Exception as e:
-                    logger.warning(f"RecentTrades fallback failed: {e}")
-
-            # If still no data, check for page-level scripts (NEXT_DATA)
-            if not extractor.captured_data:
-                logger.info("Checking __NEXT_DATA__ for embedded chart data...")
-                next_data = await page.evaluate(
-                    "() => JSON.stringify(window.__NEXT_DATA__ || {})"
-                )
-                if next_data:
-                    try:
-                        extractor._handle_json_content(
-                            json.loads(next_data), "NEXT_DATA"
-                        )
-                    except:
-                        pass
-
-            if not extractor.captured_data:
-                logger.warning("No chart data captured. Waiting a bit more...")
-                await asyncio.sleep(5)
-
-            # Final processing
-            if extractor.captured_data:
-                extractor._process_data()
-                extractor._save_to_csv()
+            # Check results
+            if extractor.processed_df is not None and not extractor.processed_df.empty:
                 logger.info(
                     f"Successfully extracted {len(extractor.processed_df)} chart data points for {ticker}"
                 )
@@ -891,14 +791,11 @@ class ADXScraper:
                     },
                 }
             else:
-                logger.warning(f"No chart data extracted for {ticker}")
+                logger.warning(f"Chart extraction yielded no data for {ticker}")
                 return {"chart_extracted": False, "reason": "No data captured"}
 
         except Exception as e:
-            logger.error(f"Error extracting orderbook chart data: {e}")
-            import traceback
-
-            traceback.print_exc()
+            logger.error(f"Error during chart extraction helper call: {e}")
             return {"chart_extracted": False, "reason": str(e)}
 
     def _clean_generic_adx_content(self, html_content: str) -> str:
@@ -1319,11 +1216,11 @@ class ADXScraper:
 # Run Standalone
 if __name__ == "__main__":
     tickers = [
-        "ADNHC",
-        "ADNOCGAS",
+        # "ADNHC",
+        # "ADNOCGAS",
         "ALDAR",
         "ALPHADATA",
-        "EAND",
+        # "EAND",
         "FAB",
         "LULU",
     ]

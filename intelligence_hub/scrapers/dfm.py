@@ -291,7 +291,7 @@ class DFMScraper:
             # 1. Wait for Loading spinner to disappear (if present)
             # DFM often has a loading overlay.
             try:
-                await page.wait_for_load_state("networkidle", timeout=15000)
+                await page.wait_for_load_state("networkidle", timeout=6000)
             except:
                 pass
 
@@ -324,7 +324,7 @@ class DFMScraper:
                 clean_text = content_text.strip()
                 if clean_text.lower().startswith("loading") and len(clean_text) < 500:
                     logger.info("Page still indicates Loading.. waiting...")
-                    await asyncio.sleep(2)
+                    await asyncio.sleep(1)
                 else:
                     break
 
@@ -649,8 +649,6 @@ class DFMScraper:
         target_years = target_years[:6]
         logger.info(f"Target years for reports: {target_years}")
 
-        sem = asyncio.Semaphore(2)
-
         async def process_year_tab(year):
             async with self.semaphore:
                 year_page = await self._create_stealth_page(page.context)
@@ -747,18 +745,19 @@ class DFMScraper:
     ) -> dict:
         """
         Extract Daily Summary using DFMStockExtractor helper.
+        Optimized to use existing page context instead of launching new browser.
         """
         logger.info(
-            f"Extracting Daily Summary for {ticker} using DFMStockExtractor helper..."
+            f"Extracting Daily Summary for {ticker} using DFMStockExtractor helper (Optimized)..."
         )
         downloaded_count = 0
         found_files = []
 
         if DFMStockExtractor:
             try:
-                # Use helper (launches its own browser context)
+                # Use helper with current page
                 extractor = DFMStockExtractor()
-                await extractor.extract(ticker)
+                await extractor.extract_from_page(page, ticker)
 
                 # Locate downloaded files in expected directory
                 target_dir = os.path.join(
@@ -766,7 +765,7 @@ class DFMScraper:
                 )
                 if os.path.exists(target_dir):
                     for f in os.listdir(target_dir):
-                        if f.endswith((".xls", ".xlsx")):
+                        if f.endswith((".xls", ".xlsx", ".csv")):
                             found_files.append(os.path.join(target_dir, f))
 
                     downloaded_count = len(found_files)

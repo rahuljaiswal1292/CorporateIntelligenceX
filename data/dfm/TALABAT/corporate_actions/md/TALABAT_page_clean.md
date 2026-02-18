@@ -19,23 +19,7 @@ TALABAT Talabat Holding PLC  0.787   +
 
 ## Corporate Actions
 
-:   |  |  |
-    | --- | --- |
-    | Year | 2025 |
-    | Corporate Action Type | Cash Dividends |
-    | Last Date for Action Entitlement | 30/09/2025 |
-    | Ex-Dividend Date | 01/10/2025 |
-    | Register Closing (settlement) Date | 02/10/2025 |
-    | Corporate Action Details | 79.7% cash dividends (3.188 fils per share) |
-
-:   |  |  |
-    | --- | --- |
-    | Year | 2025 |
-    | Corporate Action Type | Cash Dividends |
-    | Last Date for Action Entitlement | 07/05/2025 |
-    | Ex-Dividend Date | 08/05/2025 |
-    | Register Closing (settlement) Date | 09/05/2025 |
-    | Corporate Action Details | 43.375% cash dividends (1.735 fils per share) |
+Not Available
 
   AI generated summary  
 \*This information is AI generated, for more detailed info, read the full document.

@@ -22,6 +22,15 @@ EMAAR Emaar Properties PJSC  16.90   +
 * [Top Shareholders](/the-exchange/market-information/company/EMAAR/trading/top-shareholders)
 * [Foreign Investments](/the-exchange/market-information/company/EMAAR/trading/foreign-investments)
 
+### Individual Investors
+
+| Shareholders | Percentage |
+| --- | --- |
+| INVESTMENT CORPORATION OF DUBAI | 22.2723 % |
+| EITL DIFC SPC 1 LTD | 7.4563 % |
+
+INVESTMENT CORPORATION OF DUBAIEITL DIFC SPC 1 LTDOthers
+
 ### Notes
 
 * Are updated daily at the end of every trading day based on date of trade and not settlement date.

@@ -30,12 +30,14 @@ try:
     from intelligence_hub.utils.date_extractor import DateExtractor
     from intelligence_hub.utils.dfm_download_manager import DFMDownloadManager
     from intelligence_hub.utils.bot_handler import BotHandler
+    from intelligence_hub.utils.dfm_stock_extractor import DFMStockExtractor
 except ImportError:
     WebScraperConnector = None
     StorageManager = None
     DateExtractor = None
     DFMDownloadManager = None
     BotHandler = None
+    DFMStockExtractor = None
 
 # Configure logging
 logging.basicConfig(
@@ -110,7 +112,7 @@ class DFMScraper:
 
         # Launch with arguments that mimic a real user session
         self.browser = await self.playwright.chromium.launch(
-            headless=getattr(config, "HEADLESS", False),
+            headless=True,
             channel="chrome",
             args=[
                 "--disable-blink-features=AutomationControlled",
@@ -744,74 +746,37 @@ class DFMScraper:
         self, page: Page, ticker: str, page_type: str
     ) -> dict:
         """
-        Specific extraction for Daily Summary page which uses a Button instead of a Link.
-        Uses enhanced DownloadManager to ensure valid file content.
+        Extract Daily Summary using DFMStockExtractor helper.
         """
-        logger.info(f"Extracting Daily Summary for {ticker}...")
-        download_dir = os.path.join(
-            config.DATA_DIR, "dfm", ticker, page_type, "structured"
+        logger.info(
+            f"Extracting Daily Summary for {ticker} using DFMStockExtractor helper..."
         )
-        os.makedirs(download_dir, exist_ok=True)
-
         downloaded_count = 0
         found_files = []
 
-        try:
-            # Locate the "Download Excel" button
-            button = (
-                page.locator("button.btn-download")
-                .filter(has_text="Download Excel")
-                .first
-            )
+        if DFMStockExtractor:
+            try:
+                # Use helper (launches its own browser context)
+                extractor = DFMStockExtractor()
+                await extractor.extract(ticker)
 
-            if await button.count() > 0:
-                logger.info(
-                    "Found Daily Summary Download Button. Initiating secure download..."
+                # Locate downloaded files in expected directory
+                target_dir = os.path.join(
+                    config.DATA_DIR, "dfm", ticker, "daily_summary", "structured"
                 )
+                if os.path.exists(target_dir):
+                    for f in os.listdir(target_dir):
+                        if f.endswith((".xls", ".xlsx")):
+                            found_files.append(os.path.join(target_dir, f))
 
-                # Construct doc_info for the manager
-                doc_info = {
-                    "text": "Daily Summary",
-                    "title": f"Daily Summary {ticker}",
-                    "url": page.url,  # Fallback, though button click is primary
-                    "expected_type": "xls",
-                }
-
-                # Use the enhanced download manager
-                if self.download_manager:
-                    result = await self.download_manager.download_with_retry(
-                        element=button,
-                        page=page,
-                        doc_info=doc_info,
-                        target_dir=download_dir,
-                        max_retries=3,
+                    downloaded_count = len(found_files)
+                    logger.info(
+                        f"DFMStockExtractor finished. Found {downloaded_count} files."
                     )
-
-                    if result:
-                        logger.info(f"Downloaded Daily Summary: {result}")
-                        found_files.append(result)
-                        downloaded_count += 1
-                else:
-                    # Fallback to old simple method if manager not available (should not happen in prod)
-                    async with page.expect_download(timeout=15000) as download_info:
-                        await button.click()
-                    download = await download_info.value
-                    path = await download.path()  # temp path
-
-                    # Manual Move
-                    suggested = f"{ticker}_Daily_Summary.xls"
-                    dest = os.path.join(download_dir, suggested)
-                    import shutil
-
-                    shutil.move(path, dest)
-                    found_files.append(dest)
-                    downloaded_count += 1
-
-            else:
-                logger.warning("Daily Summary download button not found.")
-
-        except Exception as e:
-            logger.error(f"Failed to download Daily Summary: {e}")
+            except Exception as e:
+                logger.error(f"DFMStockExtractor failed: {e}")
+        else:
+            logger.warning("DFMStockExtractor module not available.")
 
         return {
             "documents_downloaded": downloaded_count,

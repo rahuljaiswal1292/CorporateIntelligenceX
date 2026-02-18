@@ -22,16 +22,6 @@ EMIRATESNBD Emirates NBD PJSC  36.90   +
 * [Top Shareholders](/the-exchange/market-information/company/EMIRATESNBD/trading/top-shareholders)
 * [Foreign Investments](/the-exchange/market-information/company/EMIRATESNBD/trading/foreign-investments)
 
-### Individual Investors
-
-| Shareholders | Percentage |
-| --- | --- |
-| INVESTMENT CORPORATION OF DUBAI | 40.9160 % |
-| DH 7 L L C | 14.8418 % |
-| كابيتال استس ش ذ م م | 5.3290 % |
-
-INVESTMENT CORPORATION OF DUBAIDH 7 L L Cكابيتال استس ش ذ م مOthers
-
 ### Notes
 
 * Are updated daily at the end of every trading day based on date of trade and not settlement date.

@@ -1,0 +1,59 @@
+{
+  "source": "DFM",
+  "ticker": "DU",
+  "scraped_at": "2026-02-18T21:40:59.167045",
+  "profile": {
+    "company_name": "NOT AVAILABLE",
+    "sector": "NOT AVAILABLE",
+    "listing_date": "NOT AVAILABLE",
+    "isin": "NOT AVAILABLE"
+  },
+  "financials": {
+    "documents_downloaded": 5,
+    "page_type": "reports",
+    "files": [
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\DU\\reports\\structured\\EITC PJSC Q1 Consolidated Financial Statements 31 March 2024 English_1.pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\DU\\reports\\structured\\EITC PJSC Q1 Consolidated Financial Statements 31 March 2024 English.pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\DU\\reports\\structured\\EITC Q3 Consolidated Financial Statement 30 Sept 2023 English_1.pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\DU\\reports\\structured\\EITC Q3 Consolidated Financial Statement 30 Sept 2023 English.pdf"
+    ]
+  },
+  "news": {
+    "news_items": [],
+    "files": []
+  },
+  "documents": [
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\DU\\reports\\structured\\EITC Q3 Consolidated Financial Statement 30 Sept 2023 English.pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\DU\\reports\\structured\\EITC Q3 Consolidated Financial Statement 30 Sept 2023 English_1.pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\DU\\daily_summary\\structured\\DU Daily Summary.csv",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\DU\\reports\\structured\\EITC PJSC Q1 Consolidated Financial Statements 31 March 2024 English.pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\DU\\reports\\structured\\EITC PJSC Q1 Consolidated Financial Statements 31 March 2024 English_1.pdf"
+  ],
+  "corporate_actions": {
+    "actions": [],
+    "files": []
+  },
+  "shareholders": {
+    "shareholders": [],
+    "files": []
+  },
+  "trading_data": {
+    "documents_downloaded": 0,
+    "page_type": "trading_data",
+    "files": [],
+    "summary": {}
+  },
+  "daily_summary": {
+    "documents_downloaded": 1,
+    "page_type": "daily_summary",
+    "files": [
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\DU\\daily_summary\\structured\\DU Daily Summary.csv"
+    ]
+  },
+  "foreign_investments": {
+    "foreign_investment_data": {
+      "raw_summary": "Country of Origin Foreigners allowed AE Yes  Permitted Actual Available National 100% 93.83% 6.17% GCC 0 0 0 Foreign 49% 6.17% 42.83% \n              \n               Nationals: Investors who hold the same nationality as the \u201cCountry of Origin\u201d of the symbol.\n              \n               GCC: Investors who hold a GCC nationality, excluding investors from the \u201cCountry of Origin\u201d of the symbol.\n              \n               Foreigners: All other nationalities. \nNote: For companies where GCC Permitt"
+    },
+    "files": []
+  }
+}

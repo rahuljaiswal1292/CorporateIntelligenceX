@@ -1,14 +1,14 @@
 Dubai Financial Market - Region’s leading financial exchange
 
-Market  closed DFMGI    6730.11  
-( 15.51 / 0.231% )
- Total Volume   473,138,409  Total Value   1,328,846,629.71  Total Trades   22,202   [Market Watch](https://marketwatch.dfm.ae/) 
+Market  closed DFMGI    6765.07  
+( 80.72 / 1.208% )
+ Total Volume   225,609,236  Total Value   821,559,282.97  Total Trades   13,771   [Market Watch](https://marketwatch.dfm.ae/) 
 
 # Equities
 
-EMIRATESNBD Emirates NBD PJSC  35.75   + 
-0.250
-   +  0.704%
+EMIRATESNBD Emirates NBD PJSC  36.90   + 
+0.400
+   +  1.10%
 
 * [Trading](/the-exchange/market-information/company/EMIRATESNBD/trading)
 * [Profile](/the-exchange/market-information/company/EMIRATESNBD/profile)

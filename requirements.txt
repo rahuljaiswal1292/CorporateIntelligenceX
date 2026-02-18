@@ -19,3 +19,10 @@ duckduckgo-search>=5.0
 nest_asyncio>=1.5.8
 markdownify==0.12.1
 html2text==2024.2.26
+trafilatura
+feedparser
+wikipedia
+yfinance
+google-search-results
+langchain-openai
+nest_asyncio

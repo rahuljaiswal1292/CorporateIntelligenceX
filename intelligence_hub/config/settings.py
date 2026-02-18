@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 # Load environment variables and force override
 load_dotenv(override=True)
 
+
 class Settings:
     # API Keys
     SCRAPER_API_KEY = os.getenv("SCRAPER_API_KEY", "")
@@ -60,5 +61,14 @@ class Settings:
         if self.LLM_PROVIDER != "ollama" and not self.LLM_API_KEY:
              print(f"⚠️ Warning: No API key found for {self.LLM_PROVIDER}. LLM won't work.")
         print(f"📊 Active Config: Provider={self.LLM_PROVIDER} | Model={self.LLM_MODEL} | Embedding={self.EMBEDDING_MODEL}")
+        if not self.SCRAPINGBEE_API_KEY:
+            print(
+                "⚠️ Warning: SCRAPINGBEE_API_KEY not found. Scrapers will run in Mock Mode."
+            )
+        if not self.PINECONE_API_KEY:
+            print(
+                "⚠️ Warning: PINECONE_API_KEY not found. Vector DB will run in Mock Mode."
+            )
+
 
 config = Settings()

@@ -11,11 +11,11 @@ from urllib.parse import urljoin, unquote
 
 # Third-party imports
 from bs4 import BeautifulSoup
-from playwright.async_api import async_playwright, Page, Browser, TimeoutError as PlaywrightTimeoutError
 
 try:
     from dotenv import load_dotenv
-    load_dotenv(override=True)
+
+    load_dotenv()
 except ImportError:
     pass
 
@@ -26,14 +26,17 @@ try:
     from intelligence_hub.scrapers.download_manager import DownloadManager
     from intelligence_hub.scrapers.bot_handler import BotHandler
 except ImportError:
-    WebScraperConnector = None
-    StorageManager = None
-    DateExtractor = None
-    DownloadManager = None
-    BotHandler = None
+    import requests  # Fallback if not installed
+
+try:
+    from scrapingbee import ScrapingBeeClient
+except ImportError:
+    ScrapingBeeClient = None
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger("DFMScraper")
 
 # --- Configuration & Storage ---
@@ -58,14 +61,15 @@ except ImportError as e:
 
 # --- Scraper ---
 
+
 class DFMScraper:
     """
     Scraper for Dubai Financial Market (DFM) using direct Playwright automation.
     Handles dynamic content, document downloads, and detailed extraction.
     """
-    def __init__(self, connector: WebScraperConnector = None, max_age_years: int = 3):
-        # We accept connector to maintain interface compatibility
-        self.connector = connector
+
+    def __init__(self, connector: ScrapingBeeConnector):
+        self.sb = connector
         self.base_url = "https://www.dfm.ae"
         self.browser: Optional[Browser] = None
         self.playwright = None
@@ -239,21 +243,30 @@ class DFMScraper:
         """
         Scrapes DFM for a given company ticker using direct Playwright automation.
         """
-        ticker = ticker.upper()
-        logger.info(f"Starting Advanced DFM Scrape for {ticker}")
-        
+        base_profile_url = f"https://www.dfm.ae/the-exchange/market-information/company/{ticker}/profile"
+        reports_url = f"https://www.dfm.ae/the-exchange/market-information/company/{ticker}/reports"
+        news_url = f"https://www.dfm.ae/the-exchange/market-information/company/{ticker}/news-disclosures"
+
+        logger.info(f"Targeting DFM for {ticker}...")
+
         data = {
-            "source": "DFM", 
+            "source": "DFM",
             "ticker": ticker,
             "scraped_at": datetime.now().isoformat(),
             "profile": {},
             "financials": {},
             "news": [],
-            "documents": []
         }
 
-        # Safe initialization
-        downloaded_files = []
+        # Parallel Fetch
+        logger.info(f"Fetching DFM data in parallel for {ticker}...")
+
+        results = await asyncio.gather(
+            self.sb.scrape_async(base_profile_url),
+            self.sb.scrape_async(reports_url),
+            self.sb.scrape_async(news_url),
+        )
+        html_profile, html_reports, html_news = results
 
         # URL Patterns
         base_url = f"https://www.dfm.ae/the-exchange/market-information/company/{ticker}"
@@ -471,35 +484,33 @@ class DFMScraper:
             "company_name": "NOT AVAILABLE",
             "sector": "NOT AVAILABLE",
             "listing_date": "NOT AVAILABLE",
-            "isin": "NOT AVAILABLE"
+            "isin": "NOT AVAILABLE",
+            "website": "NOT AVAILABLE",
+            "board_members": [],
         }
-        
-        # Company Name
-        h1 = soup.find("h1")
-        if h1:
-            profile["company_name"] = h1.get_text(strip=True)
-            
-        # Try finding key-value pairs in profile section
-        # Strategy 1: Table Rows
-        for row in soup.find_all("tr"):
-            cols = row.find_all("td")
-            if len(cols) >= 2:
-                key = cols[0].get_text(strip=True).lower()
-                val = cols[1].get_text(strip=True)
-                self._update_profile_field(profile, key, val)
-        
-        # Strategy 2: Description Lists (dl, dt, dd)
-        for dt in soup.find_all("dt"):
-            dd = dt.find_next_sibling("dd")
-            if dd:
-                key = dt.get_text(strip=True).lower()
-                val = dd.get_text(strip=True)
-                self._update_profile_field(profile, key, val)
-                
-        # Strategy 3: Divs with specific classes or structure (common in modern frameworks)
-        # Look for "label" or "key" classes near values
-        # Simplifying: search text nodes if still missing critical info?
-        
+
+        # Example Selectors
+        name_tag = soup.select_one("h1.company-name")
+        if name_tag:
+            profile["company_name"] = name_tag.get_text(strip=True)
+
+        # Meta info
+        for row in soup.select(".company-info-row"):
+            label = row.select_one(".label")
+            val = row.select_one(".value")
+            if label and val:
+                lbl_text = label.get_text(strip=True).lower()
+                val_text = val.get_text(strip=True)
+
+                if "sector" in lbl_text:
+                    profile["sector"] = val_text
+                elif "listing date" in lbl_text:
+                    profile["listing_date"] = val_text
+                elif "isin" in lbl_text:
+                    profile["isin"] = val_text
+                elif "website" in lbl_text:
+                    profile["website"] = val_text
+
         return profile
 
     def _update_profile_field(self, profile, key, val):
@@ -820,112 +831,37 @@ class DFMScraper:
             "files": downloaded_files
         }
 
-    async def _extract_corporate_actions(self, page: Page, ticker: str, page_type: str) -> dict:
-        """Extract Corporate Actions (text + files)."""
-        logger.info(f"Extracting Corporate Actions for {ticker}...")
-        
-        # 1. Download files
-        doc_result = await self._generic_document_extract(page, ticker, page_type)
-        downloaded_files = doc_result.get("files", [])
-        
-        # 2. Extract Table Data (Robust)
-        actions = []
-        try:
-            # Locate table rows
-            rows = page.locator("table tr")
-            count = await rows.count()
-            
-            headers = []
-            
-            # Try to find header row (first row with th or distinctive visuals)
-            if count > 0:
-                # Check first row
-                first_row_cells = rows.nth(0).locator("th, td")
-                cell_count = await first_row_cells.count()
-                texts = []
-                for k in range(cell_count):
-                    texts.append((await first_row_cells.nth(k).text_content()).strip().lower())
-                
-                if any(k in texts for k in ['date', 'type', 'amount', 'currency', 'ex-dividend']):
-                    headers = texts
-                    start_idx = 1
-                else:
-                    # Assume generic headers?
-                    headers = [f"col_{k}" for k in range(cell_count)]
-                    start_idx = 0
-            
-            # Iterate rows
-            for i in range(start_idx, count):
-                row = rows.nth(i)
-                cols = row.locator("td")
-                if await cols.count() == 0: continue
-                
-                action = {}
-                col_count = await cols.count()
-                for c in range(col_count):
-                    val = (await cols.nth(c).text_content()).strip()
-                    if headers and c < len(headers):
-                        action[headers[c]] = val
-                    else:
-                        action[f"col_{c}"] = val
-                
-                if action:
-                    actions.append(action)
-                    
-        except Exception as e:
-            logger.warning(f"Error extracting corporate actions table: {e}")
-            
-        return {
-            "actions": actions,
-            "files": downloaded_files
-        }
+        # Look for financial summary table
+        table = soup.select_one("table.financials-summary")
+        if table:
+            rows = table.find_all("tr")
+            for row in rows:
+                cols = row.find_all("td")
+                if len(cols) >= 2:
+                    lbl = cols[0].get_text(strip=True).lower()
+                    val = cols[1].get_text(strip=True)
 
-    async def _extract_shareholders(self, page: Page, ticker: str, page_type: str) -> dict:
-        """Extract Shareholders Data."""
-        logger.info(f"Extracting Shareholders for {ticker}...")
-        
-        # 1. Download files
-        doc_result = await self._generic_document_extract(page, ticker, page_type)
-        downloaded_files = doc_result.get("files", [])
-        
-        # 2. Extract Table
-        shareholders = []
-        try:
-            rows = page.locator("table tr")
-            count = await rows.count()
-            for i in range(count): # Check all rows as header might not be standard
-                row = rows.nth(i)
-                cols = row.locator("td")
-                count_cols = await cols.count()
-                if count_cols < 2: continue # likely header or empty
-                
-                # Check if it's a header row disguised as td (contains "Name" "Percentage")
-                first_text = (await cols.nth(0).text_content()).strip().lower()
-                if "name" in first_text or "shareholder" in first_text: continue
-                
-                # Robust extraction: Capture all columns
-                sh = {}
-                # Assuming typical layout: Name, Percentage
-                sh["name"] = (await cols.nth(0).text_content()).strip()
-                
-                # Try to identify percentage column by content (%)
-                for c in range(1, count_cols):
-                    text = (await cols.nth(c).text_content()).strip()
-                    if "%" in text:
-                        sh["percentage"] = text
-                    elif sh.get("category") is None and len(text) > 3: # Maybe category?
-                        sh["category"] = text
-                    else:
-                        sh[f"col_{c}"] = text
-                
-                shareholders.append(sh)
-        except Exception as e:
-             logger.warning(f"Error extracting shareholders: {e}")
-             
-        return {
-            "shareholders": shareholders,
-            "files": downloaded_files
-        }
+                    if "revenue" in lbl:
+                        financials["revenue"] = val
+                    elif "profit" in lbl:
+                        financials["net_profit"] = val
+                    elif "assets" in lbl:
+                        financials["assets"] = val
+
+        return financials
+
+    def _parse_viz_str(self, val: str) -> float:
+        """Parses strings like '26.7B' into float."""
+        if not val or val == "NOT AVAILABLE":
+            return 0.0
+        val = val.upper().replace("AED", "").strip()
+        mult = 1.0
+        if "B" in val:
+            mult = 1_000_000_000
+            val = val.replace("B", "")
+        elif "M" in val:
+            mult = 1_000_000
+            val = val.replace("M", "")
 
     async def _extract_foreign_investments(self, page: Page, ticker: str, page_type: str) -> dict:
         """Extract Foreign Investment Data."""

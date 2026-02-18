@@ -3,22 +3,15 @@ import logging
 import asyncio
 import os
 import json
-import re
-import time
-import csv
-from typing import Optional, Dict, List, Set, Tuple
-from datetime import datetime, timedelta
-from pathlib import Path
-from urllib.parse import urlparse, urljoin
-
-# Third-party imports
-from bs4 import BeautifulSoup, NavigableString, Comment
-import html2text
-from playwright.async_api import async_playwright, Page, Browser, TimeoutError as PlaywrightTimeoutError
+import logging
+from typing import Optional, Dict
+from datetime import datetime
+from bs4 import BeautifulSoup
 
 try:
     from dotenv import load_dotenv
-    load_dotenv(override=True)
+
+    load_dotenv()
 except ImportError:
     pass
 
@@ -28,23 +21,29 @@ try:
     from intelligence_hub.scrapers.download_manager import DownloadManager
     from intelligence_hub.scrapers.bot_handler import BotHandler
 except ImportError:
-    WebScraperConnector = None
-    StorageManager = None
-    DownloadManager = None
-    BotHandler = None
+    import requests  # Fallback if not installed, though user added it
+
+try:
+    from scrapingbee import ScrapingBeeClient
+except ImportError:
+    ScrapingBeeClient = None
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger("ADXScraper")
 
 # --- Configuration & Storage ---
 
-# Import project-level config
-from intelligence_hub.config.settings import config
-try:
-    from intelligence_hub.utils.content_cleaner import clean_html_to_markdown
-except ImportError:
-    clean_html_to_markdown = lambda x: x # Fallback if cleaner missing
+
+class Config:
+    SCRAPINGBEE_API_KEY = os.getenv("SCRAPINGBEE_API_KEY", "")
+    # Use centralized DATA_DIRECTORY
+    from intelligence_hub.config.config import DATA_DIRECTORY
+
+    DATA_DIR = DATA_DIRECTORY
+
 
 try:
     from intelligence_hub.utils.adx_chart_extractor import ADXChartExtractor
@@ -53,17 +52,377 @@ except ImportError:
 
 # StorageManager imported from utils
 
-# --- Advanced Playwright Logic ---
+
+class StorageManager:
+    """
+    Manages file storage for scraped data in structured/unstructured formats.
+    Structure: ./data/{source}/{format}/{ticker}_{timestamp}.{ext}
+    """
+
+    @staticmethod
+    def save_raw(
+        content: str, source: str, ticker: str, extension: str = "html"
+    ) -> str:
+        """
+        Saves raw content (Unstructured).
+        """
+        directory = os.path.join(config.DATA_DIR, source, "unstructured")
+        os.makedirs(directory, exist_ok=True)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{ticker}_{timestamp}.{extension}"
+        filepath = os.path.join(directory, filename)
+
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(content)
+
+        logger.info(f"Saved raw data to {filepath}")
+        return filepath
+
+    @staticmethod
+    def save_document(
+        content: bytes, source: str, ticker: str, category: str, filename: str
+    ) -> str:
+        """
+        Saves a downloaded document (PDF, DOCX, etc.) to a categorized folder.
+        Structure: ./data/{source}/{ticker}/{category}/{filename}
+        """
+        # Santize filename
+        filename = "".join(
+            [
+                c
+                for c in filename
+                if c.isalpha() or c.isdigit() or c in (" ", ".", "_", "-")
+            ]
+        ).rstrip()
+
+        directory = os.path.join(config.DATA_DIR, source, ticker, category)
+        os.makedirs(directory, exist_ok=True)
+
+        filepath = os.path.join(directory, filename)
+
+        with open(filepath, "wb") as f:
+            f.write(content)
+
+        logger.info(f"Saved document to {filepath}")
+        return filepath
+
+    @staticmethod
+    def save_structured(data: dict, source: str, ticker: str) -> str:
+        """
+        Saves parsed data (Structured JSON).
+        """
+        directory = os.path.join(config.DATA_DIR, source, "structured")
+        os.makedirs(directory, exist_ok=True)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{ticker}_{timestamp}.json"
+        filepath = os.path.join(directory, filename)
+
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+
+        logger.info(f"Saved structured data to {filepath}")
+        return filepath
+
+
+# --- Connector ---
+
+
+class ScrapingBeeConnector:
+    """
+    Robust connector for ScrapingBee with built-in Mock Mode.
+    Allows the agent to function even without active API keys by simulating responses.
+    """
+
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key or config.SCRAPINGBEE_API_KEY
+        if self.api_key and ScrapingBeeClient:
+            try:
+                self.client = ScrapingBeeClient(api_key=self.api_key)
+                self.mode = "LIVE"
+            except Exception as e:
+                logger.error(f"Failed to initialize ScrapingBeeClient: {e}")
+                self.mode = "MOCK"
+        else:
+            self.client = None
+            self.mode = "MOCK"
+            if not self.api_key:
+                logger.warning("SCRAPINGBEE_API_KEY not found. Running in MOCK MODE.")
+
+        # Session for direct fallback (using curl_cffi to bypass Cloudflare)
+        # Check if helper method for session works, else fallback to standard requests
+        if hasattr(requests, "Session"):
+            try:
+                self.session = requests.Session(impersonate="chrome")
+            except TypeError:  # Regular requests session doesn't hava impersonate
+                self.session = requests.Session()
+                self.session.headers.update(
+                    {
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                    }
+                )
+        else:
+            import requests as std_requests
+
+            self.session = std_requests.Session()
+
+    async def scrape_async(
+        self,
+        url: str,
+        render_js: bool = True,
+        wait_for: str = None,
+        js_scenario: dict = None,
+    ) -> str:
+        """
+        Asynchronously scrapes a URL using run_in_executor.
+        """
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        return await loop.run_in_executor(
+            None, self.scrape, url, render_js, wait_for, js_scenario
+        )
+
+    def scrape(
+        self,
+        url: str,
+        render_js: bool = True,
+        wait_for: str = None,
+        js_scenario: dict = None,
+    ) -> str:
+        """
+        Scrapes a URL.
+        """
+        logger.info(f"[{self.mode}] Scraping URL: {url}")
+
+        if self.mode == "LIVE":
+            return self._scrape_live(url, render_js, wait_for, js_scenario)
+        else:
+            return self._scrape_mock(url)
+
+    def _scrape_live(
+        self, url: str, render_js: bool, wait_for: str, js_scenario: dict
+    ) -> str:
+        """Executes actual API call to ScrapingBee with fallback to Direct."""
+        try:
+            params = {
+                "render_js": render_js,
+            }
+            if wait_for:
+                params["wait_for"] = wait_for
+            if js_scenario:
+                params["js_scenario"] = js_scenario
+
+            response = self.client.get(url, params=params)
+
+            if response.status_code == 200:
+                return response.content.decode("utf-8")
+
+            logger.error(
+                f"ScrapingBee Error {response.status_code}: {response.content}"
+            )
+
+            # Fallback for 401 (Quota) or other errors
+            if response.status_code in [401, 403, 429, 500]:
+                logger.info("Switching to Direct Scraping Fallback...")
+                return self._scrape_direct(url)
+
+            return ""
+        except Exception as e:
+            logger.error(f"ScrapingBee Exception: {str(e)}")
+            logger.info("Exception occurred, trying Direct Scraping Fallback...")
+            return self._scrape_direct(url)
+
+    def _scrape_direct(self, url: str) -> str:
+        """Direct scraping using requests session."""
+        try:
+            logger.info(f"[DIRECT] Scraping URL: {url}")
+            # Add some delays or specific headers if needed
+            # Support curl_cffi syntax if available
+            try:
+                response = self.session.get(url, timeout=30)
+            except Exception:
+                # Fallback format
+                response = self.session.get(url, timeout=30)
+
+            if response.status_code == 200:
+                return response.text
+            logger.error(
+                f"Direct Scraping Failed {response.status_code}: {response.text[:500]}"
+            )
+            return ""
+        except Exception as e:
+            logger.error(f"Direct Scraping Exception: {e}")
+            return ""
+
+    async def download_file_async(self, url: str) -> bytes:
+        """
+        Asynchronously downloads a file (PDF/Doc) using run_in_executor.
+        """
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self.download_file, url)
+
+    def download_file(self, url: str) -> bytes:
+        """
+        Downloads a file (binary) handling potential redirects or ScrapingBee wrapper.
+        """
+        logger.info(f"[{self.mode}] Downloading File: {url}")
+
+        if self.mode == "MOCK":
+            # Return a minimally VALID PDF binary
+            return (
+                b"%PDF-1.4\n"
+                b"1 0 obj\n<<\n/Type /Catalog\n/Pages 2 0 R\n>>\nendobj\n"
+                b"2 0 obj\n<<\n/Type /Pages\n/Kids [3 0 R]\n/Count 1\n>>\nendobj\n"
+                b"3 0 obj\n<<\n/Type /Page\n/Parent 2 0 R\n/Resources <<\n/Font <<\n/F1 4 0 R\n>>\n>>\n/MediaBox [0 0 595.28 841.89]\n/Contents 5 0 R\n>>\nendobj\n"
+                b"4 0 obj\n<<\n/Type /Font\n/Subtype /Type1\n/Name /F1\n/BaseFont /Helvetica\n>>\nendobj\n"
+                b"5 0 obj\n<<\n/Length 44\n>>\nstream\nBT\n70 700 Td\n/F1 24 Tf\n(Mock PDF from CorporateIntelligenceX) Tj\nET\nendstream\nendobj\n"
+                b"xref\n0 6\n0000000000 65535 f\n0000000010 00000 n\n0000000060 00000 n\n0000000111 00000 n\n0000000212 00000 n\n0000000301 00000 n\n"
+                b"trailer\n<<\n/Size 6\n/Root 1 0 R\n>>\nstartxref\n392\n%%EOF\n"
+            )
+
+        try:
+            # Try direct download first with session
+            r = self.session.get(url, timeout=60, stream=True)
+
+            if r.status_code == 200:
+                # Validate Content-Type
+                ctype = r.headers.get("Content-Type", "").lower()
+                if "html" in ctype or "text" in ctype:
+                    logger.warning(
+                        f"Download returned HTML instead of binary ({ctype}). Likely blocked or login required."
+                    )
+                    # If HTML, maybe we are being challenged or it's a wrapper page.
+                    # ADX sometimes gives an HTML page for "Download" links?
+                    return None
+
+                return r.content
+
+            logger.warning(
+                f"Direct download failed {r.status_code}, attempting fallback..."
+            )
+
+            # Fallback to ScrapingBee (Try even if quota might be issues, or maybe mock?)
+            # Since we know quota is issue, maybe we skip or try proxy?
+            if self.mode == "LIVE":
+                logger.info("Fallback: Downloading via ScrapingBee...")
+                params = {"render_js": False}
+                response = self.client.get(url, params=params)
+
+                if response.status_code == 200:
+                    return response.content
+                else:
+                    logger.error(
+                        f"ScrapingBee Fallback Error {response.status_code}: {response.content}"
+                    )
+                    return None
+
+            return None
+        except Exception as e:
+            logger.error(f"Download Exception: {str(e)}")
+            return None
+
+    def _scrape_mock(self, url: str) -> str:
+        """Returns detailed Mock HTML based on the URL pattern to simulate real scraping."""
+
+        # 1. Simulator for ADX (Abu Dhabi Securities Exchange)
+        if "adx.ae" in url:
+            return """
+            <html>
+                <body>
+                    <!-- Updated Mock with ADX structure -->
+                    <div class="adx-profile_details-listedHeader-left-details">
+                        <h2>Mock ADX Company</h2>
+                        <h4>Banking</h4>
+                    </div>
+                
+                    <h1>Abu Dhabi Securities Exchange</h1>
+                    <div class="financials-table">
+                        <table>
+                            <thead>
+                                <tr><th>Period</th><th>Revenue (AED)</th><th>Net Profit (AED)</th><th>EPS</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>2023</td><td>43,000,000,000</td><td>21,500,000,000</td><td>3.2</td></tr>
+                                <tr><td>2022</td><td>39,500,000,000</td><td>18,000,000,000</td><td>2.8</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="company-profile">
+                        <span id="lblSector">Banking</span>
+                        <span id="lblListingDate">16/10/2007</span>
+                    </div>
+                </body>
+            </html>
+            """
+
+        # 2. Simulator for DFM (Dubai Financial Market)
+        elif "dfm.ae" in url:
+            return """
+            <html>
+                <body>
+                    <!-- Profile Section -->
+                    <div class="company-header">
+                        <h1 class="company-name">Mock Company PJSC</h1>
+                    </div>
+                    
+                    <div class="company-info">
+                        <div class="company-info-row">
+                            <span class="label">Sector</span>
+                            <span class="value">Banking</span>
+                        </div>
+                    </div>
+
+                    <!-- Financials Section -->
+                    <div class="financials-section">
+                        <h2>Financial Summary</h2>
+                        <table class="financials-summary">
+                            <thead>
+                                <tr><td>Indicator</td><td>Value (AED)</td></tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Revenue (TTM)</td>
+                                    <td>26,700,000,000</td>
+                                </tr>
+                                <tr>
+                                    <td>Net Profit</td>
+                                    <td>11,600,000,000</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Reports Section -->
+                    <div class="reports-section">
+                        <a href="/docs/annual-report-2023.pdf">Annual Report 2023</a>
+                    </div>
+                </body>
+            </html>
+            """
+
+        # 3. Simulator for Official Website / General
+        else:
+            return """
+            <html><body>General Mock Content</body></html>
+            """
+
+
+# --- Scraper ---
+
 
 class ADXScraper:
     """
     Advanced Scraper for ADX using direct Playwright automation.
     Handles dynamic content, document downloads, and detailed extration.
     """
-    
-    def __init__(self, connector: WebScraperConnector = None, max_age_years: int = 3):
-        # We accept connector to maintain interface compatibility, but we primarily use internal Playwright logic
-        self.connector = connector
+
+    def __init__(self, connector: ScrapingBeeConnector):
+        self.sb = connector
         self.base_url = "https://www.adx.ae"
         self.browser: Optional[Browser] = None
         self.playwright = None
@@ -137,24 +496,6 @@ class ADXScraper:
         Main entry point for scraping a company.
         Executes comprehensive crawl similar to ADXReportCrawler.
         """
-        ticker = ticker.upper()
-        # Canonical name check
-        canonical_name = self.known_companies.get(ticker, ticker)
-        
-        logger.info(f"Starting Advanced ADX Scrape for {ticker} ({canonical_name})")
-        
-        data = {
-            "source": "ADX", 
-            "ticker": ticker,
-            "scraped_at": datetime.now().isoformat(),
-            "profile": {},
-            "financials": {},
-            "metrics": {},
-            "documents": []
-        }
-
-        # URL Patterns
-        # URL Patterns
         urls = {
             "overview": f"https://www.adx.ae/main-market/company-profile/overview?symbols={ticker}",
             "financials": f"https://www.adx.ae/main-market/company-profile/financial-reports?symbols={ticker}",
@@ -274,101 +615,71 @@ class ADXScraper:
             # Returning merged data without root-level structured/downloads
             return data
 
-        except Exception as e:
-            logger.error(f"Fatal error in scrape_company: {e}")
-            import traceback
-            traceback.print_exc()
-            return data
-        finally:
-            await self._teardown_browser()
+        # 2. Financials & Downloads
+        if html_fin:
+            # Debug: Save raw HTML
+            StorageManager.save_raw(html_fin, "adx", ticker, "financials_debug.html")
+            data["financials"] = self._parse_financials(html_fin)
+            # Spawn download tasks for Financial Reports
+            doc_tasks.append(
+                self._extract_and_download_docs(html_fin, ticker, "financials")
+            )
 
-    async def _extract_overview(self, page: Page, ticker: str, page_type: str) -> dict:
-        """Extract overview profile and metrics"""
-        # Wait for dynamic content
-        try:
-             # Wait for something ensuring load, e.g. price or sector
-             await page.wait_for_selector(".adx-profile_details-listedHeader-left-details", timeout=10000)
-        except:
-             pass
-        
-        content = await page.content()
-        soup = BeautifulSoup(content, 'html.parser')
-        
+        # Also check disclosures for docs
+        if html_disclosures:
+            doc_tasks.append(
+                self._extract_and_download_docs(html_disclosures, ticker, "disclosures")
+            )
+
+        # 3. Fundamentals
+        if html_fund:
+            data["metrics"] = self._parse_fundamentals(html_fund)
+
+        # Execute Document Downloads in Parallel
+        if doc_tasks:
+            logger.info(f"Downloading found documents for {ticker}...")
+            await asyncio.gather(*doc_tasks)
+
+        # Save Structured
+        StorageManager.save_structured(data, "adx", ticker)
+
+        return data
+
+    async def search_ticker(self, query: str) -> tuple:
+        """
+        Searches ADX for a company name and returns (ticker, name).
+        """
+        logger.info(f"Searching ADX for '{query}'...")
+        return None, None
+
+    def _parse_overview(self, html: str) -> dict:
+        soup = BeautifulSoup(html, "html.parser")
         profile = {
             "company_name": "NOT AVAILABLE",
             "sector": "NOT AVAILABLE",
-            "about": "NOT AVAILABLE"
+            "about": "NOT AVAILABLE",
         }
-        
-        # Parse logic
-        # Parse logic
-        # Parse logic
-        # 1. Try Header structure
-        header = soup.select_one(".adx-profile_details-listedHeader-left-details")
-        if header:
-            # Usually h2 is Ticker/Short Name and h4 is Full Name
-            name_candidates = []
-            h2 = header.select_one("h2")
-            if h2: name_candidates.append(h2.get_text(strip=True))
-            h4 = header.select_one("h4")
-            if h4: name_candidates.append(h4.get_text(strip=True))
-            
-            # Prefer longer name as Company Name
-            if name_candidates:
-                full_name = max(name_candidates, key=len)
-                short_name = min(name_candidates, key=len)
-                
-                profile["company_name"] = full_name
-                # If short name is different, maybe it's sector? Unlikely.
-                # Sector is usually in a list below.
-                
-            # Try to find Sector in Meta list
-            # Look for "Sector:" label
-            # Generic search in header
-            for el in header.parent.find_all(string=lambda text: text and "Sector" in text):
-                parent = el.parent
-                # Check for value in next sibling or within same text
-                txt = parent.get_text(strip=True)
-                if ":" in txt:
-                    parts = txt.split(":")
-                    if len(parts) > 1 and "Sector" in parts[0]:
-                        profile["sector"] = parts[1].strip()
-                else:
-                     # Maybe next sibling?
-                     sib = parent.find_next_sibling()
-                     if sib:
-                         profile["sector"] = sib.get_text(strip=True)
 
-            # Heuristic Fallback for Sector
-            if profile["sector"] == "NOT AVAILABLE":
-                name_upper = profile["company_name"].upper()
-                if "BANK" in name_upper:
-                    profile["sector"] = "Banks"
-                elif "INSURANCE" in name_upper:
-                    profile["sector"] = "Insurance"
-                elif "REAL ESTATE" in name_upper:
-                    profile["sector"] = "Real Estate"
-                elif "TELECOM" in name_upper:
-                    profile["sector"] = "Telecommunications"
+        # Generic Parsing Logic
+        # Updated selectors based on observed HTML
+        # Look for adx-profile_details-listedHeader-left-details structure
+        header_details = soup.select_one(
+            ".adx-profile_details-listedHeader-left-details"
+        )
+        if header_details:
+            name = header_details.select_one("h2")
+            if name:
+                profile["company_name"] = name.get_text(strip=True)
 
-        
-        # 2. Fallback: Generic H1/Title
-        if profile["company_name"] == "NOT AVAILABLE":
-            h1 = soup.select_one("h1")
-            if h1: profile["company_name"] = h1.get_text(strip=True)
-            elif soup.title:
-                profile["company_name"] = soup.title.get_text(strip=True).replace("Company Profile Overview", "").strip(" | ADX")
+            sector = header_details.select_one("h4")
+            if sector:
+                profile["sector"] = sector.get_text(strip=True)
 
-        # 3. Metrics (Placeholder for now, need valid selectors)
-        # Look for labelled values if possible
-        # e.g. .metric-label, .metric-value
+        return profile
 
-            
-        metrics = {}
-        # Try to find key metrics
-        # (Add specific selectors based on ADX HTML structure)
-        
-        return {"profile": profile, "metrics": metrics}
+    def _parse_financials(self, html: str) -> dict:
+        soup = BeautifulSoup(html, "html.parser")
+        financials = {"revenue": "NOT AVAILABLE", "net_profit": "NOT AVAILABLE"}
 
     async def _prepare_page_content(self, page: Page, page_type: str):
         """Interact with page elements to ensure all content is loaded before capture."""
@@ -860,4 +1171,38 @@ if __name__ == "__main__":
             # Test with verified ticker
             await scraper.scrape_company(ticker)
 
-        asyncio.run(main())
+        load_dotenv()
+    except ImportError:
+        pass
+
+    async def main():
+        tickers = [
+            # "BURJEEL",
+            # "ADNOCGAS",
+            # "EAND",
+            # "ADNOCGAS",
+            "FBI"
+        ]  # Example list
+        print(f"--- Running ADX Scraper for: {tickers} ---")
+
+        connector = ScrapingBeeConnector()
+        scraper = ADXScraper(connector)
+
+        for ticker in tickers:
+            print(f"\nProcessing {ticker}...")
+            try:
+                data = await scraper.scrape_company(ticker)
+                print(f"Success: {ticker}")
+                print(f"Profile: {data.get('profile')}")
+                print(f"Financials keys: {list(data.get('financials', {}).keys())}")
+            except Exception as e:
+                print(f"Error scraping {ticker}: {e}")
+
+    try:
+        import nest_asyncio
+
+        nest_asyncio.apply()
+    except ImportError:
+        pass
+
+    asyncio.run(main())

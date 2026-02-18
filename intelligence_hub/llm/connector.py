@@ -1,9 +1,10 @@
 import os
 import logging
 import json
-from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_core.messages import HumanMessage, SystemMessage
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
+from intelligence_hub.llm.models import LLMConfig, LLMModel
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -11,28 +12,63 @@ logger = logging.getLogger(__name__)
 
 class LLMConnector:
     """
-    Connector for Google Gemini 1.5 Pro with Mock Mode.
-    Generates strategic banking insights and embeddings.
+    Connector for OpenAI GPT-4 & Embeddings.
     """
-    def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or os.getenv("GOOGLE_API_KEY")
+    def __init__(
+        self, 
+        api_key: Optional[str] = None, 
+        config: Optional[Union[LLMConfig, Dict[str, Any]]] = None,
+        model: Optional[str] = None, 
+        temperature: Optional[float] = None, 
+        top_p: Optional[float] = None, 
+        frequency_penalty: Optional[float] = None
+    ):
+        """
+        Initialize LLM Connector
         
-        if self.api_key and "mock" not in self.api_key.lower():
-            self.llm = ChatGoogleGenerativeAI(
-                model="gemini-1.5-pro-latest",
-                google_api_key=self.api_key,
-                temperature=0.3
+        Args:
+            api_key: OpenAI API key (optional, defaults to env var)
+            config: LLMConfig object or dict with configuration (optional)
+            model: Model name (optional, overrides config)
+            temperature: Temperature parameter (optional, overrides config)
+            top_p: Top-p parameter (optional, overrides config)
+            frequency_penalty: Frequency penalty (optional, overrides config)
+        """
+        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+        
+        # Handle config parameter
+        if config is not None:
+            if isinstance(config, dict):
+                llm_config = LLMConfig.from_dict(config)
+            else:
+                llm_config = config
+        else:
+            llm_config = LLMConfig()
+        
+        # Individual parameters override config
+        self.model = model if model is not None else llm_config.model
+        self.temperature = temperature if temperature is not None else llm_config.temperature
+        self.top_p = top_p if top_p is not None else llm_config.top_p
+        self.frequency_penalty = frequency_penalty if frequency_penalty is not None else llm_config.frequency_penalty
+        
+        if self.api_key:
+            self.llm = ChatOpenAI(
+                model=self.model,
+                openai_api_key=self.api_key,
+                temperature=self.temperature,
+                top_p=self.top_p,
+                frequency_penalty=self.frequency_penalty
             )
-            self.embeddings = GoogleGenerativeAIEmbeddings(
-                model="models/embedding-001",
-                google_api_key=self.api_key
+            self.embeddings = OpenAIEmbeddings(
+                model="text-embedding-3-small",
+                openai_api_key=self.api_key
             )
             self.mode = "LIVE"
         else:
             self.llm = None
             self.embeddings = None
             self.mode = "MOCK"
-            logger.warning("GOOGLE_API_KEY not found. Running in MOCK MODE.")
+            logger.warning("OPENAI_API_KEY not found. Running in MOCK MODE.")
 
     def embed(self, text: str) -> List[float]:
         """Generates a vector embedding for the given text."""
@@ -41,9 +77,9 @@ class LLMConnector:
                 return self.embeddings.embed_query(text)
             except Exception as e:
                 logger.error(f"Embedding failed: {e}")
-                return [0.0] * 768 # Fallback
+                return [0.0] * 1536 # Fallback (OpenAI dim)
         else:
-            return [0.1] * 768 # Mock vector
+            return [0.1] * 1536 # Mock vector
 
     def analyze(self, prompt: str) -> str:
         """

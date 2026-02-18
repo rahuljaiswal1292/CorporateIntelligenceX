@@ -3,7 +3,8 @@ import logging
 import json
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_core.messages import HumanMessage, SystemMessage
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
+from intelligence_hub.llm.models import LLMConfig, LLMModel
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -15,12 +16,56 @@ class LLMConnector:
     Connector for OpenAI GPT-4 & Embeddings.
     """
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        config: Optional[Union[LLMConfig, Dict[str, Any]]] = None,
+        model: Optional[str] = None,
+        temperature: Optional[float] = None,
+        top_p: Optional[float] = None,
+        frequency_penalty: Optional[float] = None,
+    ):
+        """
+        Initialize LLM Connector
+
+        Args:
+            api_key: OpenAI API key (optional, defaults to env var)
+            config: LLMConfig object or dict with configuration (optional)
+            model: Model name (optional, overrides config)
+            temperature: Temperature parameter (optional, overrides config)
+            top_p: Top-p parameter (optional, overrides config)
+            frequency_penalty: Frequency penalty (optional, overrides config)
+        """
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+
+        # Handle config parameter
+        if config is not None:
+            if isinstance(config, dict):
+                llm_config = LLMConfig.from_dict(config)
+            else:
+                llm_config = config
+        else:
+            llm_config = LLMConfig()
+
+        # Individual parameters override config
+        self.model = model if model is not None else llm_config.model
+        self.temperature = (
+            temperature if temperature is not None else llm_config.temperature
+        )
+        self.top_p = top_p if top_p is not None else llm_config.top_p
+        self.frequency_penalty = (
+            frequency_penalty
+            if frequency_penalty is not None
+            else llm_config.frequency_penalty
+        )
 
         if self.api_key:
             self.llm = ChatOpenAI(
-                model="gpt-4o", openai_api_key=self.api_key, temperature=0.3
+                model=self.model,
+                openai_api_key=self.api_key,
+                temperature=self.temperature,
+                top_p=self.top_p,
+                frequency_penalty=self.frequency_penalty,
             )
             self.embeddings = OpenAIEmbeddings(
                 model="text-embedding-3-small", openai_api_key=self.api_key

@@ -12,7 +12,7 @@ from serpapi import GoogleSearch
 from intelligence_hub.config.config import SERPAPI_API_KEY
 from .base_agent import BaseAgent
 from intelligence_hub.graph.state import AgentState
-from intelligence_hub.connectors.llm import LLMConnector
+from intelligence_hub.llm.connector import LLMConnector
 from intelligence_hub.storage.corporate_profile_store import (
     CorporateProfileStore,
 )
@@ -313,6 +313,28 @@ class SerpAPIProfileAgent(BaseAgent):
                 content = content.split("```")[1].split("```")[0]
 
             profile = json.loads(content.strip())
+
+            # Robust confidence score parsing
+            try:
+                raw_score = profile.get("confidence_score", 0)
+                if isinstance(raw_score, str):
+                    # Handle "95%", "High", etc.
+                    clean_score = raw_score.replace("%", "").strip()
+                    if clean_score.isdigit():
+                        profile["confidence_score"] = int(clean_score)
+                    elif clean_score.lower() == "high":
+                        profile["confidence_score"] = 90
+                    elif clean_score.lower() == "medium":
+                        profile["confidence_score"] = 70
+                    elif clean_score.lower() == "low":
+                        profile["confidence_score"] = 30
+                    else:
+                         profile["confidence_score"] = 0
+                else:
+                    profile["confidence_score"] = int(raw_score)
+            except (ValueError, TypeError):
+                self.log(f"Error parsing confidence score: {profile.get('confidence_score')}", "WARNING")
+                profile["confidence_score"] = 0
 
             self.log(
                 f"Extracted profile for: {profile.get('canonical_name', 'Unknown')}"

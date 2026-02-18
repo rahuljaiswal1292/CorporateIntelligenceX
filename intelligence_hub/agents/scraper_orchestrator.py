@@ -35,7 +35,7 @@ class ScraperOrchestrator:
         LangGraph Entry Point.
         """
         logger.info("Scraper: Received request...")
-        logs = state.get("logs", [])
+        logs = []
 
         ticker = state.get("ticker")
         exchange = state.get("exchange", "ADX")  # Default to ADX if unknown

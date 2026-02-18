@@ -12,7 +12,7 @@ from typing import Dict, Optional, Callable, List
 
 from .base_agent import BaseAgent
 from intelligence_hub.graph.state import AgentState
-from intelligence_hub.connectors.llm import LLMConnector
+from intelligence_hub.llm.connector import LLMConnector
 from intelligence_hub.storage.corporate_profile_store import (
     CorporateProfileStore,
 )

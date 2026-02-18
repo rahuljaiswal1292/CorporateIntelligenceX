@@ -30,7 +30,7 @@ class ScraperOrchestrator:
     import traceback
     from intelligence_hub.graph.state import AgentState
 
-    def run(self, state: AgentState) -> AgentState:
+    def run(self, state):
         """
         LangGraph Entry Point.
         """

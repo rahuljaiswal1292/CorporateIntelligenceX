@@ -175,7 +175,7 @@ class AnalystAgent(BaseAgent):
             self.log(f"Failed to read daily summary: {e}", "ERROR")
             return {}
 
-    def run(self, state: AgentState) -> AgentState:
+    def run(self, state):
         """
         Run analyst workflow
 

@@ -15,6 +15,10 @@ section[data-testid="stSidebar"] {
     color: #FFFFFF;
 }
 
+[data-testid="stSidebarHeader"] {
+    display: none;
+}
+
 section[data-testid="stSidebar"] div,
 section[data-testid="stSidebar"] label,
 section[data-testid="stSidebar"] span {
@@ -527,7 +531,7 @@ div[data-testid="stDecoration"] {
 
 /* Make the log text look more like a terminal */
 [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
-    font-family: 'Courier New', monospace;
+    /* font-family: 'Courier New', monospace; */
     font-size: 0.85rem !important;
     line-height: 1.2 !important;
     margin-bottom: 5px !important;

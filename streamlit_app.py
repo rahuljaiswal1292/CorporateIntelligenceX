@@ -745,13 +745,12 @@ def run_investigation(
         with pipeline_placeholder.container():
             render_progress_chain(st.session_state.progress_stage)
 
-    def update_resolved_ui():
-        # Use transient key while resolving to avoid duplicate keys in loop
-        if st.session_state.is_resolving:
-            k = f"btn_resolving_{uuid.uuid4()}"
-        else:
-            # Stable key (internal) to avoid duplicate key error with main flow
+    def update_resolved_ui(stable_key=False):
+        # Use transient key by default to avoid duplicate keys in loop
+        if stable_key:
             k = "btn_continue_investigation_internal"
+        else:
+            k = f"btn_resolving_{uuid.uuid4()}"
 
         render_resolved_ui(resolved_placeholder, key=k)
 
@@ -936,6 +935,7 @@ def run_investigation(
         st.session_state.investigation_paused = True
         st.session_state.is_resolving = False
         update_pipeline_ui()
+        update_resolved_ui(stable_key=True)
         st.toast(
             "Canonical Resolution Complete. Click 'Continue' to proceed.", icon="⏸️"
         )

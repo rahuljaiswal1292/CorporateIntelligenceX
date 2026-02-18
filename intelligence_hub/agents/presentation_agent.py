@@ -1,8 +1,9 @@
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional, Callable
 from intelligence_hub.agents.base_agent import BaseAgent
 from intelligence_hub.graph.state import AgentState
-from intelligence_hub.connectors.llm import LLMConnector
+from intelligence_hub.llm.connector import LLMConnector
+from intelligence_hub.storage.corporate_profile_store import CorporateProfileStore
 
 
 class PresentationAgent(BaseAgent):
@@ -10,13 +11,19 @@ class PresentationAgent(BaseAgent):
     Final Agent to consolidate and format all data for the Frontend UI.
     """
 
-    def __init__(self, llm_connector: LLMConnector = None):
-        # We might not need LLM, but BaseAgent expects it.
-        # We can pass None if strictly formatting.
+    def __init__(
+        self,
+        company_name: str,
+        llm_connector: LLMConnector,
+        log_callback: Optional[Callable] = None,
+        profile_store: Optional[CorporateProfileStore] = None,
+    ):
         super().__init__(
             agent_name="Presentation Agent",
-            company_name="Unknown",  # Dynamic
-            llm_connector=llm_connector or LLMConnector(),
+            company_name=company_name,
+            llm_connector=llm_connector,
+            log_callback=log_callback,
+            profile_store=profile_store,
         )
 
     def should_execute(self, state: AgentState) -> tuple[bool, str]:

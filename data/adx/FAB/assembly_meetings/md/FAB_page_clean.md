@@ -1,14 +1,14 @@
-Financials
+Company's Assembly MeetingsFinancials
 
 ## FAB
 
 #### First Abu Dhabi Bank
 
-ir@bankfab.com‎+971 2 305 3012https://www.bankfab.comLast Price20.040.20%
+ir@bankfab.com ‎+971 2 305 3012 https://www.bankfab.comLast Price20.7 3.19%
 
 ## March 2025
 
-11Tuesday 3:00 PM
+11 Tuesday  3:00 PM
 
 Ordinary
 
@@ -16,7 +16,7 @@ File
 
 ## March 2024
 
-05Tuesday 4:00 PM
+05 Tuesday  4:00 PM
 
 Ordinary
 
@@ -24,7 +24,7 @@ File
 
 ## February 2023
 
-28Tuesday 4:00 PM
+28 Tuesday  4:00 PM
 
 Ordinary
 
@@ -32,7 +32,7 @@ File
 
 ## February 2022
 
-28Monday 4:00 PM
+28 Monday  4:00 PM
 
 Ordinary
 
@@ -40,7 +40,7 @@ File
 
 ## February 2021
 
-28Sunday 4:00 PM
+28 Sunday  4:00 PM
 
 Ordinary
 
@@ -48,7 +48,7 @@ File
 
 ## February 2020
 
-24Monday 4:00 PM
+24 Monday  4:00 PM
 
 Ordinary
 
@@ -56,7 +56,7 @@ File
 
 ## February 2019
 
-25Monday 4:00 PM
+25 Monday  4:00 PM
 
 Ordinary
 
@@ -64,7 +64,7 @@ File
 
 ## February 2018
 
-25Sunday 4:00 PM
+25 Sunday  4:00 PM
 
 Ordinary
 

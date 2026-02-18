@@ -9,6 +9,11 @@ from typing import List, Dict, Optional
 import pandas as pd
 from playwright.async_api import async_playwright, Response, Page
 
+try:
+    from intelligence_hub.config.settings import config
+except ImportError:
+    config = None
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("ADXChartExtractor")
@@ -314,8 +319,10 @@ class ADXChartExtractor:
             if isinstance(resp, dict):
                 results = resp.get("results")
                 if isinstance(results, list) and len(results) > 0:
-                    if any(k in results[0] for k in ["open", "close", "date"]):
-                        if "recentTrades" in url:
+                    # Look for ADX specific keys: openPrice, lastPrice, tradeDate, dateTime
+                    adx_keys = ["open", "close", "date", "openPrice", "lastPrice", "tradeDate", "dateTime"]
+                    if any(k in results[0] for k in adx_keys):
+                        if "recentTrades" in url or "marketwatch" in url:
                             self.discovered_api_url = url
                         self._normalize_list_data(results)
                         return
@@ -324,7 +331,8 @@ class ADXChartExtractor:
             for key in ["data", "series", "chart", "d"]:
                 val = data.get(key)
                 if isinstance(val, list) and len(val) > 0 and isinstance(val[0], dict):
-                    if any(k in val[0] for k in ["open", "close", "date"]):
+                    adx_keys = ["open", "close", "date", "openPrice", "lastPrice", "tradeDate", "dateTime"]
+                    if any(k in val[0] for k in adx_keys):
                         self._normalize_list_data(val)
                         return
                 elif isinstance(val, dict):
@@ -364,20 +372,40 @@ class ADXChartExtractor:
             logger.error(f"Failed to normalize TV data: {e}")
 
     def _normalize_list_data(self, data: list):
-        """Convert list of dicts to standard list."""
+        """Convert list of dicts to standard list, handling ADX key variations."""
         for item in data:
+            # Handle variations in keys
+            date_val = item.get("date") or item.get("time") or item.get("tradeDate") or item.get("dateTime")
+            close_val = item.get("close") or item.get("last") or item.get("lastPrice") or item.get("price")
+            open_val = item.get("open") or item.get("openPrice")
+            high_val = item.get("high") or item.get("highPrice")
+            low_val = item.get("low") or item.get("lowPrice")
+            volume_val = item.get("volume") or item.get("quantity") or item.get("qty")
+            
             entry = {
-                "Date": item.get("date") or item.get("time"),
-                "Open": item.get("open"), "High": item.get("high"), "Low": item.get("low"),
-                "Close": item.get("close") or item.get("last") or item.get("price"),
-                "Volume": item.get("volume"), "Trades": item.get("trades"), "Value": item.get("value")
+                "Date": date_val,
+                "Open": open_val, 
+                "High": high_val, 
+                "Low": low_val,
+                "Close": close_val,
+                "Volume": volume_val, 
+                "Trades": item.get("trades") or item.get("tradeCount") or 0, 
+                "Value": item.get("value") or item.get("totalTurnover") or 0
             }
             if entry["Date"] and entry["Close"] is not None:
                 self.captured_data.append(entry)
 
     def _process_data(self):
         """Clean, filter, and calculate derived columns."""
+        if not self.captured_data:
+            logger.warning("No data to process.")
+            return
+
         df = pd.DataFrame(self.captured_data)
+        if 'Date' not in df.columns:
+            logger.error(f"Captured data missing 'Date' column. Columns found: {df.columns.tolist()}")
+            return
+
         df['Date'] = pd.to_datetime(df['Date'])
         df = df.sort_values('Date').drop_duplicates('Date')
 
@@ -390,6 +418,10 @@ class ADXChartExtractor:
         df['Change'] = df['Close'] - df['Previous']
         df['Change %'] = (df['Change'] / df['Previous']) * 100
         
+        # Round to 2 decimal places
+        price_cols = ['Open','High','Low','Close','Previous','Change','Change %', 'Value']
+        df[price_cols] = df[price_cols].round(2)
+        
         # Last price (current close)
         df['Last'] = df['Close']
         
@@ -398,14 +430,21 @@ class ADXChartExtractor:
 
     def _save_to_csv(self):
         """Save results to CSV only."""
-        if self.processed_df is None: return
+        if self.processed_df is None or self.processed_df.empty: 
+            logger.warning("Processed dataframe is empty, skipping save.")
+            return
         
-        base_dir = f"data/adx/{self.target_symbol}/orderbook/structured"
+        # Use absolute path from config if available
+        if config:
+            base_dir = os.path.join(config.DATA_DIR, "adx", self.target_symbol, "orderbook", "structured")
+        else:
+            base_dir = f"data/adx/{self.target_symbol}/orderbook/structured"
+            
         os.makedirs(base_dir, exist_ok=True)
         
         # Save CSV only
-        csv_path = f"{base_dir}/{self.target_symbol}_chart_data.csv"
-        self.processed_df.to_csv(csv_path, index=False)
+        csv_path = os.path.join(base_dir, f"{self.target_symbol}_chart_data.csv")
+        self.processed_df.to_csv(csv_path, index=False, float_format="%.2f")
         logger.info(f"Saved {len(self.processed_df)} rows to {csv_path}")
 
 if __name__ == "__main__":
@@ -419,9 +458,9 @@ if __name__ == "__main__":
         # 'ADNOCGAS',
         # 'EAND',
         # 'ADNHC',
-        # 'FAB',
+        'FAB',
         # 'ALPHADATA',
-        "ALDAR",
+        # "ALDAR",
     ]
     
     # Allow override from command line

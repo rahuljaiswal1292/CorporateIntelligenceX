@@ -721,11 +721,11 @@ class DownloadManager:
         
         if is_new_generic and not is_existing_generic:
             # New file is generic, keep existing
-            logger.debug(f"Duplicate detected: Keeping descriptive '{existing_name}', removing generic '{new_name}'")
+            logger.info(f"Duplicate detected: Keeping descriptive existing file '{existing_name}'")
             try: os.remove(new_file)
             except: pass
             self.download_stats['skipped_duplicate'] += 1
-            return None
+            return existing_file
         elif is_existing_generic and not is_new_generic:
             # Existing is generic, replace with new descriptive name
             logger.info(f"Duplicate detected: Replacing generic '{existing_name}' with descriptive '{new_name}'")
@@ -746,11 +746,11 @@ class DownloadManager:
                 self.downloaded_hashes[file_hash] = new_file
                 return new_file
             else:
-                logger.debug(f"Duplicate detected: Keeping '{existing_name}', removing '{new_file}'")
+                logger.info(f"Duplicate detected: Already have '{existing_name}', skipping redundant download.")
                 try: os.remove(new_file)
                 except: pass
                 self.download_stats['skipped_duplicate'] += 1
-                return None
+                return existing_file
     
     def get_stats(self) -> Dict:
         """Get download statistics."""

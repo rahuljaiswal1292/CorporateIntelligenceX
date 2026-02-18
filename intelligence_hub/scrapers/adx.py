@@ -5,8 +5,11 @@ import os
 import json
 import logging
 from typing import Optional, Dict
+from playwright.async_api import Page, Browser, async_playwright
 from datetime import datetime
+import requests
 from bs4 import BeautifulSoup
+import re
 
 try:
     from dotenv import load_dotenv
@@ -20,6 +23,7 @@ try:
     from intelligence_hub.utils.storage_manager import StorageManager
     from intelligence_hub.scrapers.download_manager import DownloadManager
     from intelligence_hub.scrapers.bot_handler import BotHandler
+    from intelligence_hub.utils.content_cleaner import clean_html_to_markdown
 except ImportError:
     import requests  # Fallback if not installed, though user added it
 
@@ -43,6 +47,9 @@ class Config:
     from intelligence_hub.config.config import DATA_DIRECTORY
 
     DATA_DIR = DATA_DIRECTORY
+    HEADLESS = False
+
+config = Config
 
 
 try:
@@ -53,77 +60,7 @@ except ImportError:
 # StorageManager imported from utils
 
 
-class StorageManager:
-    """
-    Manages file storage for scraped data in structured/unstructured formats.
-    Structure: ./data/{source}/{format}/{ticker}_{timestamp}.{ext}
-    """
-
-    @staticmethod
-    def save_raw(
-        content: str, source: str, ticker: str, extension: str = "html"
-    ) -> str:
-        """
-        Saves raw content (Unstructured).
-        """
-        directory = os.path.join(config.DATA_DIR, source, "unstructured")
-        os.makedirs(directory, exist_ok=True)
-
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"{ticker}_{timestamp}.{extension}"
-        filepath = os.path.join(directory, filename)
-
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write(content)
-
-        logger.info(f"Saved raw data to {filepath}")
-        return filepath
-
-    @staticmethod
-    def save_document(
-        content: bytes, source: str, ticker: str, category: str, filename: str
-    ) -> str:
-        """
-        Saves a downloaded document (PDF, DOCX, etc.) to a categorized folder.
-        Structure: ./data/{source}/{ticker}/{category}/{filename}
-        """
-        # Santize filename
-        filename = "".join(
-            [
-                c
-                for c in filename
-                if c.isalpha() or c.isdigit() or c in (" ", ".", "_", "-")
-            ]
-        ).rstrip()
-
-        directory = os.path.join(config.DATA_DIR, source, ticker, category)
-        os.makedirs(directory, exist_ok=True)
-
-        filepath = os.path.join(directory, filename)
-
-        with open(filepath, "wb") as f:
-            f.write(content)
-
-        logger.info(f"Saved document to {filepath}")
-        return filepath
-
-    @staticmethod
-    def save_structured(data: dict, source: str, ticker: str) -> str:
-        """
-        Saves parsed data (Structured JSON).
-        """
-        directory = os.path.join(config.DATA_DIR, source, "structured")
-        os.makedirs(directory, exist_ok=True)
-
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"{ticker}_{timestamp}.json"
-        filepath = os.path.join(directory, filename)
-
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
-
-        logger.info(f"Saved structured data to {filepath}")
-        return filepath
+# StorageManager is imported from utils
 
 
 # --- Connector ---
@@ -428,8 +365,9 @@ class ADXScraper:
         self.playwright = None
         
         # Initialize enhanced download manager and bot handler
-        self.download_manager = DownloadManager(max_age_years=max_age_years) if DownloadManager else None
-        self.bot_handler = BotHandler() if BotHandler else None
+        max_age_years = 5
+        self.download_manager = DownloadManager(max_age_years=max_age_years) if 'DownloadManager' in globals() else None
+        self.bot_handler = BotHandler() if 'BotHandler' in globals() else None
         
         # known companies map 
         self.known_companies = {
@@ -437,6 +375,9 @@ class ADXScraper:
              "FBI": "First Abu Dhabi Bank (Legacy)", # Example mapping
              "CBD": "Commercial Bank of Dubai"
         }
+        
+        # Concurrency control
+        self.semaphore = asyncio.Semaphore(3)
 
     async def _setup_browser(self):
         """Initialize Playwright browser with stealth settings"""
@@ -505,6 +446,8 @@ class ADXScraper:
             "orderbook": f"https://www.adx.ae/main-market/company-profile/orderbook?symbols={ticker}",
             "assembly_meetings": f"https://www.adx.ae/main-market/company-profile/assembly-meetings?symbols={ticker}",
         }
+        
+        data = {}
 
         try:
             await self._setup_browser()
@@ -518,75 +461,83 @@ class ADXScraper:
             
             # Define processing function for each page type
             async def process_page(url, page_type):
-                page = await self._create_stealth_page(context)
+                async with self.semaphore:
+                    page = await self._create_stealth_page(context)
                 
-                # Setup page-specific download handler (in 'structured' subfolder)
-                page_download_dir = os.path.join(config.DATA_DIR, "adx", ticker, page_type, "structured")
-                os.makedirs(page_download_dir, exist_ok=True)
-                
-                async def handle_download(download):
-                    try:
-                        suggested_filename = download.suggested_filename
-                        path = os.path.join(page_download_dir, suggested_filename)
-                        await download.save_as(path)
-                        logger.info(f"Downloaded to {page_type}: {path}")
-                    except Exception as e:
-                        logger.error(f"Download failed in {page_type}: {e}")
+                    # Setup page-specific download handler (in 'structured' subfolder)
+                    page_download_dir = os.path.join(config.DATA_DIR, "adx", ticker, page_type, "structured")
+                    os.makedirs(page_download_dir, exist_ok=True)
+                    
+                    async def handle_download(download):
+                        try:
+                            suggested_filename = download.suggested_filename
+                            path = os.path.join(page_download_dir, suggested_filename)
+                            await download.save_as(path)
+                            logger.info(f"Downloaded to {page_type}: {path}")
+                        except Exception as e:
+                            logger.error(f"Download failed in {page_type}: {e}")
 
-                page.on("download", handle_download)
-                
-                # For orderbook pages, setup chart extractor BEFORE navigation
-                chart_extractor = None
-                if page_type == "orderbook" and ADXChartExtractor:
-                    chart_extractor = ADXChartExtractor()
-                    chart_extractor.target_url = url
-                    chart_extractor.symbol = chart_extractor._extract_symbol_from_url(url)
-                    chart_extractor.target_symbol = chart_extractor.symbol
-                    # Attach network listeners BEFORE navigation
-                    page.on("request", chart_extractor._handle_request)
-                    page.on("response", chart_extractor._handle_response)
-                    logger.info(f"Setup chart extractor listeners for {ticker} BEFORE navigation")
-                
-                logger.info(f"Navigating to {page_type}: {url}")
-                try:
-                    # Use 'load' for more completeness
-                    await page.goto(url, wait_until="load", timeout=90000)
+                    page.on("download", handle_download)
                     
-                    # Prepare page (scroll, wait)
-                    await self._prepare_page_content(page, page_type)
+                    # For orderbook and overview pages, setup chart extractor BEFORE navigation
+                    chart_extractor = None
+                    if page_type in ["orderbook", "overview"] and ADXChartExtractor:
+                        chart_extractor = ADXChartExtractor()
+                        chart_extractor.target_url = url
+                        chart_extractor.symbol = chart_extractor._extract_symbol_from_url(url)
+                        chart_extractor.target_symbol = chart_extractor.symbol
+                        # Attach network listeners BEFORE navigation
+                        page.on("request", chart_extractor._handle_request)
+                        page.on("response", chart_extractor._handle_response)
+                        logger.info(f"Setup chart extractor listeners for {ticker} on {page_type} BEFORE navigation")
                     
-                    # Extract structured data FIRST for pages that need interaction (like financials)
-                    extracted_data = {}
-                    if page_type == "overview":
-                        extracted_data = await self._extract_overview(page, ticker, page_type)
-                    elif page_type == "financials":
-                        # This method clicks tabs and triggers data loading
-                        extracted_data = await self._interact_and_extract_financials(page, ticker, page_type)
-                    elif page_type == "orderbook":
-                        # Extract chart data using pre-configured extractor
-                        extracted_data = await self._extract_orderbook_chart_with_extractor(page, ticker, url, chart_extractor)
-                    elif page_type in ["disclosures", "assembly_meetings", "fundamentals"]:
-                        extracted_data = await self._generic_document_extract(page, ticker, page_type)
-                    
-                    # Capture content AFTER interaction to ensure dynamic data is present
-                    content = await page.content()
-                    
-                    # Save Raw HTML
-                    StorageManager.save_page_content(content, "adx", ticker, page_type, "html", "page")
-
-                    # Convert and Store Clean Markdown (using raw HTML for best results)
+                    logger.info(f"Navigating to {page_type}: {url}")
                     try:
-                        md_content = clean_html_to_markdown(content)
-                        StorageManager.save_page_content(md_content, "adx", ticker, page_type, "md", "page_clean")
-                    except Exception as e:
-                        logger.warning(f"Failed to convert/save markdown for {page_type}: {e}")
+                        # Use 'load' for more completeness
+                        await page.goto(url, wait_until="load", timeout=90000)
                         
-                    await page.close()
-                    return (page_type, extracted_data)
-                except Exception as e:
-                    logger.error(f"Error processing {page_type}: {e}")
-                    await page.close()
-                    return (page_type, None)
+                        # Prepare page (scroll, wait)
+                        await self._prepare_page_content(page, page_type)
+                        
+                        # Extract structured data FIRST for pages that need interaction (like financials)
+                        extracted_data = {}
+                        if page_type == "overview":
+                            extracted_data = await self._extract_overview(page, ticker, page_type)
+                            # Also attempt chart extraction on overview as a primary source
+                            if chart_extractor:
+                                chart_res = await self._extract_orderbook_chart_with_extractor(page, ticker, url, chart_extractor)
+                                if chart_res and chart_res.get("chart_extracted"):
+                                    extracted_data["chart_data"] = chart_res
+                        elif page_type == "financials":
+                            # This method clicks tabs and triggers data loading
+                            extracted_data = await self._interact_and_extract_financials(page, ticker, page_type)
+                        elif page_type == "orderbook":
+                            # Extract chart data using pre-configured extractor
+                            extracted_data = await self._extract_orderbook_chart_with_extractor(page, ticker, url, chart_extractor)
+                        elif page_type == "shareholders":
+                            extracted_data = await self._extract_shareholders(page, ticker, page_type)
+                        elif page_type in ["disclosures", "assembly_meetings", "fundamentals"]:
+                            extracted_data = await self._generic_document_extract(page, ticker, page_type)
+                        
+                        # Capture content AFTER interaction to ensure dynamic data is present
+                        content = await page.content()
+                        
+                        # Save Raw HTML
+                        StorageManager.save_page_content(content, "adx", ticker, page_type, "html", "page")
+
+                        # Convert and Store Clean Markdown (using raw HTML for best results)
+                        try:
+                            md_content = clean_html_to_markdown(content)
+                            StorageManager.save_page_content(md_content, "adx", ticker, page_type, "md", "page_clean")
+                        except Exception as e:
+                            logger.warning(f"Failed to convert/save markdown for {page_type}: {e}")
+                            
+                        await page.close()
+                        return (page_type, extracted_data)
+                    except Exception as e:
+                        logger.error(f"Error processing {page_type}: {e}")
+                        await page.close()
+                        return (page_type, None)
                     
 
             # Exec tasks
@@ -603,6 +554,7 @@ class ADXScraper:
             results = await asyncio.gather(*tasks)
             
             # Merge Results
+            downloaded_files = []
             for page_type, result in results:
                 if result:
                     if page_type == "overview":
@@ -610,40 +562,36 @@ class ADXScraper:
                         data["metrics"] = result.get("metrics", {})
                     elif page_type == "financials":
                         data["financials"] = result.get("financials", {})
+                    elif page_type == "shareholders":
+                        data["shareholders"] = result.get("shareholders", [])
+                    
+                    # Generic merge for everything else (disclosures, orderbook, etc)
+                    if page_type not in ["overview"]:
+                         data[page_type] = result
+                    
+                    # Collect any files/documents identified in the result
+                    if isinstance(result, dict) and "files" in result:
+                        downloaded_files.extend(result["files"])
+                    if isinstance(result, dict) and "documents" in result:
+                        if isinstance(result["documents"], list):
+                            downloaded_files.extend(result["documents"])
+                        elif isinstance(result["documents"], dict) and "files" in result["documents"]:
+                             downloaded_files.extend(result["documents"]["files"])
+
+            data["documents"] = list(set(downloaded_files))
             
-            # Documents are tracked within their respective processing methods if needed
-            # Returning merged data without root-level structured/downloads
+            # Save final structured data to disk
+            StorageManager.save_structured(data, "adx", ticker)
+            
             return data
 
-        # 2. Financials & Downloads
-        if html_fin:
-            # Debug: Save raw HTML
-            StorageManager.save_raw(html_fin, "adx", ticker, "financials_debug.html")
-            data["financials"] = self._parse_financials(html_fin)
-            # Spawn download tasks for Financial Reports
-            doc_tasks.append(
-                self._extract_and_download_docs(html_fin, ticker, "financials")
-            )
-
-        # Also check disclosures for docs
-        if html_disclosures:
-            doc_tasks.append(
-                self._extract_and_download_docs(html_disclosures, ticker, "disclosures")
-            )
-
-        # 3. Fundamentals
-        if html_fund:
-            data["metrics"] = self._parse_fundamentals(html_fund)
-
-        # Execute Document Downloads in Parallel
-        if doc_tasks:
-            logger.info(f"Downloading found documents for {ticker}...")
-            await asyncio.gather(*doc_tasks)
-
-        # Save Structured
-        StorageManager.save_structured(data, "adx", ticker)
-
-        return data
+        except Exception as e:
+            logger.error(f"Error scraping company {ticker}: {e}")
+            import traceback
+            traceback.print_exc()
+            return {}
+        finally:
+            await self._teardown_browser()
 
     async def search_ticker(self, query: str) -> tuple:
         """
@@ -652,7 +600,9 @@ class ADXScraper:
         logger.info(f"Searching ADX for '{query}'...")
         return None, None
 
-    def _parse_overview(self, html: str) -> dict:
+    async def _extract_overview(self, page: Page, ticker: str, page_type: str) -> dict:
+        """Extract profile information from overview page."""
+        html = await page.content()
         soup = BeautifulSoup(html, "html.parser")
         profile = {
             "company_name": "NOT AVAILABLE",
@@ -661,8 +611,6 @@ class ADXScraper:
         }
 
         # Generic Parsing Logic
-        # Updated selectors based on observed HTML
-        # Look for adx-profile_details-listedHeader-left-details structure
         header_details = soup.select_one(
             ".adx-profile_details-listedHeader-left-details"
         )
@@ -675,7 +623,7 @@ class ADXScraper:
             if sector:
                 profile["sector"] = sector.get_text(strip=True)
 
-        return profile
+        return {"profile": profile}
 
     def _parse_financials(self, html: str) -> dict:
         soup = BeautifulSoup(html, "html.parser")
@@ -736,6 +684,14 @@ class ADXScraper:
                 await page.wait_for_timeout(2000)
             except: pass
             
+        elif page_type == "orderbook":
+            logger.info("Waiting for TradingView chart to render...")
+            try:
+                # Wait for the iframe or the chart container
+                await page.wait_for_selector(".tradingview-widget-container, iframe, #tv_chart_container", timeout=20000)
+                await page.wait_for_timeout(5000) # Give extra time for network stabilization
+            except: pass
+            
     async def _extract_orderbook_chart_with_extractor(self, page: Page, ticker: str, url: str, extractor: 'ADXChartExtractor') -> dict:
         """
         Extract chart data from orderbook page using a pre-configured ADXChartExtractor.
@@ -752,6 +708,13 @@ class ADXScraper:
             # The extractor already has listeners attached and has been capturing network traffic
             # Now we just need to trigger interactions and process the captured data
             
+            # Wait for request headers to be captured first (needed for fallback)
+            logger.info("Polling for network headers...")
+            for _ in range(10):
+                if extractor.request_headers:
+                    break
+                await asyncio.sleep(1)
+            
             logger.info("Waiting for chart content to load...")
             await page.wait_for_timeout(2000)
             
@@ -761,6 +724,13 @@ class ADXScraper:
             
             # Try to trigger 3-month history via interaction
             await extractor._trigger_3month_history(page)
+            
+            # Additional wait for network response to be processed
+            logger.info("Polling for captured chart data...")
+            for _ in range(10):
+                if extractor.captured_data:
+                    break
+                await asyncio.sleep(1)
             
             # If we discovered the API, fetch 3 months (100 records)
             if extractor.discovered_api_url:
@@ -788,6 +758,21 @@ class ADXScraper:
                         logger.error(f"Request context fetch failed: {response.status} {response.status_text}")
                 except Exception as e:
                     logger.error(f"Failed to fetch history via request context: {e}")
+
+            if not extractor.captured_data:
+                logger.info(f"Falling back to marketwatch API (10-day lookback) for {ticker}...")
+                try:
+                    # Clean URL without recordCount (which causes 400 Bad Request on this endpoint)
+                    recent_trades_url = f"https://apigateway.adx.ae/adx/marketwatch/1.1/recentTrades/{ticker.upper()}"
+                    response = await page.context.request.get(recent_trades_url, headers=extractor.request_headers)
+                    if response.ok:
+                        trades_json = await response.json()
+                        results = trades_json.get("response", {}).get("results", [])
+                        if results:
+                            logger.info(f"Captured {len(results)} records from recentTrades fallback.")
+                            extractor._normalize_list_data(results)
+                except Exception as e:
+                    logger.warning(f"RecentTrades fallback failed: {e}")
 
             # If still no data, check for page-level scripts (NEXT_DATA)
             if not extractor.captured_data:
@@ -922,10 +907,9 @@ class ADXScraper:
             return links
                 .filter(a => {
                     const href = a.href.toLowerCase();
-                    return docFormats.some(fmt => href.includes(fmt)) || 
-                           href.includes('download') || 
-                           href.includes('cdn') ||
-                           href.includes('apigateway');
+                    const hasExt = docFormats.some(fmt => href.endsWith(fmt) || href.includes(fmt + '?'));
+                    const isDirect = href.includes('download') || href.includes('cdn') || href.includes('apigateway');
+                    return hasExt || isDirect;
                 })
                 .map((a, index) => ({
                     url: a.href,
@@ -1037,18 +1021,9 @@ class ADXScraper:
             return links
                 .filter(a => {
                     const href = a.href.toLowerCase();
-                    const text = (a.textContent || "").toLowerCase();
-                    
-                    // Include if has document format extension
-                    if (docFormats.some(fmt => href.includes(fmt))) return true;
-                    
-                    // Include if has download indicators
-                    if (href.includes('download') || href.includes('cdn') || href.includes('apigateway')) return true;
-                    
-                    // Include if text suggests it's a document
-                    if (text.includes('download') || text.includes('pdf') || text.includes('report')) return true;
-                    
-                    return false;
+                    const hasExt = docFormats.some(fmt => href.endsWith(fmt) || href.includes(fmt + '?'));
+                    const isDirect = href.includes('download') || href.includes('cdn') || href.includes('apigateway');
+                    return hasExt || isDirect;
                 })
                 .map((a, index) => ({
                     url: a.href,
@@ -1147,42 +1122,73 @@ class ADXScraper:
             "download_stats": self.download_manager.get_stats() if self.download_manager else {}
         }
 
-    async def _extract_disclosures(self, page: Page, ticker: str, page_type: str) -> dict:
-        # Deprecated - use _generic_document_extract instead
-        return {}
+    async def _extract_shareholders(self, page: Page, ticker: str, page_type: str) -> dict:
+        """Extract shareholder information using table walking."""
+        logger.info(f"Extracting shareholders for {ticker}...")
+        try:
+            # Wait for any table-like element
+            await page.wait_for_selector("table, .adx-table", timeout=10000)
+            
+            # Simple JS-based table extraction
+            shareholders = await page.evaluate('''() => {
+                const results = [];
+                const rows = document.querySelectorAll('tr');
+                rows.forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    if (cells.length >= 2) {
+                        const name = cells[0].innerText.trim();
+                        const percent = cells[1].innerText.trim();
+                        if (percent.includes('%') || parseFloat(percent) > 0) {
+                            results.push({ name, percent });
+                        }
+                    }
+                });
+                return results;
+            }''')
+            
+            # Use generic document extraction for any attachments on the shareholder page
+            doc_data = await self._generic_document_extract(page, ticker, page_type)
+            
+            return {
+                "shareholders": shareholders,
+                "documents": doc_data
+            }
+        except Exception as e:
+            logger.error(f"Failed to extract shareholders: {e}")
+            return {}
 
     async def search_ticker(self, query: str) -> tuple:
         return None, None
 
 # Run Standalone
 if __name__ == "__main__":
-    tickers  = [
+    tickers = [
+        # "ALDAR",
+        # "FBI"
         # 'LULU', 
         # 'ADNOCGAS',
         # 'EAND',
         # 'ADNHC',
-        'ALDAR',
-        # 'FAB',
+        # 'ALDAR',
+        'FAB',
         # 'ALPHADATA'
-        ]
-    for ticker in tickers:
-        async def main():
-            scraper = ADXScraper()
-            # Test with verified ticker
-            await scraper.scrape_company(ticker)
-
+    ]
+    
+    # Try loading environment variables
+    try:
+        from dotenv import load_dotenv
         load_dotenv()
     except ImportError:
         pass
 
+    # Try applying nest_asyncio for notebook/IDE support
+    try:
+        import nest_asyncio
+        nest_asyncio.apply()
+    except ImportError:
+        pass
+
     async def main():
-        tickers = [
-            # "BURJEEL",
-            # "ADNOCGAS",
-            # "EAND",
-            # "ADNOCGAS",
-            "FBI"
-        ]  # Example list
         print(f"--- Running ADX Scraper for: {tickers} ---")
 
         connector = ScrapingBeeConnector()
@@ -1193,16 +1199,12 @@ if __name__ == "__main__":
             try:
                 data = await scraper.scrape_company(ticker)
                 print(f"Success: {ticker}")
-                print(f"Profile: {data.get('profile')}")
-                print(f"Financials keys: {list(data.get('financials', {}).keys())}")
+                if data:
+                    print(f"Profile: {data.get('profile')}")
+                    financials = data.get('financials', {})
+                    if financials:
+                        print(f"Financials keys: {list(financials.keys())}")
             except Exception as e:
                 print(f"Error scraping {ticker}: {e}")
-
-    try:
-        import nest_asyncio
-
-        nest_asyncio.apply()
-    except ImportError:
-        pass
 
     asyncio.run(main())

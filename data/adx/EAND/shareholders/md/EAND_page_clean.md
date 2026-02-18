@@ -4,7 +4,7 @@ Company's Shareholders & BoardTelecommunication
 
 #### Emirates Telecommunications Group Company PJSC (e&)
 
-ir@eand.com ‎+971 2 6283333 https://eand.comLast Price20.9 -1.693%
+ir@eand.com ‎+971 2 6283333 https://eand.comLast Price21.42 2.488%
 
 ## SHAREHOLDER INFORMATION
 

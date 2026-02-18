@@ -4,4 +4,4 @@ Company's FundamentalsConsumer Staples
 
 #### Lulu Retail Holdings PLC
 
-investor.relations@ae.lulumea.com ‎+971 2 418 2000 www.luluretail.comLast Price1.09 -0.909%
+investor.relations@ae.lulumea.com ‎+971 2 418 2000 www.luluretail.comLast Price1.07 0.00%

@@ -20,11 +20,11 @@ ir@bankfab.com ‎+971 2 305 3012 https://www.bankfab.comLast Price20.7 3.19%
 
 ### BID
 
-20.700
+20.360
 
 ### BID SIZE
 
-5,669
+20,000
 
 ### ASK
 
@@ -65,7 +65,7 @@ from100.00%
 
 0.38%
 
-from40.00%Disclosures[View All](/en/main-market/company-profile/disclosures?symbols=FAB&secCode=FAB) 05Feb 2026FAB +0.640 (+3.190%)[Invitation to Attend Annual General Meeting on 11/03/2026 at 15:00](#) 05Feb 2026FAB +0.640 (+3.190%)[Clarifying Disclosure Regarding the Approval of Agencies](#)28Jan 2026FAB +0.640 (+3.190%)[Board Meeting Results held on 27/01/2026 at 15:30](#) 28Jan 2026FAB +0.640 (+3.190%)[Financial Results for the Period Ended December 31,2025](#)28Jan 2026FAB +0.640 (+3.190%)[Management Discussion and Analysis Report for the Period Ended December 31,2025](#)DisclaimerFinancial Reports[View All](/en/main-market/company-profile/financial-reports?symbols=FAB&secCode=) 28Jan 2026FAB +0.640 (+3.190%)[First Abu Dhabi Bank Management Discussion and Analysis Report for the Period Ended December 31,2025](#)28Jan 2026FAB +0.640 (+3.190%)[First Abu Dhabi Bank Financial Results for the Period Ended December 31,2025](#)23Oct 2025FAB +0.640 (+3.190%)[First Abu Dhabi Bank Sustainability Report](#)
+from40.00%Disclosures[View All](/en/main-market/company-profile/disclosures?symbols=FAB&secCode=FAB) 05Feb 2026FAB +0.640 (+3.190%)[Invitation to Attend Annual General Meeting on 11/03/2026 at 15:00](#) 05Feb 2026FAB +0.640 (+3.190%)[Clarifying Disclosure Regarding the Approval of Agencies](#)28Jan 2026FAB +0.640 (+3.190%)[Board Meeting Results held on 27/01/2026 at 15:30](#) 28Jan 2026FAB +0.640 (+3.190%)[Financial Results for the Period Ended December 31,2025](#)28Jan 2026FAB +0.640 (+3.190%)[Management Discussion and Analysis Report for the Period Ended December 31,2025](#)DisclaimerFinancial Reports[View All](/en/main-market/company-profile/financial-reports?symbols=FAB&secCode=) 28Jan 2026FAB +0.640 (+3.190%)[First Abu Dhabi Bank Financial Results for the Period Ended December 31,2025](#)28Jan 2026FAB +0.640 (+3.190%)[First Abu Dhabi Bank Management Discussion and Analysis Report for the Period Ended December 31,2025](#)23Oct 2025FAB +0.640 (+3.190%)[First Abu Dhabi Bank Integrated Report December 31,2024](#)
 
 ## RECENT TRADES
 

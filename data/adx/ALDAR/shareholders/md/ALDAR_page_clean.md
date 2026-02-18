@@ -4,7 +4,7 @@ Company's Shareholders & BoardReal Estate
 
 #### Aldar Properties PJSC
 
-mabedalrahman@aldar.com ‎0097128105555 https://www.aldar.comLast Price11.26 -2.087%
+mabedalrahman@aldar.com ‎0097128105555 https://www.aldar.comLast Price11.7 2.094%
 
 ## SHAREHOLDER INFORMATION
 

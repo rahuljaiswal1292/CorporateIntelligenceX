@@ -4,7 +4,7 @@ Company's Shareholders & BoardEnergy
 
 #### ADNOC Gas plc
 
-ir@adnocgas.ae ‎+971 2 707 0000 https://www.adnoc.ae/en/adnoc-gasLast Price3.61 0.00%
+ir@adnocgas.ae ‎+971 2 707 0000 https://www.adnoc.ae/en/adnoc-gasLast Price3.52 -0.565%
 
 ## SHAREHOLDER INFORMATION
 
@@ -59,11 +59,11 @@ Navneeth Acharya
 
 Top Management
 
-MOHAMED TAJUDEEN ALSAYED MOHAMED ALHASHMI
+Petrus Stephanus Van Driel
 
 Top Management
 
-Petrus Stephanus Van Driel
+MOHAMED TAJUDEEN ALSAYED MOHAMED ALHASHMI
 
 Top Management
 

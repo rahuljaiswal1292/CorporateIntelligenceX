@@ -13,7 +13,6 @@ scrapingbee>=2.0.0
 unstructured>=0.11.0
 pymupdf>=1.23.0
 chromadb>=0.4.0
-pinecone-client>=3.0.0
 google-generativeai>=0.3.0
 curl_cffi>=0.5.10
 playwright>=1.40.0
@@ -25,3 +24,6 @@ yfinance
 google-search-results
 langchain-openai
 nest_asyncio
+html2text
+openpyxl>=3.1.0
+xlrd>=2.0.1

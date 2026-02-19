@@ -11,14 +11,14 @@ logger = logging.getLogger(__name__)
 class VectorizerAgent:
     """
     Agent 3: The Knowledge Manager (RAG).
-    Chunks documents and upserts to Pinecone.
+    Chunks documents and upserts to ChromaDB.
     """
 
     def __init__(self):
         self.store = CorporateProfileStore()
         self.llm = LLMConnector()
 
-    def run(self, state: AgentState) -> AgentState:
+    def run(self, state):
         logger.info("Vectorizer: Indexing documents...")
         logs = []
 
@@ -67,11 +67,9 @@ class VectorizerAgent:
         else:
             logs.append("Vectorizer: No valid text content found to index.")
 
+        # Return merged state to preserve all keys (enrichments, pdf_results, etc.)
         return {
+            **state,
             "logs": logs,
             "vector_ids": vector_ids,
-            # Preserving state
-            "ticker": ticker,
-            "company_name": state.get("company_name"),
-            "financial_data": scraped_data,
         }

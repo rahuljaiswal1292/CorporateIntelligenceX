@@ -36,7 +36,7 @@ from intelligence_hub.prompts import load_prompt
 from intelligence_hub.config.settings import config
 from intelligence_hub.scrapers.adx import ADXScraper
 from intelligence_hub.scrapers.dfm import DFMScraper
-from intelligence_hub.scrapers.scrapingbee import ScrapingBeeConnector
+from intelligence_hub.connectors.web_scraper_connector import WebScraperConnector
 import asyncio
 
 
@@ -80,6 +80,50 @@ class MasterAgent(BaseAgent):
         # Removed from master_agent initialization - they execute as separate nodes
         # self.worker_agents = [...]
 
+    def get_competitor_analysis(self, company_name: str) -> Dict:
+        """
+        Generates a competitor analysis using LLM knowledge.
+        Returns top 5 UAE peers with key metrics.
+        """
+        self.log(f"Generating competitor analysis for {company_name}...")
+
+        prompt = f"""
+        Identify the top 5 peer competitors for '{company_name}' in the UAE market (focus on same sector/exchange).
+        For each competitor, provide estimated key metrics based on your knowledge:
+        1. Market Cap (in AED, e.g., '10B AED')
+        2. P/E Ratio (approx)
+        3. Revenue Growth YoY (approx %)
+
+        Return strict JSON format with a single key 'peers', which is a list of objects.
+        Each object must have these exact keys:
+        - "Company": str
+        - "market_cap": str
+        - "pe_ratio": str
+        - "revenue_growth": str
+
+        Example:
+        {{
+          "peers": [
+            {{
+              "Company": "Competitor X",
+              "market_cap": "15B AED",
+              "pe_ratio": "12.5",
+              "revenue_growth": "5%"
+            }}
+          ]
+        }}
+        """
+
+        try:
+            response = self.llm_connector.analyze(prompt)
+            # clean markdown
+            clean_resp = response.replace("```json", "").replace("```", "").strip()
+            data = json.loads(clean_resp)
+            return data
+        except Exception as e:
+            self.log(f"Competitor analysis failed: {e}", "ERROR")
+            return {"peers": []}
+
     def resolve_query(self, query: str) -> Dict[str, str]:
         """Phase 0: Entity Resolution"""
         self.log(f"PHASE 0: Resolving entity for query: '{query}'")
@@ -114,7 +158,7 @@ class MasterAgent(BaseAgent):
         # 3. Dynamic Search (Fallback)
         self.log("Starting dynamic resolution via scrapers...")
 
-        sb_connector = ScrapingBeeConnector()
+        sb_connector = WebScraperConnector()
         adx_scanner = ADXScraper(sb_connector)
         dfm_scanner = DFMScraper(sb_connector)
 
@@ -472,12 +516,30 @@ class MasterAgent(BaseAgent):
 
         # Phase 2: Enrichment now handled by workflow nodes (Wikipedia, News, DED)
         # Removed: enrichment_results = self.run_enrichment_phase(basic_profile)
-        self.log("PROGRESS:40:Phase 2 - Child agents (Wikipedia, News, DED) running as workflow nodes")
+        self.log(
+            "PROGRESS:40:Phase 2 - Child agents (Wikipedia, News, DED) running as workflow nodes"
+        )
         self.log("Note: Enrichment agents now execute as separate workflow nodes")
 
-        # Phase 3: Save basic profile (aggregation now handled by analyst node)
-        self.log("PROGRESS:90:Saving basic profile")
-        self.save_to_disk(basic_profile, "basic_profile.json")
+        enrichment_results = []
+
+        # New: Competitor Analysis
+        if self.enable_enrichment:
+            self.log("PROGRESS:70:Running Competitor Analysis")
+            competitor_data = self.get_competitor_analysis(self.company_name)
+            if competitor_data and competitor_data.get("peers"):
+                self.log(f"Identified {len(competitor_data['peers'])} competitors")
+                enrichment_results.append(
+                    {
+                        "agent": "Competitor Analysis",
+                        "status": "completed",
+                        "data": competitor_data,
+                    }
+                )
+
+        # Phase 3: Aggregate Results
+        self.log("PROGRESS:80:Phase 3 - Aggregating results")
+        final_profile = self.aggregate_results(basic_profile, enrichment_results)
 
         # Save basic profile to ChromaDB
         self.log("Storing basic profile to ChromaDB...")
@@ -498,7 +560,7 @@ class MasterAgent(BaseAgent):
             )
 
         self.log("PROGRESS:100:Master agent workflow complete")
-        
+
         # === FINAL OUTPUT LOGGING ===
         self.log("")
         self.log("=" * 70)
@@ -510,11 +572,15 @@ class MasterAgent(BaseAgent):
         self.log(f"Ticker: {resolution.get('ticker', 'N/A')}")
         self.log(f"Exchange: {resolution.get('exchange', 'N/A')}")
         self.log(f"Website: {resolution.get('website', 'N/A')}")
-        self.log(f"Has Knowledge Panel: {basic_profile.get('has_knowledge_panel', False)}")
-        self.log(f"Has Official Website: {basic_profile.get('has_official_website', False)}")
+        self.log(
+            f"Has Knowledge Panel: {basic_profile.get('has_knowledge_panel', False)}"
+        )
+        self.log(
+            f"Has Official Website: {basic_profile.get('has_official_website', False)}"
+        )
         self.log(f"Stored in ChromaDB: {stored}")
         self.log(f"Timestamp: {datetime.now().isoformat()}")
-        
+
         # Log SERP links used for enrichment
         serp_links = basic_profile.get("serp_links", [])
         if serp_links:
@@ -522,12 +588,14 @@ class MasterAgent(BaseAgent):
             self.log("SERP Links Used for Enrichment:")
             for idx, link in enumerate(serp_links[:10], 1):  # Show first 10 links
                 link_url = link.get("link", "N/A") if isinstance(link, dict) else link
-                link_title = link.get("title", "Untitled") if isinstance(link, dict) else "Link"
+                link_title = (
+                    link.get("title", "Untitled") if isinstance(link, dict) else "Link"
+                )
                 self.log(f"  {idx}. {link_title}")
                 self.log(f"     URL: {link_url}")
             if len(serp_links) > 10:
                 self.log(f"  ... and {len(serp_links) - 10} more links")
-        
+
         # Log knowledge panel info if available
         if basic_profile.get("has_knowledge_panel"):
             self.log("")
@@ -537,7 +605,7 @@ class MasterAgent(BaseAgent):
                 self.log(f"  Description: {kg_data.get('description')[:100]}...")
             if kg_data.get("type"):
                 self.log(f"  Type: {kg_data.get('type')}")
-        
+
         self.log("=" * 70)
         self.log("Master agent completed - child agents will execute as workflow nodes")
         self.log("=" * 70)

@@ -1,4 +1,3 @@
-
 import logging
 import asyncio
 import os
@@ -11,11 +10,17 @@ from urllib.parse import urljoin
 
 # Third-party imports
 from bs4 import BeautifulSoup
+from playwright.async_api import (
+    async_playwright,
+    Page,
+    Browser,
+    TimeoutError as PlaywrightTimeoutError,
+)
 
 try:
     from dotenv import load_dotenv
 
-    load_dotenv()
+    load_dotenv(override=True)
 except ImportError:
     pass
 
@@ -26,12 +31,11 @@ try:
     from intelligence_hub.scrapers.download_manager import DownloadManager
     from intelligence_hub.scrapers.bot_handler import BotHandler
 except ImportError:
-    import requests  # Fallback if not installed
-
-try:
-    from scrapingbee import ScrapingBeeClient
-except ImportError:
-    ScrapingBeeClient = None
+    WebScraperConnector = None
+    StorageManager = None
+    DateExtractor = None
+    DownloadManager = None
+    BotHandler = None
 
 # Configure logging
 logging.basicConfig(
@@ -41,340 +45,14 @@ logger = logging.getLogger("DFMScraper")
 
 # --- Configuration & Storage ---
 
+# Import project-level config
+# Import project-level config
+from intelligence_hub.config.settings import config
 
-class Config:
-    SCRAPINGBEE_API_KEY = os.getenv("SCRAPINGBEE_API_KEY", "")
-    # Use centralized DATA_DIRECTORY
-    from intelligence_hub.config.config import DATA_DIRECTORY
-
-    DATA_DIR = DATA_DIRECTORY
-
-
-config = Config()
-
-
-class StorageManager:
-    """
-    Manages file storage for scraped data in structured/unstructured formats.
-    Structure: ./data/{source}/{format}/{ticker}_{timestamp}.{ext}
-    """
-
-    @staticmethod
-    def save_raw(
-        content: str, source: str, ticker: str, extension: str = "html"
-    ) -> str:
-        """
-        Saves raw content (Unstructured).
-        """
-        directory = os.path.join(config.DATA_DIR, source, "unstructured")
-        os.makedirs(directory, exist_ok=True)
-
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"{ticker}_{timestamp}.{extension}"
-        filepath = os.path.join(directory, filename)
-
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write(content)
-
-        logger.info(f"Saved raw data to {filepath}")
-        return filepath
-
-    @staticmethod
-    def save_document(
-        content: bytes, source: str, ticker: str, category: str, filename: str
-    ) -> str:
-        """
-        Saves a downloaded document (PDF, DOCX, etc.) to a categorized folder.
-        Structure: ./data/{source}/{ticker}/{category}/{filename}
-        """
-        # Santize filename
-        filename = "".join(
-            [
-                c
-                for c in filename
-                if c.isalpha() or c.isdigit() or c in (" ", ".", "_", "-")
-            ]
-        ).rstrip()
-
-        directory = os.path.join(config.DATA_DIR, source, ticker, category)
-        os.makedirs(directory, exist_ok=True)
-
-        filepath = os.path.join(directory, filename)
-
-        with open(filepath, "wb") as f:
-            f.write(content)
-
-        logger.info(f"Saved document to {filepath}")
-        return filepath
-
-    @staticmethod
-    def save_structured(data: dict, source: str, ticker: str) -> str:
-        """
-        Saves parsed data (Structured JSON).
-        """
-        directory = os.path.join(config.DATA_DIR, source, "structured")
-        os.makedirs(directory, exist_ok=True)
-
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"{ticker}_{timestamp}.json"
-        filepath = os.path.join(directory, filename)
-
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
-
-        logger.info(f"Saved structured data to {filepath}")
-        return filepath
-
-
-# --- Connector ---
-
-
-class ScrapingBeeConnector:
-    """
-    Robust connector for ScrapingBee with built-in Mock Mode.
-    Allows the agent to function even without active API keys by simulating responses.
-    """
-
-    def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or config.SCRAPINGBEE_API_KEY
-        if self.api_key and ScrapingBeeClient:
-            try:
-                self.client = ScrapingBeeClient(api_key=self.api_key)
-                self.mode = "LIVE"
-            except Exception as e:
-                logger.error(f"Failed to initialize ScrapingBeeClient: {e}")
-                self.mode = "MOCK"
-        else:
-            self.client = None
-            self.mode = "MOCK"
-            if not self.api_key:
-                logger.warning("SCRAPINGBEE_API_KEY not found. Running in MOCK MODE.")
-
-        # Session for direct fallback (using curl_cffi to bypass Cloudflare)
-        if hasattr(requests, "Session"):
-            try:
-                self.session = requests.Session(impersonate="chrome")
-            except TypeError:
-                self.session = requests.Session()
-                self.session.headers.update(
-                    {
-                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-                    }
-                )
-        else:
-            import requests as std_requests
-
-            self.session = std_requests.Session()
-
-    async def scrape_async(
-        self,
-        url: str,
-        render_js: bool = True,
-        wait_for: str = None,
-        js_scenario: dict = None,
-    ) -> str:
-        """
-        Asynchronously scrapes a URL using run_in_executor.
-        """
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        return await loop.run_in_executor(
-            None, self.scrape, url, render_js, wait_for, js_scenario
-        )
-
-    def scrape(
-        self,
-        url: str,
-        render_js: bool = True,
-        wait_for: str = None,
-        js_scenario: dict = None,
-    ) -> str:
-        """
-        Scrapes a URL.
-        """
-        logger.info(f"[{self.mode}] Scraping URL: {url}")
-
-        if self.mode == "LIVE":
-            return self._scrape_live(url, render_js, wait_for, js_scenario)
-        else:
-            return self._scrape_mock(url)
-
-    def _scrape_live(
-        self, url: str, render_js: bool, wait_for: str, js_scenario: dict
-    ) -> str:
-        """Executes actual API call to ScrapingBee with fallback to Direct."""
-        try:
-            params = {
-                "render_js": render_js,
-            }
-            if wait_for:
-                params["wait_for"] = wait_for
-            if js_scenario:
-                params["js_scenario"] = js_scenario
-
-            response = self.client.get(url, params=params)
-
-            if response.status_code == 200:
-                return response.content.decode("utf-8")
-
-            logger.error(
-                f"ScrapingBee Error {response.status_code}: {response.content}"
-            )
-
-            # Fallback for 401 (Quota) or other errors
-            if response.status_code in [401, 403, 429, 500]:
-                logger.info("Switching to Direct Scraping Fallback...")
-                return self._scrape_direct(url)
-
-            return ""
-        except Exception as e:
-            logger.error(f"ScrapingBee Exception: {str(e)}")
-            logger.info("Exception occurred, trying Direct Scraping Fallback...")
-            return self._scrape_direct(url)
-
-    def _scrape_direct(self, url: str) -> str:
-        """Direct scraping using requests session."""
-        try:
-            logger.info(f"[DIRECT] Scraping URL: {url}")
-            try:
-                response = self.session.get(url, timeout=30)
-            except Exception:
-                response = self.session.get(url, timeout=30)
-
-            if response.status_code == 200:
-                return response.text
-            logger.error(
-                f"Direct Scraping Failed {response.status_code}: {response.text[:500]}"
-            )
-            return ""
-        except Exception as e:
-            logger.error(f"Direct Scraping Exception: {e}")
-            return ""
-
-    async def download_file_async(self, url: str) -> bytes:
-        """
-        Asynchronously downloads a file (PDF/Doc) using run_in_executor.
-        """
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, self.download_file, url)
-
-    def download_file(self, url: str) -> bytes:
-        """
-        Downloads a file (binary) handling potential redirects or ScrapingBee wrapper.
-        """
-        logger.info(f"[{self.mode}] Downloading File: {url}")
-
-        if self.mode == "MOCK":
-            # Return a minimally VALID PDF binary
-            return (
-                b"%PDF-1.4\n"
-                b"1 0 obj\n<<\n/Type /Catalog\n/Pages 2 0 R\n>>\nendobj\n"
-                b"2 0 obj\n<<\n/Type /Pages\n/Kids [3 0 R]\n/Count 1\n>>\nendobj\n"
-                b"3 0 obj\n<<\n/Type /Page\n/Parent 2 0 R\n/Resources <<\n/Font <<\n/F1 4 0 R\n>>\n>>\n/MediaBox [0 0 595.28 841.89]\n/Contents 5 0 R\n>>\nendobj\n"
-                b"4 0 obj\n<<\n/Type /Font\n/Subtype /Type1\n/Name /F1\n/BaseFont /Helvetica\n>>\nendobj\n"
-                b"5 0 obj\n<<\n/Length 44\n>>\nstream\nBT\n70 700 Td\n/F1 24 Tf\n(Mock PDF from CorporateIntelligenceX) Tj\nET\nendstream\nendobj\n"
-                b"xref\n0 6\n0000000000 65535 f\n0000000010 00000 n\n0000000060 00000 n\n0000000111 00000 n\n0000000212 00000 n\n0000000301 00000 n\n"
-                b"trailer\n<<\n/Size 6\n/Root 1 0 R\n>>\nstartxref\n392\n%%EOF\n"
-            )
-
-        try:
-            # Try direct download first with session
-            r = self.session.get(url, timeout=60, stream=True)
-
-            if r.status_code == 200:
-                # Validate Content-Type
-                ctype = r.headers.get("Content-Type", "").lower()
-                if "html" in ctype or "text" in ctype:
-                    logger.warning(
-                        f"Download returned HTML instead of binary ({ctype}). Likely blocked or login required."
-                    )
-                    return None
-
-                return r.content
-
-            logger.warning(
-                f"Direct download failed {r.status_code}, attempting fallback..."
-            )
-
-            # Fallback to ScrapingBee (Try even if quota might be issues, or maybe mock?)
-            if self.mode == "LIVE":
-                logger.info("Fallback: Downloading via ScrapingBee...")
-                params = {"render_js": False}
-                response = self.client.get(url, params=params)
-
-                if response.status_code == 200:
-                    return response.content
-                else:
-                    logger.error(
-                        f"ScrapingBee Fallback Error {response.status_code}: {response.content}"
-                    )
-                    return None
-
-            return None
-        except Exception as e:
-            logger.error(f"Download Exception: {str(e)}")
-            return None
-
-    def _scrape_mock(self, url: str) -> str:
-        """Returns detailed Mock HTML based on the URL pattern to simulate real scraping."""
-
-        # 1. Simulator for ADX
-        if "adx.ae" in url:
-            return """
-            <html><body><h1>Mock ADX</h1></body></html>
-            """
-
-        # 2. Simulator for DFM (Dubai Financial Market)
-        elif "dfm.ae" in url:
-            return """
-            <html>
-                <body>
-                    <!-- Profile Section -->
-                    <div class="company-header">
-                        <h1 class="company-name">Mock Company PJSC</h1>
-                    </div>
-                    
-                    <div class="company-info">
-                        <div class="company-info-row">
-                            <span class="label">Sector</span>
-                            <span class="value">Banking</span>
-                        </div>
-                    </div>
-
-                    <!-- Financials Section -->
-                    <div class="financials-section">
-                        <h2>Financial Summary</h2>
-                        <table class="financials-summary">
-                            <thead>
-                                <tr><td>Indicator</td><td>Value (AED)</td></tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>Revenue (TTM)</td>
-                                    <td>26,700,000,000</td>
-                                </tr>
-                                <tr>
-                                    <td>Net Profit</td>
-                                    <td>11,600,000,000</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    <!-- Reports Section -->
-                    <div class="reports-section">
-                        <a href="/docs/annual-report-2023.pdf">Annual Report 2023</a>
-                    </div>
-                </body>
-            </html>
-            """
-        else:
-            return "<html><body>Mock Content</body></html>"
-
+try:
+    from intelligence_hub.utils.content_cleaner import clean_html_to_markdown
+except ImportError:
+    clean_html_to_markdown = lambda x: x  # Fallback if cleaner missing
 
 # --- Scraper ---
 
@@ -385,53 +63,59 @@ class DFMScraper:
     Handles dynamic content, document downloads, and detailed extraction.
     """
 
-    def __init__(self, connector: ScrapingBeeConnector):
-        self.sb = connector
+    def __init__(self, connector: WebScraperConnector = None, max_age_years: int = 3):
+        # We accept connector to maintain interface compatibility
+        self.connector = connector
         self.base_url = "https://www.dfm.ae"
         self.browser: Optional[Browser] = None
         self.playwright = None
-        
+
         # Initialize enhanced download manager and bot handler
         self.download_manager = DownloadManager(max_age_years=3)
         self.downloaded_texts = set()  # Track downloaded items by text/content
-        self.downloaded_urls = set()   # Track downloaded items by URL to avoid duplicates
-        self.expanded_views = set()   # Track which views have been expanded
+        self.downloaded_urls = (
+            set()
+        )  # Track downloaded items by URL to avoid duplicates
+        self.expanded_views = set()  # Track which views have been expanded
         self.bot_handler = BotHandler() if BotHandler else None
 
     async def _setup_browser(self):
         """Initialize Playwright browser with stealth settings"""
         logger.info("Initializing Playwright Browser with ENHANCED STEALTH for DFM...")
         self.playwright = await async_playwright().start()
-        
+
         # Launch with arguments that mimic a real user session
         self.browser = await self.playwright.chromium.launch(
-            headless=getattr(config, 'HEADLESS', False), 
-            channel="chrome", 
+            headless=getattr(config, "HEADLESS", False),
+            channel="chrome",
             args=[
                 "--disable-blink-features=AutomationControlled",
-                "--no-sandbox", 
+                "--no-sandbox",
                 "--disable-setuid-sandbox",
                 "--disable-infobars",
                 "--window-size=1920,1080",
                 "--start-maximized",
                 "--disable-extensions",
-                "--disable-gpu"
-            ]
+                "--disable-gpu",
+            ],
         )
-    
+
     async def _create_stealth_page(self, context):
         """Create a page with stealth injections"""
         page = await context.new_page()
-        
+
         # Injection 1: Overwrite the `webdriver` property
-        await page.add_init_script("""
+        await page.add_init_script(
+            """
             Object.defineProperty(navigator, 'webdriver', {
                 get: () => undefined
             });
-        """)
-        
+        """
+        )
+
         # Injection 2: Mock Chrome/Plugins
-        await page.add_init_script("""
+        await page.add_init_script(
+            """
             window.chrome = {
                 runtime: {}
             };
@@ -441,10 +125,11 @@ class DFMScraper:
             Object.defineProperty(navigator, 'languages', {
                 get: () => ['en-US', 'en']
             });
-        """)
-        
+        """
+        )
+
         return page
-    
+
     async def _teardown_browser(self):
         if self.browser:
             await self.browser.close()
@@ -455,11 +140,8 @@ class DFMScraper:
         """
         Scrapes DFM for a given company ticker using direct Playwright automation.
         """
-        base_profile_url = f"https://www.dfm.ae/the-exchange/market-information/company/{ticker}/profile"
-        reports_url = f"https://www.dfm.ae/the-exchange/market-information/company/{ticker}/reports"
-        news_url = f"https://www.dfm.ae/the-exchange/market-information/company/{ticker}/news-disclosures"
-
-        logger.info(f"Targeting DFM for {ticker}...")
+        ticker = ticker.upper()
+        logger.info(f"Starting Advanced DFM Scrape for {ticker}")
 
         data = {
             "source": "DFM",
@@ -468,20 +150,16 @@ class DFMScraper:
             "profile": {},
             "financials": {},
             "news": [],
+            "documents": [],
         }
 
-        # Parallel Fetch
-        logger.info(f"Fetching DFM data in parallel for {ticker}...")
-
-        results = await asyncio.gather(
-            self.sb.scrape_async(base_profile_url),
-            self.sb.scrape_async(reports_url),
-            self.sb.scrape_async(news_url),
-        )
-        html_profile, html_reports, html_news = results
+        # Safe initialization
+        downloaded_files = []
 
         # URL Patterns
-        base_url = f"https://www.dfm.ae/the-exchange/market-information/company/{ticker}"
+        base_url = (
+            f"https://www.dfm.ae/the-exchange/market-information/company/{ticker}"
+        )
         urls = {
             "profile": f"{base_url}/profile",
             "reports": f"{base_url}/reports",
@@ -490,123 +168,750 @@ class DFMScraper:
             "shareholders": f"{base_url}/trading/top-shareholders",
             "trading_data": f"{base_url}/trading/trading-summary",
             "daily_summary": f"{base_url}/trading/daily-summary",
-            "foreign_investments": f"{base_url}/trading/foreign-investments"
+            "foreign_investments": f"{base_url}/trading/foreign-investments",
         }
 
-        # 2. Reports (Financials)
-        if html_reports:
-            data["financials"] = self._parse_financials(html_reports)
+        try:
+            # PRE-POPULATE seen downloads from disk
+            # This handles resumption and prevents duplicates if files are locked/already present
+            for page_type in urls.keys():
+                path = os.path.join(
+                    config.DATA_DIR, "dfm", ticker, page_type, "structured"
+                )
+                if os.path.exists(path):
+                    for f in os.listdir(path):
+                        if f.endswith((".pdf", ".docx", ".doc", ".xlsx", ".xls")):
+                            # Use filename as a hint for deduplication
+                            base_name = os.path.splitext(f)[0]
+                            # Remove counter and use normalized text but maintain years
+                            # Heuristic: if suffix is between 1990-2030, assume it's a year, else strip it as counter
+                            match = re.search(r"_(\d+)$", base_name)
+                            if match:
+                                try:
+                                    suffix = int(match.group(1))
+                                    if (
+                                        suffix < 1990 or suffix > 2030
+                                    ):  # Only strip if clearly not a year
+                                        base_name = base_name[: match.start()]
+                                except:
+                                    pass
 
-        # 3. News
-        # if html_news and hasattr(self, '_parse_news'):
-        #    data["news"] = self._parse_news(html_news)
+                            norm_name = self._normalize_text(base_name)
+                            content_key = f"{ticker}_{norm_name}"
+                            self.downloaded_texts.add(content_key)
+                            logger.debug(f"Pre-populated existing file: {content_key}")
 
-        # Save Structured
-        StorageManager.save_structured(data, "dfm", ticker)
+            await self._setup_browser()
 
-        return data
+            # Create a context with downloads enabled
+            context = await self.browser.new_context(
+                accept_downloads=True,
+                viewport={"width": 1920, "height": 1080},
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            )
 
-    async def search_ticker(self, query: str) -> tuple:
-        """
-        Searches DFM for a company name and returns (ticker, name).
-        """
-        logger.info(f"Searching DFM for '{query}'...")
-        # Mock Search Logic for robustness
-        q = query.lower()
-        if "ajman" in q:
-            return "AJMANBANK", "Ajman Bank"
-        if "dubai islamic" in q or "dib" in q:
-            return "DIB", "Dubai Islamic Bank"
-        return None, None
+            # Limit concurrent page loads to avoid detection/timeouts
+            page_semaphore = asyncio.Semaphore(3)
 
-    def _parse_profile(self, html: str) -> dict:
-        soup = BeautifulSoup(html, "html.parser")
+            # Define processing function for each page type
+            async def process_page(url, page_type):
+                async with page_semaphore:
+                    page = await self._create_stealth_page(context)
+
+                logger.info(f"Navigating to {page_type}: {url}")
+                try:
+                    # Use domcontentloaded for faster initial load
+                    await page.goto(url, wait_until="domcontentloaded", timeout=60000)
+
+                    # Faster settle: wait for specific content instead of fixed time
+                    try:
+                        await page.wait_for_selector(
+                            ".table-flex, .table-flex-vertical, .news-item, .card, .v-window",
+                            timeout=10000,
+                        )
+                    except:
+                        logger.debug(
+                            f"Timeout waiting for selector on {page_type}, moving on."
+                        )
+
+                    # Scroll quickly once to trigger most lazy-loads
+                    await page.evaluate(
+                        "window.scrollTo(0, document.body.scrollHeight/2)"
+                    )
+                    await asyncio.sleep(0.5)
+                    await page.evaluate(
+                        "window.scrollTo(0, document.body.scrollHeight)"
+                    )
+                    await asyncio.sleep(0.5)
+
+                    # Store Raw HTML using new page-type structure
+                    content = await page.content()
+                    StorageManager.save_page_content(
+                        content, "dfm", ticker, page_type, "html", "page"
+                    )
+
+                    # Convert and Store Clean Markdown
+                    try:
+                        md_content = clean_html_to_markdown(content)
+                        StorageManager.save_page_content(
+                            md_content, "dfm", ticker, page_type, "md", "page_clean"
+                        )
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to convert/save markdown for {page_type}: {e}"
+                        )
+
+                    # Extract Content and download documents
+                    extracted_data = {}
+
+                    if page_type == "profile":
+                        extracted_data = await self._extract_profile(
+                            page, ticker, page_type
+                        )
+                    elif page_type == "reports":
+                        extracted_data = await self._interact_and_extract_reports(
+                            page, ticker, page_type
+                        )
+                    elif page_type == "daily_summary":
+                        extracted_data = await self._extract_daily_summary(
+                            page, ticker, page_type
+                        )
+                    elif page_type == "trading_data":
+                        # Trading summary also has Download Excel button
+                        extracted_data = await self._extract_trading_data(
+                            page, ticker, page_type
+                        )
+                    elif page_type == "news":
+                        extracted_data = await self._extract_news(
+                            page, ticker, page_type
+                        )
+                    elif page_type == "corporate_actions":
+                        extracted_data = await self._extract_corporate_actions(
+                            page, ticker, page_type
+                        )
+                    elif page_type == "shareholders":
+                        extracted_data = await self._extract_shareholders(
+                            page, ticker, page_type
+                        )
+                    elif page_type == "foreign_investments":
+                        extracted_data = await self._extract_foreign_investments(
+                            page, ticker, page_type
+                        )
+
+                    await page.close()
+                    return (page_type, extracted_data)
+                except Exception as e:
+                    logger.error(f"Error processing {page_type}: {e}")
+                    await page.close()
+                    return (page_type, None)
+
+            # Execute tasks
+            tasks = [
+                process_page(urls["profile"], "profile"),
+                process_page(urls["reports"], "reports"),
+                process_page(urls["news"], "news"),
+                process_page(urls["corporate_actions"], "corporate_actions"),
+                process_page(urls["shareholders"], "shareholders"),
+                process_page(urls["trading_data"], "trading_data"),
+                process_page(urls["daily_summary"], "daily_summary"),
+                process_page(urls["foreign_investments"], "foreign_investments"),
+            ]
+
+            results = await asyncio.gather(*tasks)
+
+            # Merge Results
+            for page_type, result in results:
+                if result:
+                    if page_type == "profile":
+                        data["profile"] = result
+                    elif page_type == "reports":
+                        data["financials"] = result
+                    elif page_type == "news":
+                        data["news"] = result
+                    else:
+                        # Add other page types directly to data
+                        data[page_type] = result
+
+                    # Collect downloaded files from result
+                    if isinstance(result, dict) and "files" in result:
+                        downloaded_files.extend(result["files"])
+
+            data["documents"] = list(set(downloaded_files))  # Deduplicate
+
+            # Save final structured data
+            StorageManager.save_structured(data, "dfm", ticker)
+
+            return data
+
+        except Exception as e:
+            logger.error(f"Fatal error in scrape_company: {e}")
+            import traceback
+
+            traceback.print_exc()
+            return data
+        finally:
+            await self._teardown_browser()
+
+    async def _extract_profile(self, page: Page, ticker: str, page_type: str) -> dict:
+        """Extract profile information from page content"""
+        content = await page.content()
+        soup = BeautifulSoup(content, "html.parser")
+
         profile = {
             "company_name": "NOT AVAILABLE",
             "sector": "NOT AVAILABLE",
             "listing_date": "NOT AVAILABLE",
             "isin": "NOT AVAILABLE",
-            "website": "NOT AVAILABLE",
-            "board_members": [],
         }
 
-        # Example Selectors
-        name_tag = soup.select_one("h1.company-name")
-        if name_tag:
-            profile["company_name"] = name_tag.get_text(strip=True)
+        # Company Name
+        h1 = soup.find("h1")
+        if h1:
+            profile["company_name"] = h1.get_text(strip=True)
 
-        # Meta info
-        for row in soup.select(".company-info-row"):
-            label = row.select_one(".label")
-            val = row.select_one(".value")
-            if label and val:
-                lbl_text = label.get_text(strip=True).lower()
-                val_text = val.get_text(strip=True)
+        # Try finding key-value pairs in profile section
+        # Strategy 1: Table Rows
+        for row in soup.find_all("tr"):
+            cols = row.find_all("td")
+            if len(cols) >= 2:
+                key = cols[0].get_text(strip=True).lower()
+                val = cols[1].get_text(strip=True)
+                self._update_profile_field(profile, key, val)
 
-                if "sector" in lbl_text:
-                    profile["sector"] = val_text
-                elif "listing date" in lbl_text:
-                    profile["listing_date"] = val_text
-                elif "isin" in lbl_text:
-                    profile["isin"] = val_text
-                elif "website" in lbl_text:
-                    profile["website"] = val_text
+        # Strategy 2: Description Lists (dl, dt, dd)
+        for dt in soup.find_all("dt"):
+            dd = dt.find_next_sibling("dd")
+            if dd:
+                key = dt.get_text(strip=True).lower()
+                val = dd.get_text(strip=True)
+                self._update_profile_field(profile, key, val)
+
+        # Strategy 3: Divs with specific classes or structure (common in modern frameworks)
+        # Look for "label" or "key" classes near values
+        # Simplifying: search text nodes if still missing critical info?
 
         return profile
 
-    def _parse_financials(self, html: str) -> dict:
-        soup = BeautifulSoup(html, "html.parser")
-        financials = {
-            "year": "NOT AVAILABLE",
-            "revenue": "NOT AVAILABLE",
-            "net_profit": "NOT AVAILABLE",
-            "eps": "NOT AVAILABLE",
-            "assets": "NOT AVAILABLE",
+    def _update_profile_field(self, profile, key, val):
+        if "sector" in key:
+            profile["sector"] = val
+        elif "listing date" in key:
+            profile["listing_date"] = val
+        elif "isin" in key:
+            profile["isin"] = val
+
+    async def _interact_and_extract_reports(
+        self, page: Page, ticker: str, page_type: str
+    ) -> dict:
+        """
+        Interact with Reports page to download all English documents for years 2020+.
+        Iterates through relevant year tabs and extracts from each.
+        """
+        logger.info("Interacting with Reports page (2020-2026 focus)...")
+
+        all_downloaded_files = []
+        downloaded_count = 0
+
+        # Define target years (Current year back to 2020)
+        current_year = datetime.now().year
+        # Ensure we cover at least 2020 to current
+        # Define target years (Current year back to 2020)
+        current_year = datetime.now().year
+        # Ensure we cover at least 2020 to current
+        target_years = sorted(
+            list(set([str(y) for y in range(2020, current_year + 2)])), reverse=True
+        )
+        logger.info(f"Target years for reports: {target_years}")
+        # Parallel Execution: Focused on top 5 years for <30s target
+        target_years = sorted(
+            list(set([str(y) for y in range(2020, 2027)])), reverse=True
+        )
+        # We don't limit slice here to ensure we catch all valid years requested
+        logger.info(f"Target years for parallel reports: {target_years}")
+
+        sem = asyncio.Semaphore(3)
+
+        async def process_year_tab(year):
+            async with sem:
+                year_page = await self._create_stealth_page(page.context)
+                try:
+                    await year_page.goto(page.url, wait_until="commit")
+                    tabs = year_page.locator("button, a, span, li").filter(
+                        has_text=re.compile(rf"^\s*{year}\s*$", re.IGNORECASE)
+                    )
+                    if await tabs.count() == 0:
+                        tabs = year_page.locator(f"text={year}")
+                    if await tabs.count() > 0:
+                        logger.info(f"Processing Year Parallel: {year}")
+                        await tabs.first.click(force=True)
+                        await asyncio.sleep(1)
+                        res = await self._generic_document_extract(
+                            year_page, ticker, page_type, limit=100
+                        )
+                        return res.get("files", [])
+                    return []
+                except:
+                    return []
+                finally:
+                    await year_page.close()
+
+        tasks = [process_year_tab(y) for y in target_years]
+        year_results = await asyncio.gather(*tasks)
+        for files in year_results:
+            if files:
+                all_downloaded_files.extend(files)
+                downloaded_count += len(files)
+
+        res_current = await self._generic_document_extract(
+            page, ticker, page_type, limit=100
+        )
+        if res_current and "files" in res_current:
+            all_downloaded_files.extend(res_current["files"])
+            downloaded_count += len(res_current["files"])
+
+        unique_files = list(set(all_downloaded_files))
+        logger.info(
+            f"Parallel Reports complete: {len(unique_files)} unique files found."
+        )
+        return {
+            "documents_downloaded": downloaded_count,
+            "page_type": page_type,
+            "files": unique_files,
         }
 
-        # Look for financial summary table
-        table = soup.select_one("table.financials-summary")
-        if table:
-            rows = table.find_all("tr")
-            for row in rows:
-                cols = row.find_all("td")
-                if len(cols) >= 2:
-                    lbl = cols[0].get_text(strip=True).lower()
-                    val = cols[1].get_text(strip=True)
+    async def _extract_daily_summary(
+        self, page: Page, ticker: str, page_type: str
+    ) -> dict:
+        """
+        Specific extraction for Daily Summary page which uses a Button instead of a Link.
+        """
+        logger.info(f"Extracting Daily Summary for {ticker}...")
+        download_dir = os.path.join(
+            config.DATA_DIR, "dfm", ticker, page_type, "structured"
+        )
+        os.makedirs(download_dir, exist_ok=True)
 
-                    if "revenue" in lbl:
-                        financials["revenue"] = val
-                    elif "profit" in lbl:
-                        financials["net_profit"] = val
-                    elif "assets" in lbl:
-                        financials["assets"] = val
-
-        return financials
-
-    def _parse_viz_str(self, val: str) -> float:
-        """Parses strings like '26.7B' into float."""
-        if not val or val == "NOT AVAILABLE":
-            return 0.0
-        val = val.upper().replace("AED", "").strip()
-        mult = 1.0
-        if "B" in val:
-            mult = 1_000_000_000
-            val = val.replace("B", "")
-        elif "M" in val:
-            mult = 1_000_000
-            val = val.replace("M", "")
+        downloaded_count = 0
+        found_files = []
 
         try:
+            # Locate the "Download Excel" button
+            # It has class "btn btn-download btn-primary" and text "Download Excel"
+            button = (
+                page.locator("button.btn-download")
+                .filter(has_text="Download Excel")
+                .first
+            )
+
+            if await button.count() > 0:
+                logger.info("Found Daily Summary Download Button. Clicking...")
+
+                async with page.expect_download(timeout=15000) as download_info:
+                    await button.click()
+
+                download = await download_info.value
+                suggested_filename = download.suggested_filename
+
+                # Enforce .xls extension/name if generic
+                if "export" in suggested_filename.lower() or not suggested_filename:
+                    suggested_filename = f"{ticker}_Daily_Summary.xls"
+
+                filepath = os.path.join(download_dir, suggested_filename)
+                await download.save_as(filepath)
+
+                logger.info(f"Downloaded Daily Summary: {filepath}")
+                found_files.append(filepath)
+                downloaded_count += 1
+            else:
+                logger.warning("Daily Summary download button not found.")
+
+        except Exception as e:
+            logger.error(f"Failed to download Daily Summary: {e}")
+
+        return {
+            "documents_downloaded": downloaded_count,
+            "page_type": page_type,
+            "files": found_files,
+        }
+
+    async def _extract_trading_data(
+        self, page: Page, ticker: str, page_type: str
+    ) -> dict:
+        """
+        Specific extraction for Trading Summary page (Button + Table).
+        """
+        logger.info(f"Extracting Trading Data for {ticker}...")
+        download_dir = os.path.join(
+            config.DATA_DIR, "dfm", ticker, page_type, "structured"
+        )
+        os.makedirs(download_dir, exist_ok=True)
+
+        downloaded_count = 0
+        found_files = []
+        trading_summary = {}
+
+        try:
+            # 1. Download Excel
+            button = (
+                page.locator("button.btn-download")
+                .filter(has_text="Download Excel")
+                .first
+            )
+
+            if await button.count() > 0:
+                logger.info("Found Trading Data Download Button. Clicking...")
+                try:
+                    async with page.expect_download(timeout=15000) as download_info:
+                        await button.click()
+
+                    download = await download_info.value
+                    suggested_filename = download.suggested_filename
+                    if "export" in suggested_filename.lower() or not suggested_filename:
+                        suggested_filename = f"{ticker}_Trading_Summary.xls"
+
+                    filepath = os.path.join(download_dir, suggested_filename)
+                    await download.save_as(filepath)
+                    found_files.append(filepath)
+                    downloaded_count += 1
+                except:
+                    pass
+
+            # 2. Extract Table Data (Key metrics)
+            # Typically key value pairs in cards or divs
+            items = page.locator(".card-body .item, .summary-item, tr")
+            count = await items.count()
+            for i in range(count):
+                text = (await items.nth(i).text_content()).strip()
+                # Split by newline or separator
+                parts = [p.strip() for p in text.split("\n") if p.strip()]
+                if len(parts) >= 2:
+                    key = parts[0].lower()
+                    val = parts[1]
+                    trading_summary[key] = val
+
+        except Exception as e:
+            logger.error(f"Failed to process Trading Data: {e}")
+
+        return {
+            "documents_downloaded": downloaded_count,
+            "page_type": page_type,
+            "files": found_files,
+            "summary": trading_summary,
+        }
+
+    async def _extract_news(self, page: Page, ticker: str, page_type: str) -> dict:
+        """Extract news items (Top 4 recent)."""
+        logger.info(f"Extracting News for {ticker} (Top 4)...")
+
+        news_items = []
+        downloaded_files = []
+
+        try:
+            # 1. Expand a bit to ensure we have recent items
+            try:
+                for _ in range(2):
+                    show_more = page.locator("button, a").filter(
+                        has_text=re.compile(r"Show More|Load More", re.IGNORECASE)
+                    )
+                    if await show_more.is_visible():
+                        await show_more.scroll_into_view_if_needed()
+                        await show_more.click()
+                        await page.wait_for_timeout(1000)
+                    else:
+                        break
+            except:
+                pass
+
+            # 2. Extract All Items
+            items = page.locator(".card, .news-item, .v-card, tr")
+            count = await items.count()
+
+            parsed_items = []
+
+            for i in range(count):
+                item = items.nth(i)
+                if not await item.is_visible():
+                    continue
+
+                text = await item.text_content()
+                if len(text.strip()) < 10:
+                    continue
+
+                news_item = {
+                    "raw_text": text.strip(),
+                    "date": None,
+                    "date_str": "Unknown",
+                    "title": "Unknown",
+                    "link": None,
+                    "element": item,
+                }
+
+                # Title
+                title_el = item.locator("h3, h4, strong, .title").first
+                if await title_el.count() > 0:
+                    news_item["title"] = (await title_el.text_content()).strip()
+                else:
+                    # Fallback to first line of text
+                    lines = text.strip().split("\n")
+                    if lines:
+                        news_item["title"] = lines[0].strip()
+
+                # Link
+                link_el = item.locator("a").first
+                if await link_el.count() > 0:
+                    news_item["link"] = await link_el.get_attribute("href")
+
+                # Date Parsing
+                # Try explicit date element?
+                date_el = item.locator("time, .date, .timestamp").first
+                date_text = ""
+                if await date_el.count() > 0:
+                    date_text = await date_el.text_content()
+                else:
+                    # Regex search in full text
+                    date_match = re.search(r"(\d{1,2}\s+[A-Za-z]{3}\s+\d{4})", text)
+                    if date_match:
+                        date_text = date_match.group(1)
+
+                if date_text:
+                    news_item["date_str"] = date_text.strip()
+                    try:
+                        news_item["date"] = datetime.strptime(
+                            news_item["date_str"], "%d %b %Y"
+                        )
+                    except:
+                        try:
+                            news_item["date"] = datetime.strptime(
+                                news_item["date_str"], "%d %B %Y"
+                            )
+                        except:
+                            pass
+
+                parsed_items.append(news_item)
+
+            # 3. Sort by Date Descending
+            # Items without date go to bottom? or top? Assume top if "just now"?
+            # DFM usually sorts by date safely. If date parsing fails, keep original order.
+
+            # Filter valid
+            valid_items = [i for i in parsed_items if i["date"]]
+            invalid_items = [i for i in parsed_items if not i["date"]]
+
+            # Sort valid
+            valid_items.sort(key=lambda x: x["date"], reverse=True)
+
+            # Combine (Valid first, then invalid presumed old/unknown)
+            sorted_items = valid_items + invalid_items
+
+            # 4. Take Top 4
+            top_4 = sorted_items[:4]
+
+            # 5. Process Top 4 (Download + Store)
+            structured_dir = os.path.join(
+                config.DATA_DIR, "dfm", ticker, page_type, "structured"
+            )
+            os.makedirs(structured_dir, exist_ok=True)
+
+            for item in top_4:
+                # Add to result list
+                news_items.append(
+                    {
+                        "date": item["date_str"],
+                        "title": item["title"],
+                        "link": item["link"] or "",
+                    }
+                )
+
+                # Download if link exists
+                if item["link"] and item["link"] != "javascript:void(0)":
+                    doc_info = {
+                        "url": item["link"],
+                        "text": item["title"],
+                        "expected_type": "pdf",
+                    }
+                    # Find the link element again to click it?
+                    # Prefer using the URL download strategy if possible or finding the element within the item context
+                    link_element = item["element"].locator("a").first
+                    if await link_element.count() > 0:
+                        res = await self.download_manager.download_with_retry(
+                            element=link_element,
+                            page=page,
+                            doc_info=doc_info,
+                            target_dir=structured_dir,
+                        )
+                        if res:
+                            downloaded_files.append(res)
+
+        except Exception as e:
+            logger.warning(f"Error extracting news text: {e}")
+
+        return {"news_items": news_items, "files": downloaded_files}
+
+    async def _extract_corporate_actions(
+        self, page: Page, ticker: str, page_type: str
+    ) -> dict:
+        """Extract Corporate Actions (text + files)."""
+        logger.info(f"Extracting Corporate Actions for {ticker}...")
+
+        # 1. Download files
+        doc_result = await self._generic_document_extract(page, ticker, page_type)
+        downloaded_files = doc_result.get("files", [])
+
+        # 2. Extract Table Data (Robust)
+        actions = []
+        try:
+            # Locate table rows
+            rows = page.locator("table tr")
+            count = await rows.count()
+
+            headers = []
+
+            # Try to find header row (first row with th or distinctive visuals)
+            if count > 0:
+                # Check first row
+                first_row_cells = rows.nth(0).locator("th, td")
+                cell_count = await first_row_cells.count()
+                texts = []
+                for k in range(cell_count):
+                    texts.append(
+                        (await first_row_cells.nth(k).text_content()).strip().lower()
+                    )
+
+                if any(
+                    k in texts
+                    for k in ["date", "type", "amount", "currency", "ex-dividend"]
+                ):
+                    headers = texts
+                    start_idx = 1
+                else:
+                    # Assume generic headers?
+                    headers = [f"col_{k}" for k in range(cell_count)]
+                    start_idx = 0
+
+            # Iterate rows
+            for i in range(start_idx, count):
+                row = rows.nth(i)
+                cols = row.locator("td")
+                if await cols.count() == 0:
+                    continue
+
+                action = {}
+                col_count = await cols.count()
+                for c in range(col_count):
+                    val = (await cols.nth(c).text_content()).strip()
+                    if headers and c < len(headers):
+                        action[headers[c]] = val
+                    else:
+                        action[f"col_{c}"] = val
+
+                if action:
+                    actions.append(action)
+
+        except Exception as e:
+            logger.warning(f"Error extracting corporate actions table: {e}")
+
+        return {"actions": actions, "files": downloaded_files}
+
+    async def _extract_shareholders(
+        self, page: Page, ticker: str, page_type: str
+    ) -> dict:
+        """Extract Shareholders Data."""
+        logger.info(f"Extracting Shareholders for {ticker}...")
+
+        # 1. Download files
+        doc_result = await self._generic_document_extract(page, ticker, page_type)
+        downloaded_files = doc_result.get("files", [])
+
+        # 2. Extract Table
+        shareholders = []
+        try:
+            rows = page.locator("table tr")
+            count = await rows.count()
+            for i in range(count):  # Check all rows as header might not be standard
+                row = rows.nth(i)
+                cols = row.locator("td")
+                count_cols = await cols.count()
+                if count_cols < 2:
+                    continue  # likely header or empty
+
+                # Check if it's a header row disguised as td (contains "Name" "Percentage")
+                first_text = (await cols.nth(0).text_content()).strip().lower()
+                if "name" in first_text or "shareholder" in first_text:
+                    continue
+
+                # Robust extraction: Capture all columns
+                sh = {}
+                # Assuming typical layout: Name, Percentage
+                sh["name"] = (await cols.nth(0).text_content()).strip()
+
+                # Try to identify percentage column by content (%)
+                for c in range(1, count_cols):
+                    text = (await cols.nth(c).text_content()).strip()
+                    if "%" in text:
+                        sh["percentage"] = text
+                    elif (
+                        sh.get("category") is None and len(text) > 3
+                    ):  # Maybe category?
+                        sh["category"] = text
+                    else:
+                        sh[f"col_{c}"] = text
+
+                shareholders.append(sh)
+        except Exception as e:
+            logger.warning(f"Error extracting shareholders: {e}")
+
+        return {"shareholders": shareholders, "files": downloaded_files}
+
+    async def _extract_foreign_investments(
+        self, page: Page, ticker: str, page_type: str
+    ) -> dict:
+        """Extract Foreign Investment Data."""
+        logger.info(f"Extracting Foreign Investments for {ticker}...")
+
+        # 1. Download files
+        doc_result = await self._generic_document_extract(page, ticker, page_type)
+        downloaded_files = doc_result.get("files", [])
+
+        # 2. Extract Table (Limit info)
+        limits = {}
+        try:
+            # Often displayed as key-value cards or a small table
+            texts = await page.locator(
+                ".card, .foreign-investment-limit, table"
+            ).all_text_contents()
+            full_text = " ".join(texts)
+            limits["raw_summary"] = full_text[:500]  # Capture summary
+        except:
+            pass
+
+        return {"foreign_investment_data": limits, "files": downloaded_files}
+
+    async def _generic_document_extract(
+        self, page: Page, ticker: str, page_type: str, limit: int = 50
+    ) -> list:
+        """
+        Generic document extraction logic used by all page types.
+        Handles both surface links and nested dropdowns (row-by-row).
+        """
+        logger.info(f"Starting document extraction for {page_type}...")
+
+        # 1. Expand "Show More" if present
+        try:
             for _ in range(5):
-                show_more = page.locator('button, a').filter(has_text=re.compile(r'Show More|Load More', re.IGNORECASE))
+                show_more = page.locator("button, a").filter(
+                    has_text=re.compile(r"Show More|Load More", re.IGNORECASE)
+                )
                 if await show_more.is_visible():
                     await show_more.click()
                     await page.wait_for_timeout(1000)
-                else: break
-        except: pass
+                else:
+                    break
+        except:
+            pass
 
         # 2. Extract surface links first
-        document_links = await page.evaluate('''() => {
+        document_links = await page.evaluate(
+            """() => {
             const links = Array.from(document.querySelectorAll('a[href]'));
             const docFormats = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.csv'];
             return links
@@ -619,37 +924,51 @@ class DFMScraper:
                     text: a.textContent.trim(),
                     title: a.title || a.getAttribute('aria-label') || ''
                 }));
-        }''')
+        }"""
+        )
 
         # 3. Download surface links
         downloaded_count = 0
         found_files = []
-        structured_dir = os.path.join(config.DATA_DIR, "dfm", ticker, page_type, "structured")
+        structured_dir = os.path.join(
+            config.DATA_DIR, "dfm", ticker, page_type, "structured"
+        )
         os.makedirs(structured_dir, exist_ok=True)
 
         for doc in document_links[:limit]:
             try:
                 # Deduplication
                 text_combined = f"{doc['text']} {doc['title']}"
-                if any(ar in text_combined.upper() for ar in ['AR', 'ARABIC', 'عربي']): continue
-                
+                if any(ar in text_combined.upper() for ar in ["AR", "ARABIC", "عربي"]):
+                    continue
+
                 norm_text = self._normalize_text(text_combined)
                 content_key = f"{ticker}_{norm_text}"
-                doc_url = doc.get('url', '')
-                
-                # Check for "Reports" or "Statements" to ensure we don't skip them even if similar name
-                is_financial = "REPORT" in norm_text or "STATEMENT" in norm_text or "FINANCIAL" in norm_text
+                doc_url = doc.get("url", "")
 
-                if not is_financial and (content_key in self.downloaded_texts or (doc_url and doc_url in self.downloaded_urls)): 
-                    logger.debug(f"Skipping duplicate surface link: {content_key} or {doc_url}")
+                # Check for "Reports" or "Statements" to ensure we don't skip them even if similar name
+                is_financial = (
+                    "REPORT" in norm_text
+                    or "STATEMENT" in norm_text
+                    or "FINANCIAL" in norm_text
+                )
+
+                if not is_financial and (
+                    content_key in self.downloaded_texts
+                    or (doc_url and doc_url in self.downloaded_urls)
+                ):
+                    logger.debug(
+                        f"Skipping duplicate surface link: {content_key} or {doc_url}"
+                    )
                     continue
 
                 # Determine type
-                url_lower = doc['url'].lower()
-                doc['expected_type'] = 'pdf'
-                for fmt in ['xlsx', 'xls', 'docx', 'doc']:
-                    if f'.{fmt}' in url_lower: 
-                        doc['expected_type'] = fmt; break
+                url_lower = doc["url"].lower()
+                doc["expected_type"] = "pdf"
+                for fmt in ["xlsx", "xls", "docx", "doc"]:
+                    if f".{fmt}" in url_lower:
+                        doc["expected_type"] = fmt
+                        break
 
                 link = page.locator(f'a[href="{doc["url"]}"]').first
                 if await link.count() > 0:
@@ -660,26 +979,40 @@ class DFMScraper:
                         found_files.append(result)
                         downloaded_count += 1
                         self.downloaded_texts.add(content_key)
-                        if doc_url: self.downloaded_urls.add(doc_url)
-            except: pass
+                        if doc_url:
+                            self.downloaded_urls.add(doc_url)
+            except:
+                pass
 
         # 4. Process Nested Dropdowns ("File(s)") row-by-row
         # Use a more specific selector for File(s) buttons to avoid other buttons
-        file_buttons = page.locator('button').filter(has_text=re.compile(r'\d+\s*File\(s\)', re.IGNORECASE))
+        file_buttons = page.locator("button").filter(
+            has_text=re.compile(r"\d+\s*File\(s\)", re.IGNORECASE)
+        )
         btn_count = await file_buttons.count()
         if btn_count > 0:
-            logger.info(f"Parallel processing {btn_count} nested 'File(s)' dropdowns...")
-            
+            logger.info(
+                f"Parallel processing {btn_count} nested 'File(s)' dropdowns..."
+            )
+
             async def process_dropdown(index):
                 try:
                     btn = file_buttons.nth(index)
-                    if not await btn.is_visible(): return []
+                    if not await btn.is_visible():
+                        return []
                     await btn.scroll_into_view_if_needed()
-                    try: await btn.click(force=True, timeout=3000)
-                    except: await btn.evaluate("el => el.click()")
+                    try:
+                        await btn.click(force=True, timeout=3000)
+                    except:
+                        await btn.evaluate("el => el.click()")
                     await asyncio.sleep(0.5)
-                    menu_links = page.locator('div[role="menu"] a, .dropdown-menu a, .dropdown a, .dropdown span').filter(
-                        has_text=re.compile(r'Disclosure|Press Rel|Financial|Results|^EP ', re.IGNORECASE)
+                    menu_links = page.locator(
+                        'div[role="menu"] a, .dropdown-menu a, .dropdown a, .dropdown span'
+                    ).filter(
+                        has_text=re.compile(
+                            r"Disclosure|Press Rel|Financial|Results|^EP ",
+                            re.IGNORECASE,
+                        )
                     )
                     link_count = await menu_links.count()
                     btn_files = []
@@ -687,24 +1020,48 @@ class DFMScraper:
                         item = menu_links.nth(j)
                         if await item.is_visible():
                             text = (await item.text_content()).strip()
-                            if text.upper() == "FILE(S)" or len(text) < 2: continue
+                            if text.upper() == "FILE(S)" or len(text) < 2:
+                                continue
                             norm_text = self._normalize_text(text)
                             content_key = f"{ticker}_{norm_text}"
-                            doc_url = (await item.get_attribute('href')) or "javascript:void(0)"
-                            
-                            is_financial = "REPORT" in norm_text or "STATEMENT" in norm_text or "FINANCIAL" in norm_text
+                            doc_url = (
+                                await item.get_attribute("href")
+                            ) or "javascript:void(0)"
 
-                            if not is_financial and (content_key in self.downloaded_texts or (doc_url != "javascript:void(0)" and doc_url in self.downloaded_urls)):
+                            is_financial = (
+                                "REPORT" in norm_text
+                                or "STATEMENT" in norm_text
+                                or "FINANCIAL" in norm_text
+                            )
+
+                            if not is_financial and (
+                                content_key in self.downloaded_texts
+                                or (
+                                    doc_url != "javascript:void(0)"
+                                    and doc_url in self.downloaded_urls
+                                )
+                            ):
                                 continue
-                                
-                            doc_info = {"url": doc_url, "text": text, "expected_type": "pdf"}
-                            res = await self.download_manager.download_with_retry(element=item, page=page, doc_info=doc_info, target_dir=structured_dir)
+
+                            doc_info = {
+                                "url": doc_url,
+                                "text": text,
+                                "expected_type": "pdf",
+                            }
+                            res = await self.download_manager.download_with_retry(
+                                element=item,
+                                page=page,
+                                doc_info=doc_info,
+                                target_dir=structured_dir,
+                            )
                             if res:
                                 btn_files.append(res)
                                 self.downloaded_texts.add(content_key)
-                                if doc_url != "javascript:void(0)": self.downloaded_urls.add(doc_url)
+                                if doc_url != "javascript:void(0)":
+                                    self.downloaded_urls.add(doc_url)
                     return btn_files
-                except: return []
+                except:
+                    return []
 
             # Sequential processing to prevent race conditions/timeouts with multiple popups
             dropdown_results = []
@@ -717,22 +1074,31 @@ class DFMScraper:
                 # Small delay to ensure UI stability between dropdown interactions
                 await asyncio.sleep(0.2)
 
-        logger.info(f"  {page_type} download stats: {self.download_manager.get_stats()}")
-        return {"documents_downloaded": downloaded_count, "page_type": page_type, "files": found_files}
+        logger.info(
+            f"  {page_type} download stats: {self.download_manager.get_stats()}"
+        )
+        return {
+            "documents_downloaded": downloaded_count,
+            "page_type": page_type,
+            "files": found_files,
+        }
 
     def _normalize_text(self, text: str) -> str:
         """Helper to normalize text for consistent key generation and deduplication."""
-        if not text: return ""
+        if not text:
+            return ""
         # Remove non-alphanumeric and replace with underscores
-        norm = re.sub(r'[^\w\s]', '', text.upper())
+        norm = re.sub(r"[^\w\s]", "", text.upper())
         # Replace multiple spaces/underscores with single underscore
-        norm = re.sub(r'[\s_]+', '_', norm)
-        return norm.strip('_')
+        norm = re.sub(r"[\s_]+", "_", norm)
+        return norm.strip("_")
 
-    async def _expand_file_buttons(self, page: Page, ticker: str = None, page_type: str = None) -> list:
+    async def _expand_file_buttons(
+        self, page: Page, ticker: str = None, page_type: str = None
+    ) -> list:
         """Helper to click expand buttons and return revealed links for batch processing"""
         revealed_links = []
-        
+
         # Track view expansion to avoid redundant work
         view_url = page.url
         if view_url in self.expanded_views:
@@ -745,10 +1111,16 @@ class DFMScraper:
             max_clicks = 10
             clicked = 0
             while clicked < max_clicks:
-                buttons = await page.locator('button, a').filter(
-                    has_text=re.compile(r'Show More|Load More|View All', re.IGNORECASE)
-                ).all()
-                
+                buttons = (
+                    await page.locator("button, a")
+                    .filter(
+                        has_text=re.compile(
+                            r"Show More|Load More|View All", re.IGNORECASE
+                        )
+                    )
+                    .all()
+                )
+
                 pag_clicked = False
                 for btn in buttons:
                     if await btn.is_visible():
@@ -758,14 +1130,18 @@ class DFMScraper:
                             await page.wait_for_timeout(1000)
                             pag_clicked = True
                             clicked += 1
-                        except: pass
-                if not pag_clicked: break
+                        except:
+                            pass
+                if not pag_clicked:
+                    break
 
             # Step 2: Nested Dropdown expansion
-            file_buttons = await page.locator('button').filter(
-                has_text=re.compile(r'\d+\s*File\(s\)', re.IGNORECASE)
-            ).all()
-            
+            file_buttons = (
+                await page.locator("button")
+                .filter(has_text=re.compile(r"\d+\s*File\(s\)", re.IGNORECASE))
+                .all()
+            )
+
             if file_buttons:
                 logger.info(f"Expanding {len(file_buttons)} File(s) dropdowns...")
 
@@ -775,13 +1151,18 @@ class DFMScraper:
                 try:
                     await btn.scroll_into_view_if_needed()
                     await btn.click(timeout=2000)
-                    await page.wait_for_timeout(500) 
-                    
+                    await page.wait_for_timeout(500)
+
                     # Collect items revealed under this dropdown
-                    items = page.locator('div[role="menu"] a, .dropdown-menu a, .dropdown a, .dropdown span').filter(
-                        has_text=re.compile(r'Disclosure|Press Rel|Financial|Results|^EP ', re.IGNORECASE)
+                    items = page.locator(
+                        'div[role="menu"] a, .dropdown-menu a, .dropdown a, .dropdown span'
+                    ).filter(
+                        has_text=re.compile(
+                            r"Disclosure|Press Rel|Financial|Results|^EP ",
+                            re.IGNORECASE,
+                        )
                     )
-                    
+
                     count = await items.count()
                     for i in range(count):
                         item = items.nth(i)
@@ -789,58 +1170,86 @@ class DFMScraper:
                             text = (await item.text_content()).strip()
                             if text.upper() == "FILE(S)" or len(text) < 2:
                                 continue
-                            
-                            revealed_links.append({
-                                "url": "javascript:void(0)",
-                                "text": text,
-                                "title": text,
-                                "expected_type": "pdf",
-                                "element": item
-                            })
-                except: pass
-            
+
+                            revealed_links.append(
+                                {
+                                    "url": "javascript:void(0)",
+                                    "text": text,
+                                    "title": text,
+                                    "expected_type": "pdf",
+                                    "element": item,
+                                }
+                            )
+                except:
+                    pass
+
             return revealed_links
-            
+
         except Exception as e:
             logger.warning(f"Error in _expand_file_buttons: {e}")
             return []
 
     async def search_ticker(self, query: str) -> tuple:
-        return None, None
+        """
+        Search for ticker using Web Search (DuckDuckGo) targeting DFM.
+        Returns (ticker, company_name)
+        """
+        try:
+            # Lazy import
+            from intelligence_hub.utils.web_search import WebSearch
+            import urllib.parse
+
+            # Search query specific to DFM
+            search_query = f"{query} site:dfm.ae company profile"
+            results = WebSearch.search(search_query, max_results=5)
+
+            for res in results:
+                url = res.get("href", "").lower()
+                title = res.get("title", "")
+
+                # Check for ticker pattern in URL
+                # DFM: dfm.ae/the-exchange/market-information/company/TICKER/profile...
+                if "/company/" in url:
+                    try:
+                        parts = url.split("/company/")
+                        if len(parts) > 1:
+                            ticker_part = parts[1].split("/")[0]
+                            ticker = ticker_part.upper().strip()
+
+                            if len(ticker) >= 2 and len(ticker) < 12:
+                                # Clean potential garbage
+                                if "?" in ticker:
+                                    ticker = ticker.split("?")[0]
+
+                                company_name = title.split("|")[0].strip()
+                                return ticker, company_name
+                    except:
+                        pass
+
+            logger.warning(f"DFM search for '{query}' found no tickers.")
+            return None, None
+
+        except Exception as e:
+            logger.error(f"Error searching DFM ticker: {e}")
+            return None, None
 
 
 if __name__ == "__main__":
-    # Standalone Execution / Validation
-    # Load dotenv if available locally
-    try:
-        from dotenv import load_dotenv
+    import asyncio
 
-        load_dotenv()
-    except ImportError:
-        pass
+    tickers = [
+        "EMAAR",
+    ]
 
     async def main():
-        tickers = ["EMAAR", "ENBD", "DEWA", "AJMANBANK"]
-        print(f"--- Running DFM Scraper for: {tickers} ---")
+        scraper = DFMScraper()
 
-        connector = ScrapingBeeConnector()
-        scraper = DFMScraper(connector)
+        # Test Search
+        print("Testing Search...")
+        t, n = await scraper.search_ticker("Emaar properties")
+        print(f"Found: {t} - {n}")
 
-        for ticker in tickers:
-            print(f"\nProcessing {ticker}...")
-            try:
-                data = await scraper.scrape_company(ticker)
-                print(f"Success: {ticker}")
-                print(f"Profile: {data.get('profile')}")
-                print(f"Financials: {data.get('financials')}")
-            except Exception as e:
-                print(f"Error scraping {ticker}: {e}")
-
-    try:
-        import nest_asyncio
-
-        nest_asyncio.apply()
-    except ImportError:
-        pass
+        if t:
+            await scraper.scrape_company(t)
 
     asyncio.run(main())

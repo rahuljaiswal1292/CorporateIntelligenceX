@@ -9,6 +9,7 @@ from intelligence_hub.agents.vectorizer import VectorizerAgent
 from intelligence_hub.agents.analyst import AnalystAgent
 from intelligence_hub.agents.pdf_agent import PdfAgent
 from intelligence_hub.agents.master_agent import MasterAgent
+from intelligence_hub.agents.presentation_agent import PresentationAgent
 from intelligence_hub.agents.wikipedia_agent import WikipediaAgent
 from intelligence_hub.agents.news_agent import NewsAgent
 from intelligence_hub.agents.ded_agent import DEDAgent
@@ -31,7 +32,7 @@ def run_enrichment_node(state: AgentState):
     try:
         # Initialize dependencies
         store = CorporateProfileStore()
-        
+
         # Extract LLM config from state (if provided by UI)
         llm_config = state.get("llm_config", {})
         llm_connector = LLMConnector(config=llm_config)
@@ -63,6 +64,14 @@ def run_enrichment_node(state: AgentState):
         website = metadata.get("website", state.get("website"))
         confidence = metadata.get("confidence", full_profile.get("confidence_score", 0))
 
+        # Flatten 'enrichments' to top level of profile
+        # User requested bringing DED, Competitor Analysis etc one level up.
+        # Currently: state['enrichments'] -> full_profile -> 'enrichments' -> 'DED'
+        # Target: state['enrichments'] -> 'DED'
+        if "enrichments" in full_profile:
+            inner_enrichments = full_profile.pop("enrichments")
+            full_profile.update(inner_enrichments)
+
         logs.append(f"Enrichment completed. Canonical Name: {canonical_name}")
 
         return {
@@ -84,30 +93,34 @@ def run_enrichment_node(state: AgentState):
 
 def run_wikipedia_node(state: AgentState):
     """Executes Wikipedia Agent"""
-    company_name = state.get("canonical_name") or state.get("company_name") or state.get("query", "Unknown")
+    company_name = (
+        state.get("canonical_name")
+        or state.get("company_name")
+        or state.get("query", "Unknown")
+    )
     logs = []
-    
+
     try:
         store = CorporateProfileStore()
-        
+
         # Extract LLM config from state (if provided by UI)
         llm_config = state.get("llm_config", {})
         llm_connector = LLMConnector(config=llm_config)
-        
+
         def log_handler(msg):
             logs.append(msg.strip())
             print(msg.strip())
-        
+
         agent = WikipediaAgent(
             company_name=company_name,
             llm_connector=llm_connector,
             profile_store=store,
             log_callback=log_handler,
         )
-        
+
         result = agent.run(state)
         logs.append(f"Wikipedia Agent: {result.get('status', 'unknown')}")
-        
+
         return {"logs": logs}
     except Exception as e:
         logs.append(f"Wikipedia Agent failed: {str(e)}")
@@ -116,30 +129,34 @@ def run_wikipedia_node(state: AgentState):
 
 def run_news_node(state: AgentState):
     """Executes News Agent"""
-    company_name = state.get("canonical_name") or state.get("company_name") or state.get("query", "Unknown")
+    company_name = (
+        state.get("canonical_name")
+        or state.get("company_name")
+        or state.get("query", "Unknown")
+    )
     logs = []
-    
+
     try:
         store = CorporateProfileStore()
-        
+
         # Extract LLM config from state (if provided by UI)
         llm_config = state.get("llm_config", {})
         llm_connector = LLMConnector(config=llm_config)
-        
+
         def log_handler(msg):
             logs.append(msg.strip())
             print(msg.strip())
-        
+
         agent = NewsAgent(
             company_name=company_name,
             llm_connector=llm_connector,
             profile_store=store,
             log_callback=log_handler,
         )
-        
+
         result = agent.run(state)
         logs.append(f"News Agent: {result.get('status', 'unknown')}")
-        
+
         return {"logs": logs}
     except Exception as e:
         logs.append(f"News Agent failed: {str(e)}")
@@ -148,30 +165,34 @@ def run_news_node(state: AgentState):
 
 def run_ded_node(state: AgentState):
     """Executes DED Agent"""
-    company_name = state.get("canonical_name") or state.get("company_name") or state.get("query", "Unknown")
+    company_name = (
+        state.get("canonical_name")
+        or state.get("company_name")
+        or state.get("query", "Unknown")
+    )
     logs = []
-    
+
     try:
         store = CorporateProfileStore()
-        
+
         # Extract LLM config from state (if provided by UI)
         llm_config = state.get("llm_config", {})
         llm_connector = LLMConnector(config=llm_config)
-        
+
         def log_handler(msg):
             logs.append(msg.strip())
             print(msg.strip())
-        
+
         agent = DEDAgent(
             company_name=company_name,
             llm_connector=llm_connector,
             profile_store=store,
             log_callback=log_handler,
         )
-        
+
         result = agent.run(state)
         logs.append(f"DED Agent: {result.get('status', 'unknown')}")
-        
+
         return {"logs": logs}
     except Exception as e:
         logs.append(f"DED Agent failed: {str(e)}")
@@ -195,31 +216,39 @@ def create_enrichment_graph():
     # Initialize Agents that don't use LLM
     scraper = ScraperOrchestrator()
     vectorizer = VectorizerAgent()
-    
+
     # Create wrapper functions for agents that need LLM config from state
     def run_analyst_node(state: AgentState):
         """Wrapper for AnalystAgent that extracts LLM config from state"""
-        company_name = state.get("canonical_name") or state.get("company_name") or state.get("query", "Unknown")
-        
+        company_name = (
+            state.get("canonical_name")
+            or state.get("company_name")
+            or state.get("query", "Unknown")
+        )
+
         # Extract LLM config from state
         llm_config = state.get("llm_config", {})
         llm_connector = LLMConnector(config=llm_config)
-        
+
         analyst = AnalystAgent(
             company_name=company_name,
             llm_connector=llm_connector,
             profile_store=store,
         )
         return analyst.run(state)
-    
+
     def run_pdf_agent_node(state: AgentState):
         """Wrapper for PdfAgent that extracts LLM config from state"""
-        company_name = state.get("canonical_name") or state.get("company_name") or state.get("query", "Unknown")
-        
+        company_name = (
+            state.get("canonical_name")
+            or state.get("company_name")
+            or state.get("query", "Unknown")
+        )
+
         # Extract LLM config from state
         llm_config = state.get("llm_config", {})
         llm_connector = LLMConnector(config=llm_config)
-        
+
         pdf_agent = PdfAgent(
             company_name=company_name,
             llm_connector=llm_connector,
@@ -227,8 +256,28 @@ def create_enrichment_graph():
         )
         return pdf_agent.run(state)
 
+    def run_presentation_agent_node(state: AgentState):
+        """Wrapper for PresentationAgent that extracts LLM config from state"""
+        company_name = (
+            state.get("canonical_name")
+            or state.get("company_name")
+            or state.get("query", "Unknown")
+        )
+
+        # Extract LLM config from state
+        llm_config = state.get("llm_config", {})
+        llm_connector = LLMConnector(config=llm_config)
+
+        presentation_agent = PresentationAgent(
+            company_name=company_name,
+            llm_connector=llm_connector,
+            profile_store=store,
+        )
+        return presentation_agent.run(state)
+
+    # 2. Define Graph
     workflow = StateGraph(AgentState)
-    
+
     # Nodes
     workflow.add_node("start_enrichment", lambda state: state)
     workflow.add_node("wikipedia", run_wikipedia_node)
@@ -238,23 +287,27 @@ def create_enrichment_graph():
     workflow.add_node("vectorizer", vectorizer.run)
     workflow.add_node("analyst", run_analyst_node)
     workflow.add_node("pdf_agent", run_pdf_agent_node)
+    workflow.add_node("presentation_agent", run_presentation_agent_node)
+
+    # Sequence: (Resolver removed) MasterEnrichment starts
 
     # Edges - Parallel Start
     workflow.set_entry_point("start_enrichment")
-    
+
     workflow.add_edge("start_enrichment", "wikipedia")
     workflow.add_edge("start_enrichment", "news")
     workflow.add_edge("start_enrichment", "ded")
-    
+
     # Convergence
     workflow.add_edge("wikipedia", "scraper")
     workflow.add_edge("news", "scraper")
     workflow.add_edge("ded", "scraper")
-    
+
     # Sequential
-    workflow.add_edge("scraper", "vectorizer")
-    workflow.add_edge("vectorizer", "pdf_agent")
-    workflow.add_edge("pdf_agent", "analyst")
-    workflow.add_edge("analyst", END)
-    
+    workflow.add_edge("scraper", "pdf_agent")
+    workflow.add_edge("pdf_agent", "vectorizer")
+    workflow.add_edge("vectorizer", "analyst")
+    workflow.add_edge("analyst", "presentation_agent")
+    workflow.add_edge("presentation_agent", END)
+
     return workflow.compile()

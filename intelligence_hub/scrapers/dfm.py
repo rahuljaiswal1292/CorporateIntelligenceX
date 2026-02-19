@@ -555,11 +555,6 @@ class DFMScraper:
                         else:
                             data[page_type] = result
 
-                        if isinstance(result, dict) and "files" in result:
-                            downloaded_files.extend(result["files"])
-                        else:
-                            data[page_type] = result
-
                         # Collect downloaded files from result
                         if isinstance(result, dict) and "files" in result:
                             downloaded_files.extend(result["files"])
@@ -1172,7 +1167,6 @@ class DFMScraper:
             limits["raw_summary"] = full_text[:500]  # Capture summary
         except:
             pass
-
         return {"foreign_investment_data": limits, "files": downloaded_files}
 
     async def _generic_document_extract(
@@ -1464,11 +1458,11 @@ class DFMScraper:
 
 if __name__ == "__main__":
     tickers = [
-        "AIRARABIA",
-        "DU",
-        "EMAAR",
-        "EMIRATESNBD",
-        "MASQ",
+        # "AIRARABIA",
+        # "DU",
+        # "EMAAR",
+        # "EMIRATESNBD",
+        # "MASQ",
         "TALABAT",
     ]
 

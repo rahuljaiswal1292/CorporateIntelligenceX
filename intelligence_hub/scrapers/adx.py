@@ -37,6 +37,7 @@ logger = logging.getLogger("ADXScraper")
 # Import project-level config
 from intelligence_hub.config.settings import config
 
+
 class Config:
     # Use centralized DATA_DIRECTORY
     from intelligence_hub.config.config import DATA_DIRECTORY
@@ -395,17 +396,10 @@ class ADXScraper:
             if name:
                 profile["company_name"] = name.get_text(strip=True)
 
-            # Prefer longer name as Company Name
-            if name_candidates:
-                full_name = max(name_candidates, key=len)
-                short_name = min(name_candidates, key=len)
-
-        return {"profile": profile}
-
             # Try to find Sector in Meta list
             # Look for "Sector:" label
             # Generic search in header
-            for el in header.parent.find_all(
+            for el in header_details.parent.find_all(
                 string=lambda text: text and "Sector" in text
             ):
                 parent = el.parent
@@ -420,6 +414,8 @@ class ADXScraper:
                     sib = parent.find_next_sibling()
                     if sib:
                         profile["sector"] = sib.get_text(strip=True)
+
+        return {"profile": profile}
 
     async def _prepare_page_content(self, page: Page, page_type: str):
         """Interact with page elements to ensure all content is loaded before capture."""
@@ -966,28 +962,28 @@ if __name__ == "__main__":
         # "ADNHC",
         # "ADNOCGAS",
         "ALDAR",
-        "ALPHADATA",
+        # "ALPHADATA",
         # "EAND",
-        "FAB",
-        "LULU",
+        # "FAB",
+        # "LULU",
     ]
 
     # Try loading environment variables
-    try:
-        from dotenv import load_dotenv
+    # try:
+    #     from dotenv import load_dotenv
 
-    tickers = [
-        "LULU",
-        "ADNOCGAS",
-    ]
+    # # tickers = [
+    # #     "LULU",
+    # #     "ADNOCGAS",
+    # # ]
 
-    # Try applying nest_asyncio for notebook/IDE support
-    try:
-        import nest_asyncio
+    # # # Try applying nest_asyncio for notebook/IDE support
+    # # try:
+    # #     import nest_asyncio
 
-        nest_asyncio.apply()
-    except ImportError:
-        pass
+    # #     nest_asyncio.apply()
+    # # except ImportError:
+    # #     pass
 
     async def main():
         print(f"--- Running ADX Scraper for: {tickers} ---")

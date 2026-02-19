@@ -1,0 +1,95 @@
+{
+  "source": "DFM",
+  "ticker": "EMIRATESNBD",
+  "scraped_at": "2026-02-18T21:44:51.971285",
+  "profile": {
+    "company_name": "NOT AVAILABLE",
+    "sector": "NOT AVAILABLE",
+    "listing_date": "NOT AVAILABLE",
+    "isin": "NOT AVAILABLE"
+  },
+  "financials": {
+    "documents_downloaded": 10,
+    "page_type": "reports",
+    "files": [
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\reports\\structured\\EMIRATESNBD FS Q2 E_2.pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\reports\\structured\\Emirates NBD Q1 2024 Financial Statements English.pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\reports\\structured\\Emirates NBD Q3 2023 Results Presentation_2.pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\reports\\structured\\EmiratesNBD Financial Results Presentation Q1 2023_2.pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\reports\\structured\\EmiratesNBD Financial Results Presentation Q1 2023.pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\reports\\structured\\EMIRATESNBD FS Q2 E.pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\reports\\structured\\EmiratesNBD FS E Q3 26 10 2023_2.pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\reports\\structured\\Emirates NBD Q3 2023 Results Presentation.pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\reports\\structured\\Emirates NBD Q1 2024 Financial Statements English_2.pdf"
+    ]
+  },
+  "news": {
+    "news_items": [],
+    "files": [
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\news\\structured\\ENBD GAM Results 17..pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\news\\structured\\ENBD GAM Results 17._1.pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\news\\structured\\ENBD GAM Results 17._1.pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\news\\structured\\Press Release Emir.pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\news\\structured\\Press Release Emir_1.pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\news\\structured\\Press Release Emir.pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\news\\structured\\Press Release Emir_2.pdf"
+    ]
+  },
+  "documents": [
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\news\\structured\\ENBD GAM Results 17..pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\reports\\structured\\EMIRATESNBD FS Q2 E_2.pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\news\\structured\\Press Release Emir_1.pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\reports\\structured\\Emirates NBD Q1 2024 Financial Statements English.pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\reports\\structured\\Emirates NBD Q3 2023 Results Presentation_2.pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\reports\\structured\\EmiratesNBD Financial Results Presentation Q1 2023_2.pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\news\\structured\\ENBD GAM Results 17._1.pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\news\\structured\\Press Release Emir_2.pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\reports\\structured\\EmiratesNBD Financial Results Presentation Q1 2023.pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\reports\\structured\\EMIRATESNBD FS Q2 E.pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\reports\\structured\\EmiratesNBD FS E Q3 26 10 2023_2.pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\news\\structured\\Press Release Emir.pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\reports\\structured\\Emirates NBD Q3 2023 Results Presentation.pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\reports\\structured\\Emirates NBD Q1 2024 Financial Statements English_2.pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\daily_summary\\structured\\EMIRATESNBD Daily Summary.csv"
+  ],
+  "corporate_actions": {
+    "actions": [],
+    "files": []
+  },
+  "shareholders": {
+    "shareholders": [
+      {
+        "name": "INVESTMENT CORPORATION OF DUBAI",
+        "percentage": "40.9160 %"
+      },
+      {
+        "name": "DH 7 L L C",
+        "percentage": "14.8418 %"
+      },
+      {
+        "name": "\u0643\u0627\u0628\u064a\u062a\u0627\u0644 \u0627\u0633\u062a\u0633 \u0634 \u0630 \u0645 \u0645",
+        "percentage": "5.3290 %"
+      }
+    ],
+    "files": []
+  },
+  "trading_data": {
+    "documents_downloaded": 0,
+    "page_type": "trading_data",
+    "files": [],
+    "summary": {}
+  },
+  "daily_summary": {
+    "documents_downloaded": 1,
+    "page_type": "daily_summary",
+    "files": [
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\EMIRATESNBD\\daily_summary\\structured\\EMIRATESNBD Daily Summary.csv"
+    ]
+  },
+  "foreign_investments": {
+    "foreign_investment_data": {
+      "raw_summary": "Country of Origin Foreigners allowed AE Yes  Permitted Actual Available National 100% 85.58% 14.42% GCC 0 0 0 Foreign 40% 14.42% 25.58% \n              \n               Nationals: Investors who hold the same nationality as the \u201cCountry of Origin\u201d of the symbol.\n              \n               GCC: Investors who hold a GCC nationality, excluding investors from the \u201cCountry of Origin\u201d of the symbol.\n              \n               Foreigners: All other nationalities. \nNote: For companies where GCC Permi"
+    },
+    "files": []
+  }
+}

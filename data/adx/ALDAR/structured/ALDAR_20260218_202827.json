@@ -1,0 +1,127 @@
+{
+  "profile": {
+    "company_name": "ALDAR",
+    "sector": "Aldar Properties PJSC",
+    "about": "NOT AVAILABLE"
+  },
+  "metrics": {},
+  "financials": {
+    "financials": {
+      "documents_found": 13,
+      "documents_downloaded": 13,
+      "documents_failed": 0,
+      "download_stats": {
+        "attempted": 30,
+        "successful": 30,
+        "failed": 0,
+        "skipped_old": 0,
+        "skipped_invalid": 0,
+        "skipped_duplicate": 17
+      }
+    }
+  },
+  "disclosures": {
+    "documents_found": 8,
+    "documents_downloaded": 8,
+    "documents_failed": 0,
+    "page_type": "disclosures",
+    "files": [
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\disclosures\\structured\\Download_PDF_2.pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\disclosures\\structured\\Download_PDF_4.pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\disclosures\\structured\\Download_PDF_5.pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\disclosures\\structured\\Download_PDF_5.pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\disclosures\\structured\\Download_PDF_6.pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\disclosures\\structured\\Download_PDF_2063_1.pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\disclosures\\structured\\Download_PDF_1.pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\disclosures\\structured\\Download_PDF_3.pdf"
+    ],
+    "download_stats": {
+      "attempted": 8,
+      "successful": 8,
+      "failed": 0,
+      "skipped_old": 0,
+      "skipped_invalid": 0,
+      "skipped_duplicate": 6
+    }
+  },
+  "shareholders": {
+    "shareholders": [],
+    "documents": {
+      "documents_found": 0,
+      "documents_downloaded": 0,
+      "documents_failed": 0,
+      "page_type": "shareholders",
+      "files": [],
+      "download_stats": {
+        "attempted": 0,
+        "successful": 0,
+        "failed": 0,
+        "skipped_old": 0,
+        "skipped_invalid": 0,
+        "skipped_duplicate": 0
+      }
+    }
+  },
+  "orderbook": {
+    "chart_extracted": false,
+    "reason": "No data captured"
+  },
+  "fundamentals": {
+    "documents_found": 0,
+    "documents_downloaded": 0,
+    "documents_failed": 0,
+    "page_type": "fundamentals",
+    "files": [],
+    "download_stats": {
+      "attempted": 0,
+      "successful": 0,
+      "failed": 0,
+      "skipped_old": 0,
+      "skipped_invalid": 0,
+      "skipped_duplicate": 0
+    }
+  },
+  "assembly_meetings": {
+    "documents_found": 9,
+    "documents_downloaded": 9,
+    "documents_failed": 0,
+    "page_type": "assembly_meetings",
+    "files": [
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\assembly_meetings\\structured\\document_8.pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\assembly_meetings\\structured\\document_1.pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\assembly_meetings\\structured\\document_3.pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\assembly_meetings\\structured\\document_2.pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\assembly_meetings\\structured\\document_6.pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\assembly_meetings\\structured\\document_4.pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\assembly_meetings\\structured\\document_2066_1.pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\assembly_meetings\\structured\\document_5.pdf",
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\assembly_meetings\\structured\\document_7.pdf"
+    ],
+    "download_stats": {
+      "attempted": 17,
+      "successful": 17,
+      "failed": 0,
+      "skipped_old": 0,
+      "skipped_invalid": 0,
+      "skipped_duplicate": 13
+    }
+  },
+  "documents": [
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\disclosures\\structured\\Download_PDF_6.pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\disclosures\\structured\\Download_PDF_2063_1.pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\assembly_meetings\\structured\\document_3.pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\assembly_meetings\\structured\\document_1.pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\assembly_meetings\\structured\\document_6.pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\assembly_meetings\\structured\\document_2066_1.pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\assembly_meetings\\structured\\document_7.pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\disclosures\\structured\\Download_PDF_5.pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\disclosures\\structured\\Download_PDF_1.pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\assembly_meetings\\structured\\document_8.pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\assembly_meetings\\structured\\document_4.pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\assembly_meetings\\structured\\document_5.pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\assembly_meetings\\structured\\document_2.pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\disclosures\\structured\\Download_PDF_3.pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\disclosures\\structured\\Download_PDF_2.pdf",
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALDAR\\disclosures\\structured\\Download_PDF_4.pdf"
+  ]
+}

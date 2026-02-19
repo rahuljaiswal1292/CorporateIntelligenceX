@@ -1,0 +1,55 @@
+{
+  "source": "DFM",
+  "ticker": "TALABAT",
+  "scraped_at": "2026-02-18T21:16:48.429063",
+  "profile": {
+    "company_name": "Equities",
+    "sector": "NOT AVAILABLE",
+    "listing_date": "NOT AVAILABLE",
+    "isin": "NOT AVAILABLE"
+  },
+  "financials": {
+    "documents_downloaded": 0,
+    "page_type": "reports",
+    "files": []
+  },
+  "news": {
+    "news_items": [],
+    "files": []
+  },
+  "documents": [
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\TALABAT\\daily_summary\\structured\\TALABAT Daily Summary.xlsx"
+  ],
+  "corporate_actions": {
+    "actions": [],
+    "files": []
+  },
+  "shareholders": {
+    "shareholders": [
+      {
+        "name": "DELIVERY HERO MENA HOLDING GMBH",
+        "percentage": "80.0000 %"
+      }
+    ],
+    "files": []
+  },
+  "trading_data": {
+    "documents_downloaded": 0,
+    "page_type": "trading_data",
+    "files": [],
+    "summary": {}
+  },
+  "daily_summary": {
+    "documents_downloaded": 1,
+    "page_type": "daily_summary",
+    "files": [
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\dfm\\TALABAT\\daily_summary\\structured\\TALABAT Daily Summary.xlsx"
+    ]
+  },
+  "foreign_investments": {
+    "foreign_investment_data": {
+      "raw_summary": ""
+    },
+    "files": []
+  }
+}

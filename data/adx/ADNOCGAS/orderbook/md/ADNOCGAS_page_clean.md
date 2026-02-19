@@ -1,0 +1,40 @@
+Company's OrderbookEnergy
+
+## ADNOCGAS
+
+#### ADNOC Gas plc
+
+ir@adnocgas.ae ‎+971 2 707 0000 https://www.adnoc.ae/en/adnoc-gasLast Price3.52 -0.565%
+
+##### PREV CLOSE
+
+3.54
+
+##### VALUE
+
+57,818,582.11
+
+##### VOLUME
+
+16,414,130
+
+##### TRADES
+
+742
+
+##### LAST PRICE
+
+3.52
+
+## ORDERBOOK
+
+BID PRICEASK PRICESharesPrice1,5003.5101363.5102,0003.5102,0003.51024,7003.5101,5003.5102,2223.5102,0003.5107,1423.50060,0003.500PriceShares3.5301,9993.53010,0003.5401,9993.540296,9183.54010,0003.54010,0003.5402,0003.540165,0003.550304,5633.550141,949BID PRICEASK PRICESharesPrice ‌   
+ ‌   
+ ‌   
+ ‌   
+ ‌   
+PriceShares ‌   
+ ‌   
+ ‌   
+ ‌   
+ ‌

@@ -1,0 +1,74 @@
+{
+  "financials": {
+    "financials": {
+      "documents_found": 14,
+      "documents_downloaded": 14,
+      "documents_failed": 0,
+      "download_stats": {
+        "attempted": 87,
+        "successful": 87,
+        "failed": 0,
+        "skipped_old": 0,
+        "skipped_invalid": 0,
+        "skipped_duplicate": 13
+      }
+    }
+  },
+  "shareholders": {
+    "shareholders": [],
+    "documents": {
+      "documents_found": 0,
+      "documents_downloaded": 0,
+      "documents_failed": 0,
+      "page_type": "shareholders",
+      "files": [],
+      "download_stats": {
+        "attempted": 73,
+        "successful": 73,
+        "failed": 0,
+        "skipped_old": 0,
+        "skipped_invalid": 0,
+        "skipped_duplicate": 11
+      }
+    }
+  },
+  "orderbook": {
+    "chart_extracted": false,
+    "reason": "No data captured"
+  },
+  "fundamentals": {
+    "documents_found": 0,
+    "documents_downloaded": 0,
+    "documents_failed": 0,
+    "page_type": "fundamentals",
+    "files": [],
+    "download_stats": {
+      "attempted": 72,
+      "successful": 72,
+      "failed": 0,
+      "skipped_old": 0,
+      "skipped_invalid": 0,
+      "skipped_duplicate": 11
+    }
+  },
+  "assembly_meetings": {
+    "documents_found": 1,
+    "documents_downloaded": 1,
+    "documents_failed": 0,
+    "page_type": "assembly_meetings",
+    "files": [
+      "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALPHADATA\\assembly_meetings\\structured\\document.pdf"
+    ],
+    "download_stats": {
+      "attempted": 73,
+      "successful": 73,
+      "failed": 0,
+      "skipped_old": 0,
+      "skipped_invalid": 0,
+      "skipped_duplicate": 11
+    }
+  },
+  "documents": [
+    "C:\\Users\\Rahul\\Git repositories\\CorporateIntelligenceX\\data\\adx\\ALPHADATA\\assembly_meetings\\structured\\document.pdf"
+  ]
+}

@@ -1,0 +1,36 @@
+Extract comprehensive company information from this Google SERP data for: {canonical_name}
+
+SERP Data:
+{serp_data}
+
+Extract ALL available information and return ONLY a JSON object with this structure:
+{
+    "canonical_name": "{canonical_name}",
+    "website": "official website URL",
+    "description": "brief company description",
+    "industry": "primary industry",
+    "founded_year": "founding year",
+    "headquarters": "HQ location",
+    "ceo": "CEO name",
+    "founder": "founder name(s)",
+    "employees": "number of employees",
+    "revenue": "annual revenue",
+    "twitter": "Twitter/X URL",
+    "linkedin": "LinkedIn URL",
+    "instagram": "Instagram URL",
+    "youtube": "YouTube URL",
+    "facebook": "Facebook URL",
+    "ticker": "stock ticker symbol",
+    "exchange": "stock exchange",
+    "market_cap": "market capitalization",
+    "wikipedia_url": "Wikipedia URL",
+    "key_products": ["product 1", "product 2"],
+    "recent_news": ["news headline 1", "news headline 2"],
+    "competitors": ["competitor 1", "competitor 2"]
+}
+
+Important:
+- Use empty string "" for fields not found
+- Use empty array [] for list fields not found
+- Extract from knowledge_graph, organic_results, and related_questions
+- Be thorough and accurate

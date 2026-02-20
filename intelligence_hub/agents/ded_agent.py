@@ -44,7 +44,7 @@ class DEDAgent(BaseAgent):
 
         # Initialize ChromaDB client for DED database (separate path to avoid conflicts)
         try:
-            ded_db_path = os.path.join(os.getcwd(), "data", "chroma_db_ded")
+            ded_db_path = os.path.join(os.getcwd(), "data", "chroma_db_selected")
             # Create directory if it doesn't exist
             os.makedirs(ded_db_path, exist_ok=True)
 

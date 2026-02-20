@@ -1,6 +1,6 @@
 import logging
 import json
-from intelligence_hub.connectors.scrapingbee import ScrapingBeeConnector
+from intelligence_hub.scrapers.scrapingbee import ScrapingBeeConnector
 from intelligence_hub.utils.storage_manager import StorageManager
 
 logger = logging.getLogger(__name__)

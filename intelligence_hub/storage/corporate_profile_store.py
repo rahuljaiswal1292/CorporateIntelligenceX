@@ -54,6 +54,36 @@ from .search_utils import (
 )
 
 
+# Import LLM Connector for custom embeddings
+try:
+    from intelligence_hub.llm.connector import LLMConnector
+
+    HAS_LLM = True
+except ImportError:
+    HAS_LLM = False
+
+
+class ChromaEmbeddingWrapper:
+    """Wrapper to make LLMConnector compatible with ChromaDB's EmbeddingFunction"""
+
+    def __init__(self, connector=None):
+        self.connector = connector or LLMConnector()
+
+    def __call__(self, input: List[str]) -> List[List[float]]:
+        """Implementation of EmbeddingFunction.__call__"""
+        if self.connector.embeddings:
+            try:
+                # Use bulk embedding for better performance
+                return self.connector.embeddings.embed_documents(input)
+            except Exception as e:
+                print(f"⚠️ ChromaEmbeddingWrapper error: {e}")
+                # Fallback to single-item embedding if bulk fails
+                return [self.connector.embed(text) for text in input]
+        # Return mock vectors if no embedding model is configured
+        logger_dim = 1536  # Default for OpenAI/Gemini
+        return [[0.1] * logger_dim for _ in input]
+
+
 class CorporateProfileStore:
     """Corporate Profile Storage with flexible schema"""
 
@@ -72,6 +102,10 @@ class CorporateProfileStore:
         if persist_directory is None:
             persist_directory = CHROMADB_PERSIST_DIRECTORY
 
+        # Initialize LLM-based embedding function
+        self.llm_connector = LLMConnector()
+        self.embedding_function = ChromaEmbeddingWrapper(self.llm_connector)
+
         self.client = chromadb.PersistentClient(
             path=persist_directory,
             settings=Settings(
@@ -84,6 +118,7 @@ class CorporateProfileStore:
         # 1. Name store - for fast, accurate company name matching
         self.name_collection = self.client.get_or_create_collection(
             name=f"{CHROMADB_COLLECTION_NAME}_names",
+            embedding_function=self.embedding_function,
             metadata={
                 "description": "Company names and identifiers for search",
                 "hnsw:space": "cosine",
@@ -93,6 +128,7 @@ class CorporateProfileStore:
         # 2. Details store - for full company profiles and documents
         self.details_collection = self.client.get_or_create_collection(
             name=f"{CHROMADB_COLLECTION_NAME}_details",
+            embedding_function=self.embedding_function,
             metadata={
                 "description": "Full company profiles and documents",
                 "hnsw:space": "cosine",

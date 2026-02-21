@@ -10,6 +10,7 @@ from intelligence_hub.ui.styles import get_custom_css
 from intelligence_hub.ui.dashboard import render_main_dashboard
 from intelligence_hub.core.mock_data import get_company_data
 from intelligence_hub.llm.models import LLMModel
+from intelligence_hub.config.config import DEFAULT_LLM_MODEL, DEFAULT_LLM_PROVIDER
 
 # Force reload backend modules to pick up state changes
 import sys
@@ -59,7 +60,7 @@ st.set_page_config(
     page_title="CorporateIntelligenceX",
     page_icon=image_path_ico,
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
 # --- Apply Custom CSS ---
@@ -103,6 +104,9 @@ if "investigation_paused" not in st.session_state:
     st.session_state.investigation_paused = False
 if "intermediate_state" not in st.session_state:
     st.session_state.intermediate_state = None
+# Seed LLM defaults from config on first load (user can override via UI)
+if "llm_model_select" not in st.session_state:
+    st.session_state["llm_model_select"] = DEFAULT_LLM_MODEL
 
 
 # --- Helper to append logs ---
@@ -784,23 +788,23 @@ def run_investigation(
         update_sidebar_logs()
 
     # 2. Select Graph & Input
-    # Extract LLM config from session state (UI sliders)
-    llm_config = {
-        "model": st.session_state.get("llm_model_select", "gpt-4-turbo"),
-        "temperature": st.session_state.get("llm_temperature", 0.0),
-        "top_p": st.session_state.get("llm_top_p", 1.0),
-        "frequency_penalty": st.session_state.get("llm_freq_penalty", 0.0),
+    # LLM settings travel via RunnableConfig (not graph state)
+    run_config = {
+        "configurable": {
+            "llm_model": st.session_state.get("llm_model_select", DEFAULT_LLM_MODEL),
+            "llm_temperature": st.session_state.get("llm_temperature", 0.0),
+            "llm_top_p": st.session_state.get("llm_top_p", 1.0),
+            "llm_frequency_penalty": st.session_state.get("llm_freq_penalty", 0.0),
+        }
     }
 
     if not resume_mode:
         graph = get_cached_resolution_graph_v5()
-        input_data = {"query": query, "logs": [], "llm_config": llm_config}
+        input_data = {"query": query, "logs": []}
         processed_logs = set()
     else:
         graph = get_cached_enrichment_graph_v5()
         input_data = st.session_state.intermediate_state
-        # Update LLM config in case user changed settings before continuing
-        input_data["llm_config"] = llm_config
         processed_logs = set(input_data.get("logs", []))
 
     # 3. Setup Stream
@@ -810,11 +814,8 @@ def run_investigation(
         else "📝 Live System Logs (Resolution)"
     )
 
-    # Limit indentation changes by using a dummy block, or just unindent.
-    # User wants to disable live logs.
-
     # Stream the Graph execution
-    stream = graph.stream(input_data)
+    stream = graph.stream(input_data, config=run_config)
     final_state = {}
 
     # Initial Pipeline Update
@@ -1070,16 +1071,76 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-    # Model Selector
-    st.selectbox(
-        "LLM Model",
-        [model.value for model in LLMModel],
-        index=0,
-        key="llm_model_select",
-        help="Select the underlying Large Language Model for agents.",
+    # Single flat model dropdown — all OpenAI + Gemini models in one list
+    # Inject CSS to make this selectbox white so the dropdown arrow is visible
+    st.markdown(
+        """
+        <style>
+        /* LLM Model selectbox — white background for arrow visibility */
+        [data-testid="stSidebar"] .stSelectbox > div > div {
+            background-color: #ffffff !important;
+            color: #1a1a2e !important;
+            border: 1.5px solid #d0d0d0 !important;
+            border-radius: 8px !important;
+        }
+        [data-testid="stSidebar"] .stSelectbox > div > div > div {
+            color: #1a1a2e !important;
+        }
+        [data-testid="stSidebar"] .stSelectbox svg {
+            fill: #1a1a2e !important;
+        }
+
+        /* Dropdown popup list — white background with dark text */
+        [data-baseweb="popover"] {
+            background-color: #ffffff !important;
+        }
+        [data-baseweb="menu"] {
+            background-color: #ffffff !important;
+        }
+        [data-baseweb="select"] ul,
+        [data-baseweb="menu"] ul {
+            background-color: #ffffff !important;
+        }
+        [role="listbox"],
+        [role="option"] {
+            background-color: #ffffff !important;
+            color: #1a1a2e !important;
+        }
+        [role="option"]:hover,
+        [role="option"][aria-selected="true"] {
+            background-color: #e8f0fe !important;
+            color: #1a1a2e !important;
+        }
+        li[role="option"] {
+            background-color: #ffffff !important;
+            color: #1a1a2e !important;
+        }
+        li[role="option"]:hover {
+            background-color: #e8f0fe !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
     )
 
-    # Parameters
+    all_models = LLMModel.get_all_models()
+    try:
+        current_index = all_models.index(
+            st.session_state.get("llm_model_select", DEFAULT_LLM_MODEL)
+        )
+    except (ValueError, IndexError):
+        current_index = 0
+
+    st.selectbox(
+        "LLM Model",
+        all_models,
+        index=current_index,
+        format_func=lambda x: x.replace("models/", ""),
+        key="llm_model_select",
+        help="Select model. Provider (OpenAI / Google Gemini) and API key are resolved automatically from your .env file.",
+    )
+
+    # --- Parameters ---
     st.slider(
         "Temperature",
         0.0,
@@ -1087,7 +1148,7 @@ with st.sidebar:
         0.0,
         0.1,
         key="llm_temperature",
-        help="Controls randomness.",
+        help="Controls randomness. Lower = more deterministic.",
     )
     st.slider("Top P", 0.0, 1.0, 1.0, 0.05, key="llm_top_p", help="Nucleus sampling.")
     st.slider(
@@ -1097,7 +1158,7 @@ with st.sidebar:
         0.0,
         0.1,
         key="llm_freq_penalty",
-        help="Penalize frequent tokens.",
+        help="Penalize repeated tokens (OpenAI only).",
     )
 
     st.markdown("---")
@@ -1132,8 +1193,15 @@ with st.sidebar:
     )
 
     st.markdown("---")
-    st.caption(f"System Status: **ONLINE**")
+    _sel_model = st.session_state.get("llm_model_select", "")
+    _is_gemini_footer = _sel_model.startswith("gemini") or _sel_model.startswith(
+        "gemini"
+    )
+    st.caption(
+        f"LLM Provider: **{'Google Gemini' if _is_gemini_footer else 'OpenAI'}**"
+    )
     st.caption(f"Vector DB: **ChromaDB**")
+
 
 # Banner with styled heading and tagline (matching reference)
 st.markdown(

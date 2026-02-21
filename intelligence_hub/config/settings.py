@@ -17,8 +17,8 @@ class Settings:
     # Provider-Specific Native Configurations
     PROVIDER_CONFIGS = {
         "google": {
-            "model": "gemini-1.5-flash",
-            "embedding": "models/gemini-embedding-001",
+            "model": "models/gemini-1.5-flash",
+            "embedding": "models/embedding-001",
         },
         "openai": {
             "model": "gpt-4o",
@@ -64,6 +64,52 @@ class Settings:
     MAX_DOCUMENT_AGE_YEARS = int(os.getenv("MAX_DOCUMENT_AGE_YEARS", "3"))
     ENABLE_DATE_FILTERING = os.getenv("ENABLE_DATE_FILTERING", "true").lower() == "true"
 
+    # Known Ticker Map for Faster Resolution
+    KNOWN_TICKER_MAP = {
+        "emaar": {
+            "name": "Emaar Properties PJSC",
+            "ticker": "EMAAR",
+            "exchange": "DFM",
+            "website": "https://www.emaar.com",
+        },
+        "emirates nbd": {
+            "name": "Emirates NBD Bank PJSC",
+            "ticker": "EMIRATESNBD",
+            "exchange": "DFM",
+            "website": "https://www.emiratesnbd.com",
+        },
+        "adcb": {
+            "name": "Abu Dhabi Commercial Bank PJSC",
+            "ticker": "ADCB",
+            "exchange": "ADX",
+            "website": "https://www.adcb.com",
+        },
+        "fab": {
+            "name": "First Abu Dhabi Bank PJSC",
+            "ticker": "FAB",
+            "exchange": "ADX",
+            "website": "https://www.bankfab.com",
+        },
+        "etisalat": {
+            "name": "Emirates Telecommunications Group Company PJSC",
+            "ticker": "EAND",
+            "exchange": "ADX",
+            "website": "https://www.eand.com",
+        },
+        "taqa": {
+            "name": "Abu Dhabi National Energy Company PJSC",
+            "ticker": "TAQA",
+            "exchange": "ADX",
+            "website": "https://www.taqa.com",
+        },
+        "aldar": {
+            "name": "Aldar Properties PJSC",
+            "ticker": "ALDAR",
+            "exchange": "ADX",
+            "website": "https://www.aldar.com",
+        },
+    }
+
     def validate(self):
         """Validates critical configuration."""
         if not self.SCRAPER_API_KEY:
@@ -77,10 +123,6 @@ class Settings:
         print(
             f"📊 Active Config: Provider={self.LLM_PROVIDER} | Model={self.LLM_MODEL} | Embedding={self.EMBEDDING_MODEL}"
         )
-        if not self.SCRAPINGBEE_API_KEY:
-            print(
-                "⚠️ Warning: SCRAPER_API_KEY not found. Scrapers will run in Mock Mode."
-            )
 
 
 config = Settings()

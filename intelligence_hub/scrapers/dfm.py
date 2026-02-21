@@ -58,14 +58,17 @@ except ImportError:
 
 # Import Smart Agents (Optional)
 try:
-    from intelligence_hub.agents.vectorizing_agent import VectorizingAgent
-    from intelligence_hub.agents.summarizer_agent import SummarizerAgent
+    from intelligence_hub.agents.vectorizer import VectorizerAgent
+
+    # SummarizerAgent seems to be missing or merged, setting to None for now
+    SummarizerAgent = None
 except ImportError as e:
     logger.warning(f"Smart Agents not available: {e}")
-    VectorizingAgent = None
+    VectorizerAgent = None
     SummarizerAgent = None
 
-# --- Scraper ---
+# Aliases for compatibility with legacy code in this file
+VectorizingAgent = VectorizerAgent
 
 
 class DFMScraper:

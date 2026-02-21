@@ -551,11 +551,11 @@ if __name__ == "__main__":
     tickers = [
         "ADNHC",
         "ADNOCGAS",
-        # "ALDAR",
-        # "ALPHADATA",
-        # "EAND",
-        # "FAB",
-        # "LULU",
+        "ALDAR",
+        "ALPHADATA",
+        "EAND",
+        "FAB",
+        "LULU",
     ]
 
     # Allow override from command line

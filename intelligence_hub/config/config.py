@@ -8,8 +8,23 @@ load_dotenv()
 SERPAPI_API_KEY = os.getenv("SERPAPI_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-# Model Configuration
-MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4-turbo")
+# Default LLM Provider & Model
+# These define the app-wide defaults; users can override in the UI.
+# Values are read from .env (LLM_PROVIDER / LLM_MODEL) with sensible fallbacks.
+DEFAULT_LLM_PROVIDER = os.getenv("LLM_PROVIDER", "google")  # google or openai
+
+# Best-model-per-provider fallbacks (used when LLM_MODEL is not set in .env)
+_DEFAULT_MODEL_BY_PROVIDER = {
+    "google": "models/gemini-2.0-flash-001",
+    "openai": "gpt-4o",
+}
+DEFAULT_LLM_MODEL = os.getenv(
+    "LLM_MODEL",
+    _DEFAULT_MODEL_BY_PROVIDER.get(DEFAULT_LLM_PROVIDER.lower(), "gpt-4o"),
+)
+
+# Model Configuration (legacy / agent-level overrides)
+MODEL_NAME = os.getenv("MODEL_NAME", DEFAULT_LLM_MODEL)
 MODEL_TEMPERATURE = float(os.getenv("MODEL_TEMPERATURE", "0.1"))
 MODEL_MAX_TOKENS = int(os.getenv("MODEL_MAX_TOKENS", "4096"))
 

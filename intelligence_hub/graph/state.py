@@ -42,8 +42,3 @@ class AgentState(TypedDict):
 
     # Enrichment Data
     enrichments: Annotated[Dict[str, Any], replace]
-
-    # LLM Configuration
-    llm_config: Annotated[
-        Dict[str, Any], replace
-    ]  # Contains: model, temperature, top_p, frequency_penalty

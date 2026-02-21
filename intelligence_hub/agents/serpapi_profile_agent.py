@@ -227,6 +227,11 @@ class SerpAPIProfileAgent(BaseAgent):
         )
 
         try:
+            if self.llm_connector.llm is None:
+                raise RuntimeError(
+                    "LLM is not initialised (MOCK MODE). "
+                    "Please set OPENAI_API_KEY in your .env file."
+                )
             chain = prompt | self.llm_connector.llm
             response = chain.invoke(
                 {
@@ -300,6 +305,11 @@ class SerpAPIProfileAgent(BaseAgent):
             serp_json = serp_json[:24000] + "\n... (truncated for token limit)"
 
         # Invoke LLM
+        if self.llm_connector.llm is None:
+            raise RuntimeError(
+                "LLM is not initialised (MOCK MODE). "
+                "Please set OPENAI_API_KEY in your .env file."
+            )
         chain = prompt | self.llm_connector.llm
         response = chain.invoke({"serp_json": serp_json})
 
@@ -329,11 +339,14 @@ class SerpAPIProfileAgent(BaseAgent):
                     elif clean_score.lower() == "low":
                         profile["confidence_score"] = 30
                     else:
-                         profile["confidence_score"] = 0
+                        profile["confidence_score"] = 0
                 else:
                     profile["confidence_score"] = int(raw_score)
             except (ValueError, TypeError):
-                self.log(f"Error parsing confidence score: {profile.get('confidence_score')}", "WARNING")
+                self.log(
+                    f"Error parsing confidence score: {profile.get('confidence_score')}",
+                    "WARNING",
+                )
                 profile["confidence_score"] = 0
 
             self.log(

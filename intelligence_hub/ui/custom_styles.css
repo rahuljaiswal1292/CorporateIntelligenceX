@@ -684,7 +684,7 @@ button[data-testid*="recent_inv"] {
 
 /* Custom Scrollbar for formatted log container if used */
 .log-scroller {
-    max-height: 300px;
+    max-height: 500px;
     overflow-y: auto;
     background-color: #0e1117;
     /* Dark Terminal Background */

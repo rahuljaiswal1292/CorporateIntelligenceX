@@ -64,7 +64,6 @@ class LLMModel(str, Enum):
 
 class LLMConfig:
     """LLM Configuration class for managing model parameters"""
-
     def __init__(
         self,
         model: str = LLMModel.GPT_4_TURBO,

@@ -71,6 +71,7 @@ except ImportError as e:
 VectorizingAgent = VectorizerAgent
 
 
+
 class DFMScraper:
     """
     Scraper for Dubai Financial Market (DFM) using direct Playwright automation.
@@ -1457,6 +1458,7 @@ class DFMScraper:
         except Exception as e:
             logger.error(f"Error searching DFM ticker: {e}")
             return None, None
+
 
 
 if __name__ == "__main__":

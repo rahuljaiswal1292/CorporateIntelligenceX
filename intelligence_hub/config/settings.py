@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 
+
 class Settings:
     # API Keys
     SCRAPER_API_KEY = os.getenv("SCRAPER_API_KEY", "")

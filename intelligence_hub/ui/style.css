@@ -15,10 +15,6 @@ section[data-testid="stSidebar"] {
     color: #FFFFFF;
 }
 
-[data-testid="stSidebarHeader"] {
-    height: 20px !important;
-}
-
 section[data-testid="stSidebar"] div,
 section[data-testid="stSidebar"] label,
 section[data-testid="stSidebar"] span {
@@ -65,11 +61,37 @@ div[data-testid="stMetric"] {
     border-radius: 12px;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     transition: transform 0.2s;
+    font-family: 'Poppins', sans-serif;
 }
 
 div[data-testid="stMetric"]:hover {
     transform: translateY(-2px);
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+/* Metric label */
+div[data-testid="stMetric"] label[data-testid="stMetricLabel"] {
+    font-family: 'Poppins', sans-serif !important;
+    font-size: 0.78rem !important;
+    font-weight: 600 !important;
+    color: #64748b !important;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* Metric value */
+div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
+    font-family: 'Poppins', sans-serif !important;
+    font-size: 1.5rem !important;
+    font-weight: 700 !important;
+    color: #1e293b !important;
+}
+
+/* Metric delta */
+div[data-testid="stMetric"] div[data-testid="stMetricDelta"] {
+    font-family: 'Poppins', sans-serif !important;
+    font-size: 0.78rem !important;
+    font-weight: 600 !important;
 }
 
 /* --- Captions & Small Headers (Increased Visibility) --- */
@@ -531,7 +553,7 @@ div[data-testid="stDecoration"] {
 
 /* Make the log text look more like a terminal */
 [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
-    /* font-family: 'Courier New', monospace; */
+    font-family: 'Courier New', monospace;
     font-size: 0.85rem !important;
     line-height: 1.2 !important;
     margin-bottom: 5px !important;

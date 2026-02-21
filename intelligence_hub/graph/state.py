@@ -3,10 +3,6 @@ import operator
 from langgraph.graph.message import add_messages
 
 
-def replace(old, new):
-    return new
-
-
 class AgentState(TypedDict):
     """
     Shared state object for the Intelligence Graph.
@@ -16,29 +12,32 @@ class AgentState(TypedDict):
     query: str
 
     # Resolver Outputs
-    ticker: Annotated[str, replace]
-    company_name: Annotated[str, replace]
-    canonical_name: Annotated[str, replace]  # Added for UI consistency
-    exchange: Annotated[str, replace]  # ADX, DFM, or UNKNOWN
-    website: Annotated[str, replace]
+    ticker: str
+    company_name: str
+    canonical_name: str  # Added for UI consistency
+    exchange: str  # ADX, DFM, or UNKNOWN
+    website: str
 
     # Scraper Outputs
-    financial_data: Annotated[Dict[str, Any], replace]  # Structured financials
-    raw_html: Annotated[str, replace]
-    doc_urls: Annotated[List[str], replace]
+    financial_data: Dict[str, Any]  # Structured financials
+    raw_html: str
+    doc_urls: List[str]
 
     # Vectorizer Outputs
-    vector_ids: Annotated[List[str], replace]
+    vector_ids: List[str]
 
     # PdfAgent Outputs
-    pdf_results: Annotated[List[Dict[str, Any]], replace]
+    pdf_results: List[Dict[str, Any]]
 
     # Analyst Outputs
-    insights: Annotated[List[Dict[str, str]], replace]
-    final_report: Annotated[str, replace]
+    insights: List[Dict[str, str]]
+    final_report: str
 
     # Logs for UI
     logs: Annotated[List[str], operator.add]
 
     # Enrichment Data
-    enrichments: Annotated[Dict[str, Any], replace]
+    enrichments: Dict[str, Any]
+
+    # LLM Configuration
+    llm_config: Dict[str, Any]  # Contains: model, temperature, top_p, frequency_penalty

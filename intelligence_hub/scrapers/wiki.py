@@ -1,5 +1,5 @@
 import logging
-from intelligence_hub.scrapers.scrapingbee import ScrapingBeeConnector
+from intelligence_hub.connectors.web_scraper_connector import WebScraperConnector
 from intelligence_hub.utils.storage_manager import StorageManager
 
 logger = logging.getLogger(__name__)

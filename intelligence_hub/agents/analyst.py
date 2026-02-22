@@ -50,8 +50,8 @@ class AnalystAgent(BaseAgent):
         Returns:
             Result with strategic insights
         """
-        ticker = state.get("ticker", "Unknown")
-        company_name = state.get("company_name", "Unknown")
+        ticker = state.get("ticker") or "Unknown"
+        company_name = state.get("company_name") or "Unknown"
 
         self.log(f"Generating strategic insights for: {company_name}")
 

@@ -1,10 +1,12 @@
 import logging
 import json
+from typing import Dict, List, Any, cast
 from intelligence_hub.scrapers.adx import ADXScraper
 from intelligence_hub.scrapers.dfm import DFMScraper
 from intelligence_hub.scrapers.wiki import WikiScraper
 from intelligence_hub.scrapers.yahoo import YahooFinanceScraper
-from intelligence_hub.scrapers.scrapingbee import ScrapingBeeConnector
+from intelligence_hub.connectors.web_scraper_connector import WebScraperConnector
+
 from intelligence_hub.storage.corporate_profile_store import CorporateProfileStore
 
 logger = logging.getLogger(__name__)
@@ -19,13 +21,14 @@ class ScraperOrchestrator:
     """
 
     def __init__(self):
-        self.sb_connector = ScrapingBeeConnector()
+        self.sb_connector = WebScraperConnector()
+        # db does not need the connector as an argument, it's a vector store
         self.db = CorporateProfileStore()
 
-        self.adx_scraper = ADXScraper(self.sb_connector)
-        self.dfm_scraper = DFMScraper(self.sb_connector)
-        self.wiki_scraper = WikiScraper(self.sb_connector)
-        self.yahoo_scraper = YahooFinanceScraper(self.sb_connector)
+        self.adx_scraper = ADXScraper()
+        self.dfm_scraper = DFMScraper(connector=self.sb_connector)
+        self.wiki_scraper = WikiScraper(connector=self.sb_connector)
+        self.yahoo_scraper = YahooFinanceScraper(connector=self.sb_connector)
 
     import traceback
     from intelligence_hub.graph.state import AgentState
@@ -103,18 +106,31 @@ class ScraperOrchestrator:
             return cached_data
 
         # 2. Scrape Fresh Data (Parallel Agents)
-        scraped_data = {"financials": {}, "profile": {}, "sources": []}
+        scraped_data: dict = {
+            "financials": {},
+            "profile": {},
+            "sources": [],
+            "raw_html_snippet": "",
+            "documents": [],
+        }
 
         # If loop is running, get it. If not, we are inside run_until_complete so it is running.
         loop = asyncio.get_running_loop()
         tasks = []
 
-        # Task A: Exchange Scraper
-        if exchange == "ADX":
-            tasks.append(self.adx_scraper.scrape_company(ticker))
-        elif exchange == "DFM":
-            tasks.append(self.dfm_scraper.scrape_company(ticker))
+        # Task A: Exchange Scraper (Only if Ticker and Exchange are known)
+        exchange_upper = str(exchange).upper() if exchange else "UNKNOWN"
+        if ticker and ticker != "UNKNOWN" and exchange_upper in ["ADX", "DFM"]:
+            if exchange_upper == "ADX":
+                logger.info(f"Scraper: Routing to ADX for {ticker}")
+                tasks.append(self.adx_scraper.scrape_company(ticker))
+            elif exchange_upper == "DFM":
+                logger.info(f"Scraper: Routing to DFM for {ticker}")
+                tasks.append(self.dfm_scraper.scrape_company(ticker))
         else:
+            logger.info(
+                f"Scraper: No specific exchange scraper for {ticker} ({exchange})"
+            )
 
             async def no_op():
                 return {}
@@ -142,9 +158,15 @@ class ScraperOrchestrator:
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Unpack
-        primary_data = results[0] if not isinstance(results[0], Exception) else {}
-        yf_data = results[1] if not isinstance(results[1], Exception) else {}
-        wiki_data = results[2] if not isinstance(results[2], Exception) else {}
+        primary_data = (
+            cast(dict, results[0]) if not isinstance(results[0], Exception) else {}
+        )
+        yf_data = (
+            cast(dict, results[1]) if not isinstance(results[1], Exception) else {}
+        )
+        wiki_data = (
+            cast(dict, results[2]) if not isinstance(results[2], Exception) else {}
+        )
 
         # Log Exceptions
         for i, res in enumerate(results):

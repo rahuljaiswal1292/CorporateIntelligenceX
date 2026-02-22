@@ -36,7 +36,7 @@ from intelligence_hub.prompts import load_prompt
 from intelligence_hub.config.settings import config
 from intelligence_hub.scrapers.adx import ADXScraper
 from intelligence_hub.scrapers.dfm import DFMScraper
-from intelligence_hub.scrapers.scrapingbee import ScrapingBeeConnector
+from intelligence_hub.connectors.web_scraper_connector import WebScraperConnector
 import asyncio
 
 
@@ -114,9 +114,9 @@ class MasterAgent(BaseAgent):
         # 3. Dynamic Search (Fallback)
         self.log("Starting dynamic resolution via scrapers...")
 
-        sb_connector = ScrapingBeeConnector()
-        adx_scanner = ADXScraper(sb_connector)
-        dfm_scanner = DFMScraper(sb_connector)
+        scraper_connector = WebScraperConnector()
+        adx_scanner = ADXScraper()
+        dfm_scanner = DFMScraper(scraper_connector)
 
         def safe_run_async(coro):
             try:
@@ -472,7 +472,9 @@ class MasterAgent(BaseAgent):
 
         # Phase 2: Enrichment now handled by workflow nodes (Wikipedia, News, DED)
         # Removed: enrichment_results = self.run_enrichment_phase(basic_profile)
-        self.log("PROGRESS:40:Phase 2 - Child agents (Wikipedia, News, DED) running as workflow nodes")
+        self.log(
+            "PROGRESS:40:Phase 2 - Child agents (Wikipedia, News, DED) running as workflow nodes"
+        )
         self.log("Note: Enrichment agents now execute as separate workflow nodes")
 
         # Phase 3: Save basic profile (aggregation now handled by analyst node)
@@ -498,7 +500,7 @@ class MasterAgent(BaseAgent):
             )
 
         self.log("PROGRESS:100:Master agent workflow complete")
-        
+
         # === FINAL OUTPUT LOGGING ===
         self.log("")
         self.log("=" * 70)
@@ -510,11 +512,15 @@ class MasterAgent(BaseAgent):
         self.log(f"Ticker: {resolution.get('ticker', 'N/A')}")
         self.log(f"Exchange: {resolution.get('exchange', 'N/A')}")
         self.log(f"Website: {resolution.get('website', 'N/A')}")
-        self.log(f"Has Knowledge Panel: {basic_profile.get('has_knowledge_panel', False)}")
-        self.log(f"Has Official Website: {basic_profile.get('has_official_website', False)}")
+        self.log(
+            f"Has Knowledge Panel: {basic_profile.get('has_knowledge_panel', False)}"
+        )
+        self.log(
+            f"Has Official Website: {basic_profile.get('has_official_website', False)}"
+        )
         self.log(f"Stored in ChromaDB: {stored}")
         self.log(f"Timestamp: {datetime.now().isoformat()}")
-        
+
         # Log SERP links used for enrichment
         serp_links = basic_profile.get("serp_links", [])
         if serp_links:
@@ -522,12 +528,14 @@ class MasterAgent(BaseAgent):
             self.log("SERP Links Used for Enrichment:")
             for idx, link in enumerate(serp_links[:10], 1):  # Show first 10 links
                 link_url = link.get("link", "N/A") if isinstance(link, dict) else link
-                link_title = link.get("title", "Untitled") if isinstance(link, dict) else "Link"
+                link_title = (
+                    link.get("title", "Untitled") if isinstance(link, dict) else "Link"
+                )
                 self.log(f"  {idx}. {link_title}")
                 self.log(f"     URL: {link_url}")
             if len(serp_links) > 10:
                 self.log(f"  ... and {len(serp_links) - 10} more links")
-        
+
         # Log knowledge panel info if available
         if basic_profile.get("has_knowledge_panel"):
             self.log("")
@@ -537,7 +545,7 @@ class MasterAgent(BaseAgent):
                 self.log(f"  Description: {kg_data.get('description')[:100]}...")
             if kg_data.get("type"):
                 self.log(f"  Type: {kg_data.get('type')}")
-        
+
         self.log("=" * 70)
         self.log("Master agent completed - child agents will execute as workflow nodes")
         self.log("=" * 70)

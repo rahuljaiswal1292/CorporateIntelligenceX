@@ -72,11 +72,22 @@ class CorporateProfileStore:
         if persist_directory is None:
             persist_directory = CHROMADB_PERSIST_DIRECTORY
 
+        # Ensure path is absolute and normalized for Windows compatibility
+        if persist_directory:
+            persist_directory = os.path.normpath(os.path.abspath(persist_directory))
+
+        # Strip potential quotes from environment variables
+        if persist_directory and (
+            persist_directory.startswith('"') or persist_directory.startswith("'")
+        ):
+            persist_directory = persist_directory.strip('"').strip("'")
+
         self.client = chromadb.PersistentClient(
             path=persist_directory,
             settings=Settings(
                 anonymized_telemetry=False,
                 allow_reset=True,
+                is_persistent=True,
             ),
         )
 

@@ -19,29 +19,64 @@ from intelligence_hub.storage.corporate_profile_store import CorporateProfileSto
 from intelligence_hub.config.config import CHROMADB_PERSIST_DIRECTORY
 
 
-def run_enrichment_node(state: AgentState):
+def run_resolution_node(state: AgentState):
     """
-    Executes the Master Coordination Agent for profile enrichment.
+    Phase 0: Canonical Resolution Only.
+    Fast check via Config, DB, or Exchange Search.
     """
-    company_name = state.get("company_name") or state.get("query", "Unknown")
+    query = state.get("query", "Unknown")
     logs = []
 
-    logs.append(f"Starting enrichment (and resolution) for {company_name}...")
+    logs.append(f"Resolving entity for: {query}")
 
     try:
         # Initialize dependencies
         store = CorporateProfileStore()
 
-        # Extract LLM config from state (if provided by UI)
+        # Initialize Master Agent (just for resolution)
+        agent = MasterAgent(
+            company_name=query,
+            llm_connector=LLMConnector(config=state.get("llm_config", {})),
+            profile_store=store,
+            log_callback=lambda m: None,
+        )
+
+        # Run Phase 0
+        resolution = agent.resolve_query(query)
+        canonical_name = resolution.get("company_name", query)
+
+        logs.append(f"Entity Resolved to: {canonical_name}")
+
+        return {
+            "canonical_name": canonical_name,
+            "company_name": canonical_name,
+            "ticker": resolution.get("ticker"),
+            "exchange": resolution.get("exchange"),
+            "website": resolution.get("website"),
+            "logs": logs,
+        }
+    except Exception as e:
+        logs.append(f"Resolution failed: {str(e)}")
+        return {"logs": logs}
+
+
+def run_profiling_node(state: AgentState):
+    """
+    Phase 1: Basic Profiling (SERP, Knowledge Graph).
+    """
+    company_name = state.get("canonical_name") or state.get("query", "Unknown")
+    logs = []
+
+    logs.append(f"Fetching profile for {company_name}...")
+
+    try:
+        store = CorporateProfileStore()
         llm_config = state.get("llm_config", {})
         llm_connector = LLMConnector(config=llm_config)
 
-        # Log collector
         def log_handler(msg):
             logs.append(msg.strip())
-            print(msg.strip())
 
-        # Initialize Master Agent
         agent = MasterAgent(
             company_name=company_name,
             llm_connector=llm_connector,
@@ -49,28 +84,20 @@ def run_enrichment_node(state: AgentState):
             log_callback=log_handler,
         )
 
-        # Run agent
-        result = agent.run(state)
-
-        # Extract data
+        # Run Phase 1
+        result = agent.run_serpapi_phase(state)
         full_profile = result.get("data", {})
-        metadata = result.get("metadata", {})
-        canonical_name = metadata.get("canonical_name") or company_name
+        ticker = full_profile.get("ticker", state.get("ticker"))
+        exchange = full_profile.get("exchange", state.get("exchange"))
+        website = full_profile.get("website", state.get("website"))
+        confidence = full_profile.get("confidence_score", 0)
 
-        # Extract resolution info
-        ticker = metadata.get("ticker", state.get("ticker"))
-        exchange = metadata.get("exchange", state.get("exchange"))
-        website = metadata.get("website", state.get("website"))
-        confidence = metadata.get("confidence", full_profile.get("confidence_score", 0))
-
-        logs.append(f"Enrichment completed. Canonical Name: {canonical_name}")
+        logs.append(f"Profile extraction complete for {company_name}")
 
         return {
             "enrichments": full_profile,
-            "company_name": canonical_name,
-            "canonical_name": canonical_name,  # Explicit for UI
             "confidence": confidence,
-            "confidence_score": confidence,  # Explicit for UI
+            "confidence_score": confidence,
             "ticker": ticker,
             "exchange": exchange,
             "website": website,
@@ -78,8 +105,8 @@ def run_enrichment_node(state: AgentState):
         }
 
     except Exception as e:
-        logs.append(f"Enrichment failed: {str(e)}")
-        return {"logs": logs, "enrichments": {"error": str(e)}}
+        logs.append(f"Profiling failed: {str(e)}")
+        return {"logs": logs}
 
 
 def run_wikipedia_node(state: AgentState):
@@ -193,9 +220,12 @@ def run_ded_node(state: AgentState):
 def create_resolution_graph():
     """Graph 1: Canonical Resolution Only"""
     workflow = StateGraph(AgentState)
-    workflow.add_node("master_enrichment", run_enrichment_node)
-    workflow.set_entry_point("master_enrichment")
-    workflow.add_edge("master_enrichment", END)
+    workflow.add_node("resolution", run_resolution_node)
+    workflow.add_node("profiling", run_profiling_node)
+
+    workflow.set_entry_point("resolution")
+    workflow.add_edge("resolution", "profiling")
+    workflow.add_edge("profiling", END)
     return workflow.compile()
 
 

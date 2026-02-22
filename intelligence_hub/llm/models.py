@@ -64,13 +64,14 @@ class LLMModel(str, Enum):
 
 class LLMConfig:
     """LLM Configuration class for managing model parameters"""
+
     def __init__(
         self,
-        model: str = LLMModel.GPT_4_TURBO,
+        model: str = LLMModel.GEMINI_15_FLASH,
         temperature: float = 0.3,
         top_p: float = 1.0,
         frequency_penalty: float = 0.0,
-        provider: str = LLMProvider.OPENAI,
+        provider: str = LLMProvider.GOOGLE,
         api_key: Optional[str] = None,
     ):
         """
@@ -103,11 +104,11 @@ class LLMConfig:
             LLMConfig instance
         """
         return cls(
-            model=config_dict.get("model", LLMModel.GPT_4_TURBO),
+            model=config_dict.get("model", LLMModel.GEMINI_15_FLASH),
             temperature=config_dict.get("temperature", 0.3),
             top_p=config_dict.get("top_p", 1.0),
             frequency_penalty=config_dict.get("frequency_penalty", 0.0),
-            provider=config_dict.get("provider", LLMProvider.OPENAI),
+            provider=config_dict.get("provider", LLMProvider.GOOGLE),
             api_key=config_dict.get("api_key"),
         )
 

@@ -51,8 +51,8 @@ class PdfAgent(BaseAgent):
         Returns:
             (should_run, reasoning)
         """
-        company_name = state.get("company_name", "Unknown")
-        safe_company_name = company_name.strip()
+        company_name = state.get("company_name") or "Unknown"
+        safe_company_name = str(company_name).strip()
         data_dir = os.path.join(DATA_DIRECTORY, safe_company_name)
 
         # Check if directory exists and has PDFs
@@ -76,8 +76,8 @@ class PdfAgent(BaseAgent):
         Returns:
             Result with PDF analysis data
         """
-        company_name = state.get("company_name", "Unknown")
-        safe_company_name = company_name.strip()
+        company_name = state.get("company_name") or "Unknown"
+        safe_company_name = str(company_name).strip()
         data_dir = os.path.join(DATA_DIRECTORY, safe_company_name)
 
         self.log(f"Processing PDFs for: {company_name}")

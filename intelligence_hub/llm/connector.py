@@ -43,7 +43,12 @@ class LLMConnector:
             llm_config = LLMConfig()
 
         # Individual parameter overrides
+        # Individual parameter overrides
         self.model = model if model is not None else llm_config.model
+
+        # NOTE: We keep the full model name (including 'models/' prefix if present)
+        # to ensure compatibility with all LangChain Google GenAI library versions.
+
         self.temperature = (
             temperature if temperature is not None else llm_config.temperature
         )
@@ -55,25 +60,75 @@ class LLMConnector:
         )
 
         # --- Resolve provider ---
-        # Priority: 1. Explicit arg, 2. Auto-detect from model name (if model provided), 3. LLM_PROVIDER env var
-        resolved_provider = provider
-        if not resolved_provider and model:
+        # Priority:
+        # 1. Auto-detect from 'model' arg if provided
+        # 2. Auto-detect from 'llm_config.model' if 'model' arg is None
+        # 3. Explicit arg 'provider'
+        # 4. Provider from llm_config
+        # 5. LLM_PROVIDER env var
+
+        resolved_provider = None
+
+        # 1 & 2. Model-based detection takes precedence to avoid endpoint mismatch
+        if model:
             resolved_provider = LLMModel.detect_provider(model)
+        elif llm_config.model:
+            resolved_provider = LLMModel.detect_provider(llm_config.model)
+
+        # 3. Explicit provider arg (if provided, it overrides detection)
+        if provider:
+            resolved_provider = provider
+
+        # 4. Config-based fallback
+        if not resolved_provider:
+            resolved_provider = llm_config.provider
+
+        # 5. Env-based fallback
         if not resolved_provider:
             resolved_provider = os.getenv("LLM_PROVIDER")
 
-        self.provider = str(resolved_provider or "openai").lower()
+        # Helper to get string value from Enum or string
+        def safe_get_str(v):
+            if v is None:
+                return None
+            if hasattr(v, "value"):
+                return str(v.value)
+            return str(v)
+
+        self.provider = (safe_get_str(resolved_provider) or "google").lower()
 
         # --- Resolve API key ---
-        # Priority: explicit arg > config api_key > provider-specific env var > LLM_API_KEY
+        # Priority: explicit arg > config api_key > provider-specific env var > generic fallback
+        resolved_key = None
+
         if api_key:
             resolved_key = api_key
         elif getattr(llm_config, "api_key", None):
             resolved_key = llm_config.api_key
-        elif self.provider == LLMProvider.GOOGLE:
-            resolved_key = os.getenv("GOOGLE_API_KEY") or os.getenv("LLM_API_KEY")
-        else:
-            resolved_key = os.getenv("OPENAI_API_KEY") or os.getenv("LLM_API_KEY")
+
+        # Provider-specific resolution to avoid cross-pollination of keys
+        google_key = os.getenv("GOOGLE_API_KEY")
+        openai_key = os.getenv("OPENAI_API_KEY")
+        generic_key = os.getenv("LLM_API_KEY")
+
+        if not resolved_key:
+            if self.provider == "google":
+                # For Google, prioritize GOOGLE_API_KEY, then check if LLM_API_KEY looks like a Google key
+                resolved_key = google_key
+                if (
+                    not resolved_key
+                    and generic_key
+                    and not generic_key.startswith("sk-")
+                ):
+                    resolved_key = generic_key
+            else:
+                # For OpenAI, prioritize OPENAI_API_KEY, then check if LLM_API_KEY looks like an OpenAI key
+                resolved_key = openai_key
+                if not resolved_key and generic_key and generic_key.startswith("sk-"):
+                    resolved_key = generic_key
+                # Final fallback for generic key if no other key found
+                if not resolved_key:
+                    resolved_key = generic_key
 
         self.api_key = resolved_key
 
@@ -92,26 +147,42 @@ class LLMConnector:
     def _init_llm(self):
         """Initialise the correct LangChain LLM and embeddings for the resolved provider."""
         try:
-            if self.provider == LLMProvider.GOOGLE:
+            if self.provider == "google":
                 from langchain_google_genai import (
                     ChatGoogleGenerativeAI,
                     GoogleGenerativeAIEmbeddings,
                 )
 
+                # Standard Google model string: "gemini-1.5-flash"
+                # Some versions of LangChain Google GenAI client automatically
+                # add "models/" prefix, others require it.
+                # We'll normalize to a string the library expects.
+                target_model = self.model
+                if target_model.startswith("models/"):
+                    target_model = target_model[len("models/") :]
+
+                # Ensure model name is clean for ChatGoogleGenerativeAI
+                # The library often handles the prefix, but sometimes having it (or not having it)
+                # leads to 404s depending on the version.
+                clean_model = self.model.replace("models/", "")
+
                 self.llm = ChatGoogleGenerativeAI(
-                    model=self.model,
+                    model=clean_model,
                     google_api_key=self.api_key,
                     temperature=self.temperature,
                 )
 
+                # Standard embedding model
                 embed_model = os.getenv("EMBEDDING_MODEL", "embedding-001")
+                if embed_model.startswith("models/"):
+                    embed_model = embed_model[len("models/") :]
+
                 self.embeddings = GoogleGenerativeAIEmbeddings(
                     model=embed_model,
                     google_api_key=self.api_key,
                 )
                 self.mode = "LIVE (Google Gemini)"
-                display_model = self.model.replace("models/", "")
-                logger.info(f"LLM initialised: Google Gemini — {display_model}")
+                logger.info(f"LLM initialised: Google Gemini — {target_model}")
 
             else:
                 # Default: OpenAI
@@ -129,7 +200,8 @@ class LLMConnector:
                     openai_api_key=self.api_key,
                 )
                 self.mode = "LIVE (OpenAI)"
-                logger.info(f"LLM initialised: OpenAI — {self.model}")
+                display_model = self.model.replace("models/", "")
+                logger.info(f"LLM initialised: OpenAI — {display_model}")
 
         except ImportError as e:
             logger.error(

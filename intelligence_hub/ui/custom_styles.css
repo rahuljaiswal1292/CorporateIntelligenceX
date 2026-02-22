@@ -630,18 +630,36 @@ button[data-testid*="recent_inv"] {
     font-family: 'Poppins', sans-serif !important;
 }
 
-/* Fix Selectbox Text Visibility (Black text on White background) */
-.stSelectbox div[data-baseweb="select"] div {
+/* --- AGGRESSIVE SELECTBOX OVERRIDES --- */
+/* Target the main container and all its internal divs for all states */
+.stSelectbox div[data-baseweb="select"],
+[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"],
+.stSelectbox div[data-baseweb="select"]:focus,
+.stSelectbox div[data-baseweb="select"]:active,
+.stSelectbox div[data-baseweb="select"]>div {
+    background-color: #ffffff !important;
+    background: #ffffff !important;
+}
+
+/* Target all text elements within the selectbox */
+.stSelectbox div[data-baseweb="select"] *,
+[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] *,
+.stSelectbox [role="combobox"] * {
     color: #000000 !important;
     -webkit-text-fill-color: #000000 !important;
 }
 
-.stSelectbox div[data-baseweb="select"] span {
+/* Icon (arrow) color */
+.stSelectbox [data-baseweb="icon"] svg,
+[data-testid="stSidebar"] .stSelectbox [data-baseweb="icon"] svg {
+    fill: #000000 !important;
     color: #000000 !important;
 }
 
-.stSelectbox div[data-baseweb="select"] svg {
-    fill: #000000 !important;
+/* Target the specific control box that often stays black */
+[data-baseweb="select"]>div:first-child {
+    background-color: #ffffff !important;
+    color: #000000 !important;
 }
 
 /* Individual Log Entry - Terminal Style */
@@ -769,15 +787,30 @@ button[data-testid*="recent_inv"] {
 }
 
 /* Selectbox Dropdown Styling */
-.stSidebar .stSelectbox [data-baseweb="select"] {
-    background: rgba(255, 255, 255, 0.95) !important;
+[data-testid="stSidebar"] .stSelectbox [data-baseweb="select"] {
+    background-color: #ffffff !important;
     border-radius: 8px !important;
     border: 2px solid rgba(0, 51, 102, 0.3) !important;
 }
 
-.stSidebar .stSelectbox [data-baseweb="select"]:hover {
-    border-color: rgba(0, 119, 255, 0.6) !important;
-    box-shadow: 0 2px 8px rgba(0, 119, 255, 0.2) !important;
+/* Dropdown list styling - targeting global popover containers */
+div[data-baseweb="popover"],
+div[data-baseweb="popover"]>div,
+div[data-baseweb="popover"] [role="listbox"] {
+    background-color: #ffffff !important;
+}
+
+div[data-baseweb="popover"] [role="option"],
+div[data-baseweb="popover"] [role="option"] span,
+div[data-baseweb="popover"] [role="option"] div {
+    color: #000000 !important;
+    background-color: #ffffff !important;
+}
+
+div[data-baseweb="popover"] [role="option"]:hover,
+div[data-baseweb="popover"] [role="option"]:hover * {
+    background-color: #f0f4f8 !important;
+    color: #000000 !important;
 }
 
 /* Slider Styling */

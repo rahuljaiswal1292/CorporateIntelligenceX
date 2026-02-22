@@ -1,6 +1,7 @@
 import os
 import chromadb
 from langgraph.graph import StateGraph, END
+from langgraph.checkpoint.memory import MemorySaver
 from intelligence_hub.graph.state import AgentState
 
 # Agent imports
@@ -275,7 +276,9 @@ def create_resolution_graph():
     workflow.add_node("master_enrichment", run_enrichment_node)
     workflow.set_entry_point("master_enrichment")
     workflow.add_edge("master_enrichment", END)
-    return workflow.compile()
+
+    checkpointer = MemorySaver()
+    return workflow.compile(checkpointer=checkpointer)
 
 
 def create_enrichment_graph():
@@ -383,4 +386,5 @@ def create_enrichment_graph():
     workflow.add_edge("analyst", "presentation_agent")
     workflow.add_edge("presentation_agent", END)
 
-    return workflow.compile()
+    checkpointer = MemorySaver()
+    return workflow.compile(checkpointer=checkpointer)

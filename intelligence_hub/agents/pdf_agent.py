@@ -1,4 +1,5 @@
 import os
+import re
 import fitz  # PyMuPDF
 import json
 import hashlib
@@ -12,6 +13,24 @@ from intelligence_hub.config.config import DATA_DIRECTORY
 
 
 class PdfAgent(BaseAgent):
+    """
+    Agent 5: The PDF Processor.
+    Optimized for efficiency:
+    1. Skips duplicates via hashing.
+    2. Identifies relevant pages via TOC scan (Smart Index-Aware).
+    3. Extracts targeted insights (Financials, Structure) via LLM.
+    """
+
+    def _clean_text(self, text: str) -> str:
+        """Collapse multiple spaces and newlines to reduce token count."""
+        if not text:
+            return ""
+        # Collapse multiple spaces
+        text = re.sub(r" +", " ", text)
+        # Collapse multiple newlines
+        text = re.sub(r"\n+", "\n", text)
+        return text.strip()
+
     """
     Agent 5: The PDF Processor.
     Optimized for efficiency:
@@ -109,29 +128,65 @@ class PdfAgent(BaseAgent):
         self.log(f"Processing PDFs for: {company_name} in {data_dir}")
         pdf_results = []
 
-        # Find PDFs
+        # 1. Deduplication & Processing: Process all unique PDFs
         pdf_files = [f for f in os.listdir(data_dir) if f.lower().endswith(".pdf")]
-        # Sort by name (often includes date/year) to process newest first might be better?
-        # For now just standard sort
-        pdf_files.sort()
 
-        self.log(f"Found {len(pdf_files)} PDFs. Starting prioritized analysis...")
+        if not pdf_files:
+            return {
+                "data": [],
+                "document_type": "pdf_analysis",
+                "metadata": {"pdf_count": 0},
+            }
+
+        # Sort by modification time (newest first)
+        pdf_files.sort(
+            key=lambda f: os.path.getmtime(os.path.join(data_dir, f)), reverse=True
+        )
+
+        # Get existing hashes from ChromaDB to avoid re-processing across runs
+        existing_hashes = set()
+        if self.profile_store:
+            try:
+                existing_data = self.profile_store.get_enrichment_data(
+                    company_name, "pdf_insights"
+                )
+                for insights in existing_data.get("pdf_insights", []):
+                    h = insights.get("meta", {}).get("file_hash") or insights.get(
+                        "file_hash"
+                    )
+                    if h:
+                        existing_hashes.add(h)
+            except Exception as e:
+                self.log(f"Error checking existing hashes: {e}", "WARNING")
+
+        self.log(f"Found {len(pdf_files)} PDFs. Filtering for unique content...")
 
         for pdf_file in pdf_files:
             pdf_path = os.path.join(data_dir, pdf_file)
 
-            # 1. Duplicate Check
+            # Content-based hash check
             file_hash = self._get_file_hash(pdf_path)
-            if file_hash in self.processed_hashes:
-                self.log(f"Skipping duplicate file: {pdf_file}")
+            if not file_hash:
                 continue
+
+            if file_hash in self.processed_hashes or file_hash in existing_hashes:
+                self.log(f"Skipping duplicate or already-processed PDF: {pdf_file}")
+                continue
+
             self.processed_hashes.add(file_hash)
 
             try:
+                self.log(f"Analyzing unique PDF: {pdf_file}")
                 # 2. Smart Extraction
                 analysis_result = self.analyze_pdf_smart(pdf_path, pdf_file)
 
                 if analysis_result:
+                    # Tag with hash for persistent deduplication
+                    if isinstance(analysis_result, dict):
+                        if "meta" not in analysis_result:
+                            analysis_result["meta"] = {}
+                        analysis_result["meta"]["file_hash"] = file_hash
+
                     pdf_results.append(analysis_result)
 
                     # 3. Store Insights to Profile Store
@@ -152,6 +207,7 @@ class PdfAgent(BaseAgent):
             "metadata": {
                 "pdf_count": len(pdf_files),
                 "processed_count": len(pdf_results),
+                "unique_processed": len(pdf_results),
             },
         }
 
@@ -272,46 +328,84 @@ class PdfAgent(BaseAgent):
                     ):  # Ensure not to go out of bounds
                         relevant_text += doc[i].get_text() + "\n"
 
-        # D. LLM Extraction on Focused Text
-        # Process each category prompt
+        # D. LLM Extraction on Focused Text (OPTIMIZED: Consolidated Prompt)
+        # Clean text to reduce token count
+        clean_context = self._clean_text(relevant_text)[
+            :30000
+        ]  # Limit to ~10k tokens for safety
+
         prompts = self._load_prompts()
-        for prompt_cfg in prompts:
-            cat = prompt_cfg.get("category")
-            if cat == "toc_analysis":
-                continue  # Skip the helper prompt
+        extraction_tasks = []
+        for p in prompts:
+            cat = p.get("category")
+            if cat != "toc_analysis":
+                extraction_tasks.append(f"- {cat.upper()}: {p.get('prompt')}")
 
-            prompt_text = prompt_cfg.get("prompt")
-            response = ""
+        combined_tasks_str = "\n".join(extraction_tasks)
 
-            if is_image_pdf:
-                self.log(f"Analyzing {cat} via Vision...")
-                full_prompt = f"Analyze these document images from {file_name}. Task: {prompt_text}. Return strictly valid JSON."
-                response = self.llm_connector.analyze_with_images(
-                    full_prompt, page_images
-                )
-            else:
-                context_snippet = relevant_text[:25000]
-                full_prompt = f"""
-                Analyze the following text extracted from a corporate report ({file_name}).
-                
-                Text:
-                {context_snippet}
-                
-                Task: {prompt_text}
-                
-                Return strictly valid JSON.
-                """
-                response = self.llm_connector.analyze(full_prompt)
+        if is_image_pdf:
+            self.log(f"Analyzing {file_name} via Vision (Consolidated)...")
+            full_prompt = f"""
+            Analyze these document images from {file_name}.
+            Perform the following extraction tasks and return a single JSON object where keys are the task categories in lowercase (meta, financials, structure).
+            
+            Tasks:
+            {combined_tasks_str}
+            
+            Return strictly valid JSON.
+            """
+            response = self.llm_connector.analyze_with_images(full_prompt, page_images)
+        else:
+            self.log(f"Analyzing {file_name} via Text (Consolidated)...")
+            full_prompt = f"""
+            Analyze the following text extracted from a corporate report ({file_name}).
+            
+            Text:
+            {clean_context}
+            
+            Perform the following extraction tasks and return a single JSON object where keys are the task categories in lowercase (meta, financials, structure).
+            
+            Tasks:
+            {combined_tasks_str}
+            
+            Return strictly valid JSON.
+            """
+            response = self.llm_connector.analyze(full_prompt)
 
-            # Try to parse JSON
-            try:
-                # Clean markdown code blocks if present
-                clean_resp = response.replace("```json", "").replace("```", "").strip()
-                data_json = json.loads(clean_resp)
-                extracted_data[cat] = data_json
-            except:
-                # Fallback to raw string if json fails
-                extracted_data[cat] = response
+        # Parse Consolidated JSON result
+        try:
+            # Clean markdown code blocks if present
+            clean_resp = response.replace("```json", "").replace("```", "").strip()
+            data_json = json.loads(clean_resp)
+
+            # Map back to extracted_data
+            for key, val in data_json.items():
+                k_lower = key.lower()
+                if k_lower in extracted_data:
+                    extracted_data[k_lower] = val
+                else:
+                    # In case LLM used a slightly different key but it's one of our categories
+                    for cat in ["meta", "financials", "structure"]:
+                        if cat in k_lower:
+                            extracted_data[cat] = val
+        except Exception as e:
+            self.log(f"Failed to parse consolidated JSON: {e}.", "WARNING")
+            # Fallback to per-category extraction if consolidated fails (Safety)
+            self.log("Falling back to legacy per-category extraction.")
+            for prompt_cfg in prompts:
+                cat = prompt_cfg.get("category")
+                if cat == "toc_analysis":
+                    continue
+
+                single_prompt = f"Text:\n{clean_context}\n\nTask: {prompt_cfg.get('prompt')}\nReturn JSON."
+                try:
+                    single_resp = self.llm_connector.analyze(single_prompt)
+                    clean_s = (
+                        single_resp.replace("```json", "").replace("```", "").strip()
+                    )
+                    extracted_data[cat] = json.loads(clean_s)
+                except:
+                    extracted_data[cat] = single_resp
 
         return extracted_data
 

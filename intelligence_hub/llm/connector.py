@@ -10,6 +10,9 @@ from intelligence_hub.llm.models import LLMConfig, LLMModel
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Models known to support Vision (image_url)
+VISION_MODELS = {"gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-4-turbo-2024-04-09"}
+
 
 class LLMConnector:
     """
@@ -124,7 +127,23 @@ class LLMConnector:
                     )
 
                 message = HumanMessage(content=content_parts)
-                response = self.llm.invoke([message])
+
+                # Check if current model supports vision
+                if self.model in VISION_MODELS:
+                    response = self.llm.invoke([message])
+                else:
+                    logger.warning(
+                        f"Model {self.model} does not support vision. Falling back to gpt-4o for this request."
+                    )
+                    # Create temporary vision-capable LLM
+                    vision_llm = ChatOpenAI(
+                        model="gpt-4o",
+                        openai_api_key=self.api_key,
+                        temperature=self.temperature,
+                        top_p=self.top_p,
+                    )
+                    response = vision_llm.invoke([message])
+
                 return response.content
             except Exception as e:
                 logger.error(f"LLM Vision Error: {str(e)}")

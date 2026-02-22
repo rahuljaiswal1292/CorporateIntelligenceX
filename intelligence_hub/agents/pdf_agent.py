@@ -337,7 +337,7 @@ class PdfAgent(BaseAgent):
         except:
             return {}
 
-    def run(self, state):
+    def run(self, state: AgentState) -> AgentState:
         """Run PDF agent workflow"""
         logs = state.get("logs", [])
         should_run, reasoning = self.should_execute(state)

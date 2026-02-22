@@ -72,6 +72,14 @@ def run_enrichment_node(state: AgentState):
             inner_enrichments = full_profile.pop("enrichments")
             full_profile.update(inner_enrichments)
 
+        # Flatten 'enrichments' to top level of profile
+        # User requested bringing DED, Competitor Analysis etc one level up.
+        # Currently: state['enrichments'] -> full_profile -> 'enrichments' -> 'DED'
+        # Target: state['enrichments'] -> 'DED'
+        if "enrichments" in full_profile:
+            inner_enrichments = full_profile.pop("enrichments")
+            full_profile.update(inner_enrichments)
+
         logs.append(f"Enrichment completed. Canonical Name: {canonical_name}")
 
         return {

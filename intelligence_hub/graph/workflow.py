@@ -42,12 +42,13 @@ def run_enrichment_node(state: AgentState):
             logs.append(msg.strip())
             print(msg.strip())
 
-        # Initialize Master Agent
+        # Initialize Master Agent - disable heavy enrichment for initial resolution
         agent = MasterAgent(
             company_name=company_name,
             llm_connector=llm_connector,
             profile_store=store,
             log_callback=log_handler,
+            enable_enrichment=False,  # Defer heavy enrichment to parallel nodes
         )
 
         # Run agent
@@ -129,7 +130,14 @@ def run_wikipedia_node(state: AgentState):
         result = agent.run(state)
         logs.append(f"Wikipedia Agent: {result.get('status', 'unknown')}")
 
-        return {"logs": logs}
+        return {
+            "logs": logs,
+            "enrichments": (
+                {"wikipedia": result.get("data")}
+                if result.get("status") == "completed"
+                else {}
+            ),
+        }
     except Exception as e:
         logs.append(f"Wikipedia Agent failed: {str(e)}")
         return {"logs": logs}
@@ -165,7 +173,14 @@ def run_news_node(state: AgentState):
         result = agent.run(state)
         logs.append(f"News Agent: {result.get('status', 'unknown')}")
 
-        return {"logs": logs}
+        return {
+            "logs": logs,
+            "enrichments": (
+                {"news": result.get("data")}
+                if result.get("status") == "completed"
+                else {}
+            ),
+        }
     except Exception as e:
         logs.append(f"News Agent failed: {str(e)}")
         return {"logs": logs}
@@ -201,9 +216,56 @@ def run_ded_node(state: AgentState):
         result = agent.run(state)
         logs.append(f"DED Agent: {result.get('status', 'unknown')}")
 
-        return {"logs": logs}
+        return {
+            "logs": logs,
+            "enrichments": (
+                {"uae_ded_license": result.get("data")}
+                if result.get("status") == "completed"
+                else {}
+            ),
+        }
     except Exception as e:
         logs.append(f"DED Agent failed: {str(e)}")
+        return {"logs": logs}
+
+
+def run_competitor_analysis_node(state: AgentState):
+    """Executes Competitor Analysis using MasterAgent's internal method"""
+    company_name = (
+        state.get("canonical_name")
+        or state.get("company_name")
+        or state.get("query", "Unknown")
+    )
+    logs = []
+
+    try:
+        store = CorporateProfileStore()
+        llm_config = state.get("llm_config", {})
+        llm_connector = LLMConnector(config=llm_config)
+
+        def log_handler(msg):
+            logs.append(msg.strip())
+            print(msg.strip())
+
+        # Use MasterAgent just for its competitor analysis capability
+        agent = MasterAgent(
+            company_name=company_name,
+            llm_connector=llm_connector,
+            profile_store=store,
+            log_callback=log_handler,
+            enable_enrichment=True,
+        )
+
+        competitor_results = agent.get_competitor_analysis(company_name)
+
+        return {
+            "logs": logs,
+            "enrichments": {
+                "Competitor Analysis": {"status": "success", "data": competitor_results}
+            },
+        }
+    except Exception as e:
+        logs.append(f"Competitor Analysis failed: {str(e)}")
         return {"logs": logs}
 
 
@@ -291,6 +353,7 @@ def create_enrichment_graph():
     workflow.add_node("wikipedia", run_wikipedia_node)
     workflow.add_node("news", run_news_node)
     workflow.add_node("ded", run_ded_node)
+    workflow.add_node("competitors", run_competitor_analysis_node)
     workflow.add_node("scraper", scraper.run)
     workflow.add_node("vectorizer", vectorizer.run)
     workflow.add_node("analyst", run_analyst_node)
@@ -305,11 +368,13 @@ def create_enrichment_graph():
     workflow.add_edge("start_enrichment", "wikipedia")
     workflow.add_edge("start_enrichment", "news")
     workflow.add_edge("start_enrichment", "ded")
+    workflow.add_edge("start_enrichment", "competitors")
 
     # Convergence
     workflow.add_edge("wikipedia", "scraper")
     workflow.add_edge("news", "scraper")
     workflow.add_edge("ded", "scraper")
+    workflow.add_edge("competitors", "scraper")
 
     # Sequential
     workflow.add_edge("scraper", "pdf_agent")

@@ -5,7 +5,9 @@ Specialized agent for extracting company profiles from SERP API data.
 This is the foundational agent that establishes the canonical name and basic profile.
 """
 
+import os
 import json
+from datetime import datetime, timedelta
 from typing import Dict, Optional, Callable
 from serpapi import GoogleSearch
 
@@ -57,16 +59,32 @@ class SerpAPIProfileAgent(BaseAgent):
 
     def fetch_serp_data(self, query: str) -> Dict:
         """
-        Fetch raw SERP data from Google
-
-        Args:
-            query: Search query
-
-        Returns:
-            Raw SERP API response
+        Fetch raw SERP data from Google with disk caching.
         """
         self.log(f"Fetching SERP data for query: {query}")
 
+        # 1. Check disk cache
+        try:
+            # Look for recent serp_raw_*.json files in data_dir
+            cache_files = list(self.data_dir.glob("serp_raw_*.json"))
+            if cache_files:
+                # Get the most recent one
+                latest_cache = max(cache_files, key=os.path.getmtime)
+                # Check age (e.g. 7 days)
+                file_age_days = (
+                    datetime.now()
+                    - datetime.fromtimestamp(os.path.getmtime(latest_cache))
+                ).days
+                if file_age_days < 7:
+                    self.log(
+                        f"Loading raw SERP data from disk cache: {latest_cache.name} ({file_age_days} days old)"
+                    )
+                    with open(latest_cache, "r", encoding="utf-8") as f:
+                        return json.load(f)
+        except Exception as e:
+            self.log(f"Cache read failed: {e}", "WARNING")
+
+        # 2. Call API if no cache
         try:
             # Format query with quotes and "company" suffix for better results
             formatted_query = f'"{query}" company'
@@ -329,11 +347,14 @@ class SerpAPIProfileAgent(BaseAgent):
                     elif clean_score.lower() == "low":
                         profile["confidence_score"] = 30
                     else:
-                         profile["confidence_score"] = 0
+                        profile["confidence_score"] = 0
                 else:
                     profile["confidence_score"] = int(raw_score)
             except (ValueError, TypeError):
-                self.log(f"Error parsing confidence score: {profile.get('confidence_score')}", "WARNING")
+                self.log(
+                    f"Error parsing confidence score: {profile.get('confidence_score')}",
+                    "WARNING",
+                )
                 profile["confidence_score"] = 0
 
             self.log(

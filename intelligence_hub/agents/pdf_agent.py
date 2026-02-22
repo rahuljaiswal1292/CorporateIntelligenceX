@@ -345,14 +345,14 @@ class PdfAgent(BaseAgent):
         if not should_run:
             self.log(f"Skipping PDF processing: {reasoning}")
             logs.append(f"PdfAgent: Skipped - {reasoning}")
-            return {**state, "logs": logs, "pdf_results": []}
+            return {"logs": logs, "pdf_results": []}
 
         try:
             result = self.execute(state)
             pdf_results = result.get("data", [])
             logs.append(f"PdfAgent: Processed {len(pdf_results)} PDFs (Smart Mode)")
-            return {**state, "logs": logs, "pdf_results": pdf_results}
+            return {"logs": logs, "pdf_results": pdf_results}
         except Exception as e:
             self.log(f"PDF processing failed: {e}", "ERROR")
             logs.append(f"PdfAgent: Failed - {str(e)}")
-            return {**state, "logs": logs, "pdf_results": []}
+            return {"logs": logs, "pdf_results": []}

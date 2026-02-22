@@ -224,7 +224,6 @@ class AnalystAgent(BaseAgent):
                 financial_data["daily_summary"] = daily_summary
 
             return {
-                **state,  # Merge original state to preserve all keys
                 "insights": insights,
                 "final_report": final_report,
                 "logs": logs,
@@ -235,7 +234,6 @@ class AnalystAgent(BaseAgent):
             self.log(f"Analyst execution failed: {e}", "ERROR")
             logs.append("Analyst: Error in insight generation.")
             return {
-                **state,  # Merge original state on error too
                 "insights": [],
                 "logs": logs,
             }

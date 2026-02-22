@@ -13,18 +13,15 @@ import re
 try:
     from dotenv import load_dotenv
 
-    load_dotenv(override=True)
+    load_dotenv()
 except ImportError:
     pass
 
-try:
-    from intelligence_hub.connectors.web_scraper_connector import WebScraperConnector
-    from intelligence_hub.utils.storage_manager import StorageManager
-    from intelligence_hub.utils.adx_download_manager import DownloadManager
-    from intelligence_hub.utils.bot_handler import BotHandler
-    from intelligence_hub.utils.content_cleaner import clean_html_to_markdown
-except ImportError:
-    import requests  # Fallback if not installed, though user added it
+# Core Utilities
+from intelligence_hub.utils.storage_manager import StorageManager
+from intelligence_hub.utils.adx_download_manager import DownloadManager
+from intelligence_hub.utils.bot_handler import BotHandler
+from intelligence_hub.utils.content_cleaner import clean_html_to_markdown
 
 # Configure logging
 logging.basicConfig(
@@ -33,9 +30,6 @@ logging.basicConfig(
 logger = logging.getLogger("ADXScraper")
 
 # --- Configuration & Storage ---
-
-# Import project-level config
-from intelligence_hub.config.settings import config
 
 
 class Config:
@@ -60,7 +54,6 @@ except ImportError:
 # StorageManager is imported from utils
 
 
-
 # --- Scraper ---
 
 
@@ -79,14 +72,10 @@ class ADXScraper:
         self.browser: Optional[Browser] = None
         self.playwright = None
 
-        # Initialize enhanced download manager and bot handler
+        # Initialize download manager and bot handler
         max_age_years = 5
-        self.download_manager = (
-            DownloadManager(max_age_years=max_age_years)
-            if "DownloadManager" in globals()
-            else None
-        )
-        self.bot_handler = BotHandler() if "BotHandler" in globals() else None
+        self.download_manager = DownloadManager(max_age_years=max_age_years)
+        self.bot_handler = BotHandler()
 
         # known companies map
         self.known_companies = {
@@ -160,24 +149,6 @@ class ADXScraper:
         Main entry point for scraping a company.
         Executes comprehensive crawl similar to ADXReportCrawler.
         """
-        ticker = ticker.upper()
-        # Canonical name check
-        canonical_name = self.known_companies.get(ticker, ticker)
-
-        logger.info(f"Starting Advanced ADX Scrape for {ticker} ({canonical_name})")
-
-        data = {
-            "source": "ADX",
-            "ticker": ticker,
-            "scraped_at": datetime.now().isoformat(),
-            "profile": {},
-            "financials": {},
-            "metrics": {},
-            "documents": [],
-        }
-
-        # URL Patterns
-        # URL Patterns
         urls = {
             "overview": f"https://www.adx.ae/main-market/company-profile/overview?symbols={ticker}",
             "financials": f"https://www.adx.ae/main-market/company-profile/financial-reports?symbols={ticker}",
@@ -397,26 +368,15 @@ class ADXScraper:
             if name:
                 profile["company_name"] = name.get_text(strip=True)
 
-            # Try to find Sector in Meta list
-            # Look for "Sector:" label
-            # Generic search in header
-            for el in header_details.parent.find_all(
-                string=lambda text: text and "Sector" in text
-            ):
-                parent = el.parent
-                # Check for value in next sibling or within same text
-                txt = parent.get_text(strip=True)
-                if ":" in txt:
-                    parts = txt.split(":")
-                    if len(parts) > 1 and "Sector" in parts[0]:
-                        profile["sector"] = parts[1].strip()
-                else:
-                    # Maybe next sibling?
-                    sib = parent.find_next_sibling()
-                    if sib:
-                        profile["sector"] = sib.get_text(strip=True)
+            sector = header_details.select_one("h4")
+            if sector:
+                profile["sector"] = sector.get_text(strip=True)
 
         return {"profile": profile}
+
+    def _parse_financials(self, html: str) -> dict:
+        soup = BeautifulSoup(html, "html.parser")
+        financials = {"revenue": "NOT AVAILABLE", "net_profit": "NOT AVAILABLE"}
 
     async def _prepare_page_content(self, page: Page, page_type: str):
         """Interact with page elements to ensure all content is loaded before capture."""
@@ -962,29 +922,28 @@ if __name__ == "__main__":
     tickers = [
         # "ADNHC",
         # "ADNOCGAS",
-        "ALDAR",
+        # "ALDAR",
         # "ALPHADATA",
         # "EAND",
-        # "FAB",
+        "FAB",
         # "LULU",
     ]
 
     # Try loading environment variables
-    # try:
-    #     from dotenv import load_dotenv
+    try:
+        from dotenv import load_dotenv
 
-    # # tickers = [
-    # #     "LULU",
-    # #     "ADNOCGAS",
-    # # ]
+        load_dotenv()
+    except ImportError:
+        pass
 
-    # # # Try applying nest_asyncio for notebook/IDE support
-    # # try:
-    # #     import nest_asyncio
+    # Try applying nest_asyncio for notebook/IDE support
+    try:
+        import nest_asyncio
 
-    # #     nest_asyncio.apply()
-    # # except ImportError:
-    # #     pass
+        nest_asyncio.apply()
+    except ImportError:
+        pass
 
     async def main():
         print(f"--- Running ADX Scraper for: {tickers} ---")

@@ -53,11 +53,30 @@ class PdfAgent(BaseAgent):
         """
         company_name = state.get("company_name") or "Unknown"
         safe_company_name = str(company_name).strip()
-        data_dir = os.path.join(DATA_DIRECTORY, safe_company_name)
+
+        # Try multiple directory variants for robustness
+        potential_paths = [
+            os.path.join(DATA_DIRECTORY, safe_company_name),  # Exact match
+            os.path.join(
+                DATA_DIRECTORY, safe_company_name.lower()
+            ),  # lowercase (emaar)
+            os.path.join(
+                DATA_DIRECTORY, safe_company_name.title()
+            ),  # title case (Emaar)
+        ]
+
+        data_dir = None
+        for path in potential_paths:
+            if os.path.exists(path) and os.path.isdir(path):
+                data_dir = path
+                break
 
         # Check if directory exists and has PDFs
-        if not os.path.exists(data_dir):
-            return (False, f"Directory not found: {data_dir}")
+        if not data_dir:
+            return (
+                False,
+                f"Directory not found for {safe_company_name} (checked: {', '.join(potential_paths)})",
+            )
 
         pdf_files = [f for f in os.listdir(data_dir) if f.lower().endswith(".pdf")]
 
@@ -78,9 +97,29 @@ class PdfAgent(BaseAgent):
         """
         company_name = state.get("company_name") or "Unknown"
         safe_company_name = str(company_name).strip()
-        data_dir = os.path.join(DATA_DIRECTORY, safe_company_name)
 
-        self.log(f"Processing PDFs for: {company_name}")
+        # Try multiple directory variants
+        potential_paths = [
+            os.path.join(DATA_DIRECTORY, safe_company_name),
+            os.path.join(DATA_DIRECTORY, safe_company_name.lower()),
+            os.path.join(DATA_DIRECTORY, safe_company_name.title()),
+        ]
+
+        data_dir = None
+        for path in potential_paths:
+            if os.path.exists(path) and os.path.isdir(path):
+                data_dir = path
+                break
+
+        if not data_dir:
+            self.log(f"No directory found for {safe_company_name}", "ERROR")
+            return {
+                "data": [],
+                "document_type": "pdf_analysis",
+                "metadata": {"error": "Directory not found"},
+            }
+
+        self.log(f"Processing PDFs in: {data_dir}")
         pdf_results = []
 
         # Find PDFs

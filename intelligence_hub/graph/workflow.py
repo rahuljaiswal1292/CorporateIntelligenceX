@@ -139,10 +139,11 @@ def run_wikipedia_node(state: AgentState):
         result = agent.run(state)
         logs.append(f"Wikipedia Agent: {result.get('status', 'unknown')}")
 
-        return {"logs": logs}
     except Exception as e:
         logs.append(f"Wikipedia Agent failed: {str(e)}")
-        return {"logs": logs}
+
+    # Only return logs — don't overwrite shared state fields that other parallel nodes own
+    return {"logs": logs}
 
 
 def run_news_node(state: AgentState):
@@ -175,10 +176,10 @@ def run_news_node(state: AgentState):
         result = agent.run(state)
         logs.append(f"News Agent: {result.get('status', 'unknown')}")
 
-        return {"logs": logs}
     except Exception as e:
         logs.append(f"News Agent failed: {str(e)}")
-        return {"logs": logs}
+
+    return {"logs": logs}
 
 
 def run_ded_node(state: AgentState):
@@ -211,10 +212,23 @@ def run_ded_node(state: AgentState):
         result = agent.run(state)
         logs.append(f"DED Agent: {result.get('status', 'unknown')}")
 
-        return {"logs": logs}
     except Exception as e:
         logs.append(f"DED Agent failed: {str(e)}")
-        return {"logs": logs}
+
+    return {"logs": logs}
+
+
+def join_enrichment_node(state: AgentState):
+    """
+    Passthrough join node.
+
+    LangGraph requires a single downstream node to collect the results of
+    parallel branches. All three parallel enrichment agents (Wikipedia, News,
+    DED) converge here before the scraper runs. Their individual log lines
+    are merged automatically by the `Annotated[List, operator.add]` reducer
+    defined on AgentState.logs, so this node has nothing extra to do.
+    """
+    return {"logs": ["Enrichment agents complete — starting scraper phase."]}
 
 
 def create_resolution_graph():
@@ -279,29 +293,46 @@ def create_enrichment_graph():
 
     workflow = StateGraph(AgentState)
 
-    # Nodes
-    workflow.add_node("start_enrichment", lambda state: state)
+    # ── Nodes ──────────────────────────────────────────────────────────────
+    # start_enrichment: lightweight pass-through that signals the graph entry.
+    # Must return a dict (even if empty) — never pass the full state object.
+    workflow.add_node(
+        "start_enrichment", lambda state: {"logs": ["Starting enrichment phase..."]}
+    )
+
+    # Parallel enrichment agents
     workflow.add_node("wikipedia", run_wikipedia_node)
     workflow.add_node("news", run_news_node)
     workflow.add_node("ded", run_ded_node)
+
+    # ── FAN-IN fix: explicit join node ────────────────────────────────────
+    # LangGraph cannot compile a graph where multiple edges arrive at the
+    # same node from different branches without a declared join.  Adding
+    # `join_enrichment` as the single target of all three parallel branches
+    # resolves the compilation error.
+    workflow.add_node("join_enrichment", join_enrichment_node)
+
+    # Sequential post-enrichment nodes
     workflow.add_node("scraper", scraper.run)
     workflow.add_node("vectorizer", vectorizer.run)
     workflow.add_node("analyst", run_analyst_node)
     workflow.add_node("pdf_agent", run_pdf_agent_node)
 
-    # Edges - Parallel Start
+    # ── Edges ──────────────────────────────────────────────────────────────
     workflow.set_entry_point("start_enrichment")
 
+    # Fan-out: start_enrichment → all three parallel enrichment nodes
     workflow.add_edge("start_enrichment", "wikipedia")
     workflow.add_edge("start_enrichment", "news")
     workflow.add_edge("start_enrichment", "ded")
 
-    # Convergence
-    workflow.add_edge("wikipedia", "scraper")
-    workflow.add_edge("news", "scraper")
-    workflow.add_edge("ded", "scraper")
+    # Fan-in: all three parallel nodes → join_enrichment
+    workflow.add_edge("wikipedia", "join_enrichment")
+    workflow.add_edge("news", "join_enrichment")
+    workflow.add_edge("ded", "join_enrichment")
 
-    # Sequential
+    # Sequential pipeline after the join
+    workflow.add_edge("join_enrichment", "scraper")
     workflow.add_edge("scraper", "vectorizer")
     workflow.add_edge("vectorizer", "pdf_agent")
     workflow.add_edge("pdf_agent", "analyst")

@@ -1,4 +1,11 @@
 import streamlit as st
+import asyncio
+import sys
+
+# Windows-specific fix for Playwright/asyncio
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
 import time
 from datetime import datetime
 import textwrap
@@ -66,7 +73,7 @@ st.set_page_config(
 )
 
 # --- Apply Custom CSS ---
-st.markdown(get_custom_css(), unsafe_allow_html=True)
+st.html(get_custom_css())
 
 # Load additional custom CSS from file
 custom_css_path = (
@@ -75,7 +82,7 @@ custom_css_path = (
 if custom_css_path.exists():
     with open(custom_css_path, "r", encoding="utf-8") as f:
         custom_css = f"<style>{f.read()}</style>"
-        st.markdown(custom_css, unsafe_allow_html=True)
+        st.html(custom_css)
 
 # --- Session State ---
 if "logs" not in st.session_state:
@@ -154,7 +161,7 @@ def render_resolved_ui(
         with col_display:
             if st.session_state.is_resolving and not st.session_state.canonical_name:
                 # Resolving state
-                st.html(
+                st.markdown(
                     textwrap.dedent(
                         """
                     <div class="canonical-container" style="margin: 0;">
@@ -167,7 +174,8 @@ def render_resolved_ui(
                         </div>
                     </div>
                     """
-                    )
+                    ),
+                    unsafe_allow_html=True,
                 )
             elif st.session_state.canonical_name:
                 # Resolved state
@@ -178,7 +186,7 @@ def render_resolved_ui(
                 )
                 status_class = "resolved"
 
-                st.html(
+                st.markdown(
                     textwrap.dedent(
                         f"""
                     <div class="canonical-container" style="margin: 0;">
@@ -192,11 +200,12 @@ def render_resolved_ui(
                         </div>
                     </div>
                     """
-                    )
+                    ),
+                    unsafe_allow_html=True,
                 )
             else:
                 # Default state
-                st.html(
+                st.markdown(
                     textwrap.dedent(
                         """
                     <div class="canonical-container" style="margin: 0;">
@@ -209,7 +218,8 @@ def render_resolved_ui(
                         </div>
                     </div>
                     """
-                    )
+                    ),
+                    unsafe_allow_html=True,
                 )
 
         # (Button moved to bottom)
@@ -677,7 +687,7 @@ def render_resolved_ui(
                 and not st.session_state.analysis_complete
                 and show_button
             ):
-                st.markdown('<div style="height:20px;"></div>', unsafe_allow_html=True)
+                st.html('<div style="height:20px;"></div>')
                 col_abort, col_continue = st.columns([1, 2.5])
 
                 with col_abort:
@@ -699,7 +709,7 @@ def render_resolved_ui(
                 with col_continue:
                     btn_disabled = not st.session_state.canonical_name
                     if st.button(
-                        "CONTINUE INVESTIGATION →",
+                        "CONTINUE PROFILING →",
                         key=key,
                         disabled=btn_disabled,
                         type="primary",
@@ -707,7 +717,7 @@ def render_resolved_ui(
                     ):
                         return True
         elif st.session_state.is_resolving:
-            # Show a beautiful loading placeholder
+            # Show a beautiful shimmer loading placeholder
             st.html(
                 """
             <div class="summary-card" style="opacity: 0.7;">
@@ -888,10 +898,13 @@ def run_investigation(
             }
             agent_key = node_to_agent.get(node)
             if agent_key:
-                # Check if this node had an error
+                # Check if this node had an error — only look at NEW logs from this event
+                # (not all accumulated logs, which may contain unrelated 'error'/'failed' words)
                 node_logs = state.get("logs", [])
-                has_error = any(
-                    "failed" in l.lower() or "error" in l.lower() for l in node_logs
+                # Only flag error if the LAST log entry (the most recent) indicates failure
+                last_log = node_logs[-1].lower() if node_logs else ""
+                has_error = ("failed" in last_log and "error" in last_log) or (
+                    "exception" in last_log
                 )
                 st.session_state.agent_status[agent_key] = (
                     "error" if has_error else "success"
@@ -941,7 +954,12 @@ def run_investigation(
             update_resolved_ui()
 
             if state_canonical and not st.session_state.canonical_name:
-                st.session_state.canonical_name = state_canonical
+                import re as _re
+
+                # Strip any HTML tags that might come from state (e.g. </div> from profiler output)
+                state_canonical = _re.sub(r"<[^>]+>", "", str(state_canonical)).strip()
+                if state_canonical:
+                    st.session_state.canonical_name = state_canonical
                 # Capture confidence score if available
                 if state.get("confidence") or state.get("confidence_score"):
                     confidence = state.get("confidence") or state.get(
@@ -979,7 +997,12 @@ def run_investigation(
                         ):
                             parts = log.split("Canonical Name: ")
                             if len(parts) > 1:
-                                st.session_state.canonical_name = parts[1].strip()
+                                import re as _re
+
+                                raw_name = parts[1].strip()
+                                clean_name = _re.sub(r"<[^>]+>", "", raw_name).strip()
+                                if clean_name:
+                                    st.session_state.canonical_name = clean_name
                                 st.session_state.is_resolving = False
 
                                 # Mark Stage 1 as Complete (Green) immediately
@@ -989,7 +1012,13 @@ def run_investigation(
                         elif " to " in log and not st.session_state.canonical_name:
                             parts = log.split(" to ")
                             if len(parts) > 1:
-                                st.session_state.canonical_name = parts[1].strip()
+                                import re as _re
+
+                                # Strip any HTML tags in case log contains markup
+                                raw_name = parts[1].strip()
+                                clean_name = _re.sub(r"<[^>]+>", "", raw_name).strip()
+                                if clean_name:
+                                    st.session_state.canonical_name = clean_name
                                 st.session_state.is_resolving = False
 
                                 # Mark Stage 1 as Complete (Green) immediately
@@ -1189,7 +1218,7 @@ with st.sidebar:
         "llm_model_select", LLMModel.GEMINI_15_FLASH.value
     )
     llm_provider = (
-        "Gemini (Google)" if "gemini" in current_model_val.lower() else "OpenAI"
+        "Google" if "gemini" in current_model_val.lower() else "OpenAI"
     )
     st.caption(f"LLM Provider: **{llm_provider}**")
 
@@ -1289,7 +1318,7 @@ st.markdown(
 )
 
 # Feature tiles below banner
-st.html(
+st.markdown(
     """
     <div class="feature-grid">
         <div class="feature-card">
@@ -1309,7 +1338,8 @@ st.html(
             <p>Deep insights, trend analysis, and predictive intelligence</p>
         </div>
     </div>
-    """
+    """,
+    unsafe_allow_html=True,
 )
 
 # Search Company Label - professional styling
@@ -1329,20 +1359,20 @@ with cols[0]:
         key="company_search_input",
     )
 
+with cols[3]:
+    test_data_clicked = st.button(
+        "📊 Test Dashboard", type="secondary", use_container_width=True
+    )
+
 with cols[1]:
     search_clicked = st.button("🔍 Search", type="primary", use_container_width=True)
 
 with cols[2]:
     abort_clicked = st.button("🛑 Abort", type="secondary", use_container_width=True)
 
-with cols[3]:
-    test_data_clicked = st.button(
-        "📊 Test Dashboard", type="secondary", use_container_width=True
-    )
-
 
 # Canonical Name Section - professional styling
-st.markdown('<div class="ui-section-label"></div>', unsafe_allow_html=True)
+st.html('<div class="ui-section-label"></div>')
 
 # Canonical Name Display
 # Canonical Name Display
@@ -1368,7 +1398,7 @@ with pipeline_placeholder.container():
 # Main Dashboard Placeholder
 dashboard_placeholder = st.empty()
 
-# Action: Continue Investigation
+# Action: Continue Profiling
 if continue_clicked:
     # Ensure invalid states are cleared
     st.session_state.investigation_paused = False
@@ -1403,9 +1433,6 @@ if abort_clicked:
 
 # Trigger Search
 if search_clicked and query_input:
-    # Set resolving state immediately
-    st.session_state.is_resolving = True
-    st.session_state.canonical_name = None
     st.session_state.progress_stage = 1
     st.session_state.investigation_paused = False
 
@@ -1453,3 +1480,4 @@ if st.session_state.analysis_complete and st.session_state.data:
 elif not st.session_state.analysis_complete and st.session_state.progress_stage == 0:
     # Empty State - Show nothing or a welcome message
     pass
+# End of Streamlit App - Force Reload 1

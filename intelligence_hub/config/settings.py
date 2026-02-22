@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 
-
 class Settings:
     # API Keys
     SCRAPER_API_KEY = os.getenv("SCRAPER_API_KEY", "")
@@ -108,6 +107,86 @@ class Settings:
             "ticker": "ALDAR",
             "exchange": "ADX",
             "website": "https://www.aldar.com",
+        },
+        # ── DFM Companies ──────────────────────────────────────────────────
+        "air arabia": {
+            "name": "Air Arabia PJSC",
+            "ticker": "AIRARABIA",
+            "exchange": "DFM",
+            "website": "https://www.airarabia.com",
+        },
+        "airarabia": {
+            "name": "Air Arabia PJSC",
+            "ticker": "AIRARABIA",
+            "exchange": "DFM",
+            "website": "https://www.airarabia.com",
+        },
+        "du": {
+            "name": "Emirates Integrated Telecommunications Company PJSC",
+            "ticker": "DU",
+            "exchange": "DFM",
+            "website": "https://www.du.ae",
+        },
+        "dewa": {
+            "name": "Dubai Electricity and Water Authority PJSC",
+            "ticker": "DEWA",
+            "exchange": "DFM",
+            "website": "https://www.dewa.gov.ae",
+        },
+        "talabat": {
+            "name": "Talabat Holding PLC",
+            "ticker": "TALABAT",
+            "exchange": "DFM",
+            "website": "https://www.talabat.com",
+        },
+        "mashreq": {
+            "name": "Mashreqbank PSC",
+            "ticker": "MASQ",
+            "exchange": "DFM",
+            "website": "https://www.mashreqbank.com",
+        },
+        "masq": {
+            "name": "Mashreqbank PSC",
+            "ticker": "MASQ",
+            "exchange": "DFM",
+            "website": "https://www.mashreqbank.com",
+        },
+        "dubai islamic bank": {
+            "name": "Dubai Islamic Bank PJSC",
+            "ticker": "DIB",
+            "exchange": "DFM",
+            "website": "https://www.dib.ae",
+        },
+        "dib": {
+            "name": "Dubai Islamic Bank PJSC",
+            "ticker": "DIB",
+            "exchange": "DFM",
+            "website": "https://www.dib.ae",
+        },
+        # ── ADX Companies ──────────────────────────────────────────────────
+        "first abu dhabi bank": {
+            "name": "First Abu Dhabi Bank PJSC",
+            "ticker": "FAB",
+            "exchange": "ADX",
+            "website": "https://www.bankfab.com",
+        },
+        "eand": {
+            "name": "Emirates Telecommunications Group Company PJSC",
+            "ticker": "EAND",
+            "exchange": "ADX",
+            "website": "https://www.eand.com",
+        },
+        "adnoc distribution": {
+            "name": "ADNOC Distribution PJSC",
+            "ticker": "ADNOCDIST",
+            "exchange": "ADX",
+            "website": "https://www.adnocdistribution.ae",
+        },
+        "adnoc": {
+            "name": "ADNOC Distribution PJSC",
+            "ticker": "ADNOCDIST",
+            "exchange": "ADX",
+            "website": "https://www.adnocdistribution.ae",
         },
     }
 

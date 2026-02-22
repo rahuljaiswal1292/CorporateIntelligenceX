@@ -7,6 +7,21 @@ import time
 from typing import Optional, Dict, List
 from datetime import datetime
 from urllib.parse import urljoin, unquote
+import sys
+import asyncio
+
+# Windows-specific fix for Playwright/asyncio
+if sys.platform == "win32":
+    try:
+        from asyncio import WindowsProactorEventLoopPolicy
+
+        if not isinstance(
+            asyncio.get_event_loop_policy(), WindowsProactorEventLoopPolicy
+        ):
+            asyncio.set_event_loop_policy(WindowsProactorEventLoopPolicy())
+    except ImportError:
+        pass
+
 
 # Third-party imports
 from bs4 import BeautifulSoup
@@ -25,14 +40,12 @@ except ImportError:
     pass
 
 try:
-    from intelligence_hub.connectors.web_scraper_connector import WebScraperConnector
     from intelligence_hub.utils.storage_manager import StorageManager
     from intelligence_hub.utils.date_extractor import DateExtractor
     from intelligence_hub.utils.dfm_download_manager import DFMDownloadManager
     from intelligence_hub.utils.bot_handler import BotHandler
     from intelligence_hub.utils.dfm_stock_extractor import DFMStockExtractor
 except ImportError:
-    WebScraperConnector = None
     StorageManager = None
     DateExtractor = None
     DFMDownloadManager = None
@@ -60,16 +73,14 @@ except ImportError:
 try:
     from intelligence_hub.agents.vectorizer import VectorizerAgent
 
-    # SummarizerAgent seems to be missing or merged, setting to None for now
+    # SummarizerAgent is missing in current branch
     SummarizerAgent = None
 except ImportError as e:
     logger.warning(f"Smart Agents not available: {e}")
     VectorizerAgent = None
     SummarizerAgent = None
 
-# Aliases for compatibility with legacy code in this file
-VectorizingAgent = VectorizerAgent
-
+# --- Scraper ---
 
 
 class DFMScraper:
@@ -78,9 +89,7 @@ class DFMScraper:
     Handles dynamic content, document downloads, and detailed extraction.
     """
 
-    def __init__(self, connector: WebScraperConnector = None, max_age_years: int = 3):
-        # We accept connector to maintain interface compatibility
-        self.connector = connector
+    def __init__(self, max_age_years: int = 3):
         self.base_url = "https://www.dfm.ae"
         self.browser: Optional[Browser] = None
         self.playwright = None
@@ -99,7 +108,7 @@ class DFMScraper:
         self.file_lock = asyncio.Lock()
 
         # Initialize Smart Agents
-        self.vector_agent = VectorizingAgent() if VectorizingAgent else None
+        self.vector_agent = VectorizerAgent() if VectorizerAgent else None
         self.summarizer_agent = (
             SummarizerAgent(self.vector_agent)
             if SummarizerAgent and self.vector_agent
@@ -556,6 +565,11 @@ class DFMScraper:
                             data["financials"] = result
                         elif page_type == "news":
                             data["news"] = result
+                        else:
+                            data[page_type] = result
+
+                        if isinstance(result, dict) and "files" in result:
+                            downloaded_files.extend(result["files"])
                         else:
                             data[page_type] = result
 
@@ -1171,6 +1185,7 @@ class DFMScraper:
             limits["raw_summary"] = full_text[:500]  # Capture summary
         except:
             pass
+
         return {"foreign_investment_data": limits, "files": downloaded_files}
 
     async def _generic_document_extract(
@@ -1416,58 +1431,16 @@ class DFMScraper:
             return []
 
     async def search_ticker(self, query: str) -> tuple:
-        """
-        Search for ticker using Web Search (DuckDuckGo) targeting DFM.
-        Returns (ticker, company_name)
-        """
-        try:
-            # Lazy import
-            from intelligence_hub.utils.web_search import WebSearch
-            import urllib.parse
-
-            # Search query specific to DFM
-            search_query = f"{query} site:dfm.ae company profile"
-            results = WebSearch.search(search_query, max_results=5)
-
-            for res in results:
-                url = res.get("href", "").lower()
-                title = res.get("title", "")
-
-                # Check for ticker pattern in URL
-                # DFM: dfm.ae/the-exchange/market-information/company/TICKER/profile...
-                if "/company/" in url:
-                    try:
-                        parts = url.split("/company/")
-                        if len(parts) > 1:
-                            ticker_part = parts[1].split("/")[0]
-                            ticker = ticker_part.upper().strip()
-
-                            if len(ticker) >= 2 and len(ticker) < 12:
-                                # Clean potential garbage
-                                if "?" in ticker:
-                                    ticker = ticker.split("?")[0]
-
-                                company_name = title.split("|")[0].strip()
-                                return ticker, company_name
-                    except:
-                        pass
-
-            logger.warning(f"DFM search for '{query}' found no tickers.")
-            return None, None
-
-        except Exception as e:
-            logger.error(f"Error searching DFM ticker: {e}")
-            return None, None
-
+        return None, None
 
 
 if __name__ == "__main__":
     tickers = [
-        # "AIRARABIA",
-        # "DU",
-        # "EMAAR",
-        # "EMIRATESNBD",
-        # "MASQ",
+        "AIRARABIA",
+        "DU",
+        "EMAAR",
+        "EMIRATESNBD",
+        "MASQ",
         "TALABAT",
     ]
 

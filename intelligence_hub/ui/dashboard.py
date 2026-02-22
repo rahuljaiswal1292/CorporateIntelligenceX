@@ -196,8 +196,7 @@ def render_main_dashboard(placeholder=None):
             Comprehensive financial analysis and strategic insights for relationship management
         </div>
     </div>
-    """
-    )
+    """)
 
     # Extract data safely with fallbacks
     meta = data.get("meta", {})
@@ -223,8 +222,7 @@ def render_main_dashboard(placeholder=None):
         <span style="font-size: 24px;">📊</span>
         <span>Key Performance Indicators</span>
     </div>
-    """
-    )
+    """)
 
     col1, col2, col3, col4 = st.columns(4)
 
@@ -263,7 +261,7 @@ def render_main_dashboard(placeholder=None):
             industry = industry[:20] + "..."
         st.metric("Industry", industry if industry != "N/A" else "N/A")
 
-    st.markdown("<div style='margin: 40px 0;'></div>", unsafe_allow_html=True)
+    st.html("<div style='margin: 40px 0;'></div>")
 
     # === SECTION 2 & 3: COMPANY PROFILE + FINANCIALS - Two Column Layout ===
     col_left, col_right = st.columns([1.2, 1])
@@ -287,8 +285,7 @@ def render_main_dashboard(placeholder=None):
             <span style="font-size: 24px;">🏢</span>
             <span>Company Profile</span>
         </div>
-        """
-        )
+        """)
 
         if meta:
             company_name = meta.get("name", "Unknown Company")
@@ -352,8 +349,7 @@ def render_main_dashboard(placeholder=None):
                     </div>
                 </div>
             </div>
-            """
-            )
+            """)
 
             # DED License Information - Separate section below profile
             if licenses:
@@ -374,8 +370,7 @@ def render_main_dashboard(placeholder=None):
                     <span style="font-size: 18px;">🏛️</span>
                     <span>DED License Information {f'({license_count} Licenses)' if license_count > 1 else ''}</span>
                 </div>
-                """
-                )
+                """)
 
                 # Display licenses in a grid (2 columns for multiple licenses, 1 for single)
                 if license_count == 1:
@@ -422,8 +417,7 @@ def render_main_dashboard(placeholder=None):
                                 </div>
                             </div>
                         </div>
-                        """
-                        )
+                        """)
         else:
             st.info("Company profile data pending...")
 
@@ -446,8 +440,7 @@ def render_main_dashboard(placeholder=None):
             <span style="font-size: 24px;">💰</span>
             <span>Financial Snapshot</span>
         </div>
-        """
-        )
+        """)
 
         if financials and "current" in financials:
             curr = financials.get("current", {})
@@ -475,8 +468,7 @@ def render_main_dashboard(placeholder=None):
                     </div>
                 </div>
             </div>
-            """
-            )
+            """)
 
             # Key Banking Ratios - 3 cards with professional blue palette
             roe = curr.get("roe", "N/A")
@@ -517,8 +509,7 @@ def render_main_dashboard(placeholder=None):
                     <div style="font-family: 'Poppins', sans-serif; color: white; font-size: 22px; font-weight: 800;">{npl_ratio}</div>
                 </div>
             </div>
-            """
-            )
+            """)
 
             # Additional Metrics - 2x2 Grid
             capital_adequacy = curr.get("capital_adequacy", "N/A")
@@ -554,12 +545,11 @@ def render_main_dashboard(placeholder=None):
                     </div>
                 </div>
             </div>
-            """
-            )
+            """)
         else:
             st.info("Financial data pending...")
 
-    st.markdown("<div style='margin: 40px 0;'></div>", unsafe_allow_html=True)
+    st.html("<div style='margin: 40px 0;'></div>")
 
     # === SECTION 4: LATEST NEWS - Enhanced Card Design ===
     st.html(
@@ -580,8 +570,7 @@ def render_main_dashboard(placeholder=None):
         <span style="font-size: 28px;">📰</span>
         <span>Latest News & Market Updates</span>
     </div>
-    """
-    )
+    """)
 
     # Check for news in multiple locations
     news_data = enrichments.get("news", {})
@@ -660,12 +649,11 @@ def render_main_dashboard(placeholder=None):
                             Read Full Article →
                         </a>
                     </div>
-                    """
-                    )
+                    """)
     else:
         st.info("📰 No recent news articles available")
 
-    st.markdown("<div style='margin: 40px 0;'></div>", unsafe_allow_html=True)
+    st.html("<div style='margin: 40px 0;'></div>")
 
     # === SECTION 5: STOCK PERFORMANCE - Chart Placeholder ===
     st.html(
@@ -686,8 +674,7 @@ def render_main_dashboard(placeholder=None):
         <span style="font-size: 28px;">📈</span>
         <span>Stock Performance & Market Trends</span>
     </div>
-    """
-    )
+    """)
 
     # Placeholder for stock chart
     st.html(
@@ -719,10 +706,9 @@ def render_main_dashboard(placeholder=None):
             margin-top: 8px;
         ">Historical price data, volume, and technical indicators</div>
     </div>
-    """
-    )
+    """)
 
-    st.markdown("<div style='margin: 40px 0;'></div>", unsafe_allow_html=True)
+    st.html("<div style='margin: 40px 0;'></div>")
 
     # === SECTION 6: KEY COMPETITORS - Card Grid ===
     st.html(
@@ -743,8 +729,7 @@ def render_main_dashboard(placeholder=None):
         <span style="font-size: 28px;">⚔️</span>
         <span>Key Competitors & Market Position</span>
     </div>
-    """
-    )
+    """)
 
     # Get competitors data
     competitors = data.get("competitors", [])
@@ -840,12 +825,11 @@ def render_main_dashboard(placeholder=None):
                             ">{rev_growth}</div>
                         </div>
                     </div>
-                    """
-                    )
+                    """)
     else:
         st.info("⚔️ Competitor analysis data will appear here once available")
 
-    st.markdown("<div style='margin: 40px 0;'></div>", unsafe_allow_html=True)
+    st.html("<div style='margin: 40px 0;'></div>")
 
     # === SECTION 7: STRATEGIC INSIGHTS - Premium Cards ===
     st.html(
@@ -866,8 +850,7 @@ def render_main_dashboard(placeholder=None):
         <span style="font-size: 28px;">💡</span>
         <span>Strategic Insights & RM Summary</span>
     </div>
-    """
-    )
+    """)
 
     insights = data.get("insights", [])
     if insights and len(insights) > 0:
@@ -908,15 +891,14 @@ def render_main_dashboard(placeholder=None):
                             font-weight: 400;
                         ">{text}</div>
                     </div>
-                    """
-                    )
+                    """)
             elif isinstance(insight, str):
                 with insight_cols[idx % 2]:
                     st.markdown(f"• {insight}")
     else:
         st.info("Strategic insights will appear here once analysis completes...")
 
-    st.markdown("<div style='margin: 40px 0;'></div>", unsafe_allow_html=True)
+    st.html("<div style='margin: 40px 0;'></div>")
 
     # === SECTION 8: DATA SOURCES - Elegant Footer ===
     st.html(
@@ -942,8 +924,7 @@ def render_main_dashboard(placeholder=None):
             <span style="font-size: 22px;">📚</span>
             <span>Data Sources & References</span>
         </div>
-    """
-    )
+    """)
 
     sources_count = 0
     if enrichments:
@@ -981,5 +962,4 @@ def render_main_dashboard(placeholder=None):
             </div>
         </div>
     </div>
-    """
-    )
+    """)

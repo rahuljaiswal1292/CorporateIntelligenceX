@@ -36,7 +36,7 @@ from intelligence_hub.prompts import load_prompt
 from intelligence_hub.config.settings import config
 from intelligence_hub.scrapers.adx import ADXScraper
 from intelligence_hub.scrapers.dfm import DFMScraper
-from intelligence_hub.connectors.web_scraper_connector import WebScraperConnector
+
 import asyncio
 
 
@@ -79,6 +79,7 @@ class MasterAgent(BaseAgent):
         # Worker agents (Wikipedia, News, DED) are now workflow nodes
         # Removed from master_agent initialization - they execute as separate nodes
         # self.worker_agents = [...]
+        # self.worker_agents = [...]
 
     def resolve_query(self, query: str) -> Dict[str, str]:
         """Phase 0: Entity Resolution"""
@@ -114,9 +115,8 @@ class MasterAgent(BaseAgent):
         # 3. Dynamic Search (Fallback)
         self.log("Starting dynamic resolution via scrapers...")
 
-        scraper_connector = WebScraperConnector()
         adx_scanner = ADXScraper()
-        dfm_scanner = DFMScraper(scraper_connector)
+        dfm_scanner = DFMScraper()
 
         def safe_run_async(coro):
             try:

@@ -314,6 +314,19 @@ class SerpAPIProfileAgent(BaseAgent):
 
             profile = json.loads(content.strip())
 
+            # Sanitize text fields — SERP Knowledge Graph responses can contain
+            # raw HTML fragments (e.g. "</div>") that the LLM copies verbatim.
+            import re as _re
+
+            def _strip_html(val):
+                if isinstance(val, str):
+                    return _re.sub(r"<[^>]+>", "", val).strip()
+                return val
+
+            for _field in ("canonical_name", "company_name", "legal_name"):
+                if _field in profile:
+                    profile[_field] = _strip_html(profile[_field])
+
             # Robust confidence score parsing
             try:
                 raw_score = profile.get("confidence_score", 0)
@@ -329,11 +342,14 @@ class SerpAPIProfileAgent(BaseAgent):
                     elif clean_score.lower() == "low":
                         profile["confidence_score"] = 30
                     else:
-                         profile["confidence_score"] = 0
+                        profile["confidence_score"] = 0
                 else:
                     profile["confidence_score"] = int(raw_score)
             except (ValueError, TypeError):
-                self.log(f"Error parsing confidence score: {profile.get('confidence_score')}", "WARNING")
+                self.log(
+                    f"Error parsing confidence score: {profile.get('confidence_score')}",
+                    "WARNING",
+                )
                 profile["confidence_score"] = 0
 
             self.log(

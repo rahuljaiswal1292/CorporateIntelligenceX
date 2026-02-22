@@ -7,6 +7,16 @@ def replace(old, new):
     return new
 
 
+def merge_dicts(old: Dict[str, Any], new: Dict[str, Any]) -> Dict[str, Any]:
+    """Merge two dictionaries, typically for enrichments"""
+    if old is None:
+        return new or {}
+    updated = dict(old)
+    if new:
+        updated.update(new)
+    return updated
+
+
 class AgentState(TypedDict):
     """
     Shared state object for the Intelligence Graph.
@@ -41,7 +51,7 @@ class AgentState(TypedDict):
     logs: Annotated[List[str], operator.add]
 
     # Enrichment Data
-    enrichments: Annotated[Dict[str, Any], replace]
+    enrichments: Annotated[Dict[str, Any], merge_dicts]
 
     # LLM Configuration
     llm_config: Annotated[

@@ -625,9 +625,15 @@ class CorporateProfileStore:
         Returns:
             Dictionary mapping document_type to list of results
         """
-        where_clause = {"canonical_name": canonical_name}
         if document_type:
-            where_clause["document_type"] = document_type
+            where_clause = {
+                "$and": [
+                    {"canonical_name": canonical_name},
+                    {"document_type": document_type},
+                ]
+            }
+        else:
+            where_clause = {"canonical_name": canonical_name}
 
         results = self.details_collection.get(
             where=where_clause,

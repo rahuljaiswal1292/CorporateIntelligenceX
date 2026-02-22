@@ -124,6 +124,50 @@ class MasterAgent(BaseAgent):
             self.log(f"Competitor analysis failed: {e}", "ERROR")
             return {"peers": []}
 
+    def get_competitor_analysis(self, company_name: str) -> Dict:
+        """
+        Generates a competitor analysis using LLM knowledge.
+        Returns top 5 UAE peers with key metrics.
+        """
+        self.log(f"Generating competitor analysis for {company_name}...")
+
+        prompt = f"""
+        Identify the top 5 peer competitors for '{company_name}' in the UAE market (focus on same sector/exchange).
+        For each competitor, provide estimated key metrics based on your knowledge:
+        1. Market Cap (in AED, e.g., '10B AED')
+        2. P/E Ratio (approx)
+        3. Revenue Growth YoY (approx %)
+
+        Return strict JSON format with a single key 'peers', which is a list of objects.
+        Each object must have these exact keys:
+        - "Company": str
+        - "market_cap": str
+        - "pe_ratio": str
+        - "revenue_growth": str
+
+        Example:
+        {{
+          "peers": [
+            {{
+              "Company": "Competitor X",
+              "market_cap": "15B AED",
+              "pe_ratio": "12.5",
+              "revenue_growth": "5%"
+            }}
+          ]
+        }}
+        """
+
+        try:
+            response = self.llm_connector.analyze(prompt)
+            # clean markdown
+            clean_resp = response.replace("```json", "").replace("```", "").strip()
+            data = json.loads(clean_resp)
+            return data
+        except Exception as e:
+            self.log(f"Competitor analysis failed: {e}", "ERROR")
+            return {"peers": []}
+
     def resolve_query(self, query: str) -> Dict[str, str]:
         """Phase 0: Entity Resolution"""
         self.log(f"PHASE 0: Resolving entity for query: '{query}'")
@@ -522,6 +566,20 @@ class MasterAgent(BaseAgent):
         self.log("Note: Enrichment agents now execute as separate workflow nodes")
 
         enrichment_results = []
+
+        # New: Competitor Analysis
+        if self.enable_enrichment:
+            self.log("PROGRESS:70:Running Competitor Analysis")
+            competitor_data = self.get_competitor_analysis(self.company_name)
+            if competitor_data and competitor_data.get("peers"):
+                self.log(f"Identified {len(competitor_data['peers'])} competitors")
+                enrichment_results.append(
+                    {
+                        "agent": "Competitor Analysis",
+                        "status": "completed",
+                        "data": competitor_data,
+                    }
+                )
 
         # New: Competitor Analysis
         if self.enable_enrichment:

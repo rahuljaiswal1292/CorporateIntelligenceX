@@ -1,6 +1,10 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+import textwrap
+
+logo_url = "https://www.emiratesnbd.com/-/media/enbd/images/logos/favicon.png"
+
 
 logo_url = "https://www.emiratesnbd.com/-/media/enbd/images/logos/favicon.png"
 
@@ -60,16 +64,16 @@ def render_progress_chain(stage: int):
             "stage": 2,
             "items": [
                 {"icon": "⚡", "label": "Enrichment"},
-                {"icon": "🕷️", "label": "Scraping"}
-            ]
+                {"icon": "🕷️", "label": "Scraping"},
+            ],
         },
         {"icon": "🧠", "label": "Vectorization", "stage": 3},
         {"icon": "📊", "label": "Analysis", "stage": 4},
     ]
-    
+
     html = '<div class="pipeline-wrapper">'
     html += '<div class="pipeline-track">'
-    
+
     for i, step in enumerate(steps):
         # Determine status base
         status = "pending"
@@ -77,37 +81,41 @@ def render_progress_chain(stage: int):
             status = "completed"
         elif stage == step["stage"]:
             status = "active"
-            
+
         if step.get("type") == "parallel":
             # Render Parallel Group
             html += '<div class="pipeline-parallel-group">'
             for item in step["items"]:
                 # Render sub-item (inherits group status for now)
                 pulse = "<div class='step-pulse'></div>" if status == "active" else ""
-                
+
                 parallel_html = f'<div class="pipeline-step {status} parallel-item">'
                 parallel_html += f'<div class="step-indicator small"><span class="step-icon">{item["icon"]}</span>{pulse}</div>'
                 parallel_html += f'<div class="step-content side"><span class="step-label">{item["label"]}</span></div>'
-                parallel_html += '</div>'
+                parallel_html += "</div>"
                 html += parallel_html
-            html += '</div>'
+            html += "</div>"
         else:
             # Render Single Step
             pulse = "<div class='step-pulse'></div>" if status == "active" else ""
-            sub_items = f'<div class="step-subitems">{" • ".join(step["sub_items"])}</div>' if "sub_items" in step else ""
-            
+            sub_items = (
+                f'<div class="step-subitems">{" • ".join(step["sub_items"])}</div>'
+                if "sub_items" in step
+                else ""
+            )
+
             step_html = f'<div class="pipeline-step {status}">'
             step_html += f'<div class="step-indicator"><span class="step-icon">{step["icon"]}</span>{pulse}</div>'
             step_html += f'<div class="step-content"><span class="step-label">{step["label"]}</span>{sub_items}</div>'
-            step_html += '</div>'
+            step_html += "</div>"
             html += step_html
-        
+
         # Connector (if not last step)
         if i < len(steps) - 1:
             conn_status = "completed" if status == "completed" else "pending"
             html += f'<div class="pipeline-connector {conn_status}"></div>'
-            
-    html += '</div></div>'
+
+    html += "</div></div>"
     st.markdown(html, unsafe_allow_html=True)
 
 
@@ -147,7 +155,7 @@ def render_company_profile(data):
 
             html = f"""<table style="width:100%; border-collapse:collapse; font-family:sans-serif; border-radius:8px; overflow:hidden; border:1px solid #E2E8F0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);"><thead><tr style="background-color:#002D62; color:#FFFFFF;"><th style="padding:12px; text-align:left; font-weight:700; border-bottom:3px solid #FFB600; font-size:0.9rem;">Shareholder</th><th style="padding:12px; text-align:right; font-weight:700; border-bottom:3px solid #FFB600; font-size:0.9rem;">Stake</th></tr></thead><tbody>{html_rows}</tbody></table>"""
 
-            st.markdown(html, unsafe_allow_html=True)
+            st.html(html)
         else:
             st.write(meta.get("shareholders", "-"))
 
@@ -204,9 +212,8 @@ def render_financials_detailed(data):
     st.subheader(f"📊 Yearly Performance ({last_y['period']} vs {curr['period']})")
 
     # HTML Grid for Yearly - FLATTENED STRING
-    st.markdown(
-        f"""<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px;">{make_metric_card("Revenue (Current)", curr.get("rev"), curr.get("trend"))}{make_metric_card("Revenue (Last Yr)", last_y.get("rev"), "Hist")}{make_metric_card("Net Profit (Current)", curr.get("profit"), "")}{make_metric_card("Net Profit (Last Yr)", last_y.get("profit"), "Hist")}</div>""",
-        unsafe_allow_html=True,
+    st.html(
+        f"""<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px;">{make_metric_card("Revenue (Current)", curr.get("rev"), curr.get("trend"))}{make_metric_card("Revenue (Last Yr)", last_y.get("rev"), "Hist")}{make_metric_card("Net Profit (Current)", curr.get("profit"), "")}{make_metric_card("Net Profit (Last Yr)", last_y.get("profit"), "Hist")}</div>"""
     )
 
     # 2. Quarterly Performance
@@ -393,10 +400,12 @@ def render_references(data):
     """Renders a comprehensive references section showing all sources used in the analysis"""
     st.markdown("### 📚 References & Sources")
     st.markdown("*All reference materials used in preparing this intelligence report*")
-    
+
     # Create tabs for different source types
-    tab1, tab2, tab3, tab4 = st.tabs(["🔍 SERP Links", "📰 News Sources", "📖 Wikipedia", "🌐 DED & Official"])
-    
+    tab1, tab2, tab3, tab4 = st.tabs(
+        ["🔍 SERP Links", "📰 News Sources", "📖 Wikipedia", "🌐 DED & Official"]
+    )
+
     # Tab 1: SERP Links
     with tab1:
         serp_links = data.get("serp_links", [])
@@ -407,7 +416,7 @@ def render_references(data):
                     title = link.get("title", "Untitled")
                     url = link.get("link", "#")
                     snippet = link.get("snippet", "")
-                    
+
                     with st.expander(f"{idx}. {title}", expanded=False):
                         st.markdown(f"**URL:** [{url}]({url})")
                         if snippet:
@@ -416,23 +425,25 @@ def render_references(data):
                     st.markdown(f"{idx}. [{link}]({link})")
         else:
             st.info("No SERP links available")
-    
+
     # Tab 2: News Sources
     with tab2:
         news_sources = data.get("enrichments", {}).get("news", {}).get("sources", [])
         news_articles = data.get("news_articles", [])
-        
+
         if news_sources or news_articles:
             sources_to_display = news_sources if news_sources else news_articles
             st.markdown(f"**{len(sources_to_display)} news articles analyzed**")
-            
+
             for idx, article in enumerate(sources_to_display, 1):
                 if isinstance(article, dict):
-                    title = article.get("title", article.get("headline", "Untitled Article"))
+                    title = article.get(
+                        "title", article.get("headline", "Untitled Article")
+                    )
                     url = article.get("url", article.get("link", "#"))
                     source = article.get("source", article.get("publisher", "Unknown"))
                     date = article.get("date", article.get("published_date", ""))
-                    
+
                     with st.expander(f"{idx}. {title}", expanded=False):
                         col1, col2 = st.columns([3, 1])
                         with col1:
@@ -441,7 +452,7 @@ def render_references(data):
                                 st.markdown(f"**Date:** {date}")
                         with col2:
                             st.markdown(f"[Read Article]({url})")
-                        
+
                         summary = article.get("summary", article.get("snippet", ""))
                         if summary:
                             st.markdown(f"**Summary:** {summary}")
@@ -449,23 +460,23 @@ def render_references(data):
                     st.markdown(f"{idx}. {article}")
         else:
             st.info("No news sources available")
-    
+
     # Tab 3: Wikipedia
     with tab3:
         wiki_data = data.get("enrichments", {}).get("wikipedia", {})
         wiki_url = wiki_data.get("url", "")
         wiki_summary = wiki_data.get("summary", "")
         wiki_sections = wiki_data.get("sections", [])
-        
+
         if wiki_url or wiki_summary:
             st.markdown("**Wikipedia Article**")
             if wiki_url:
                 st.markdown(f"**URL:** [{wiki_url}]({wiki_url})")
-            
+
             if wiki_summary:
                 with st.expander("Article Summary", expanded=True):
                     st.markdown(wiki_summary)
-            
+
             if wiki_sections:
                 st.markdown(f"**{len(wiki_sections)} sections analyzed:**")
                 for section in wiki_sections:
@@ -475,45 +486,45 @@ def render_references(data):
                         st.markdown(f"- {section}")
         else:
             st.info("No Wikipedia data available")
-    
+
     # Tab 4: DED & Official Sources
     with tab4:
         ded_data = data.get("enrichments", {}).get("ded", {})
         official_website = data.get("website", data.get("official_website", ""))
-        
+
         col1, col2 = st.columns(2)
-        
+
         with col1:
             st.markdown("**🏛️ DED (Department of Economic Development)**")
             if ded_data:
                 license_no = ded_data.get("license_number", "")
                 trade_name = ded_data.get("trade_name", "")
                 status = ded_data.get("status", "")
-                
+
                 if license_no:
                     st.markdown(f"**License Number:** {license_no}")
                 if trade_name:
                     st.markdown(f"**Trade Name:** {trade_name}")
                 if status:
                     st.markdown(f"**Status:** {status}")
-                
+
                 ded_url = ded_data.get("url", "https://www.ded.ae")
                 st.markdown(f"[View on DED Portal]({ded_url})")
             else:
                 st.info("No DED data available")
-        
+
         with col2:
             st.markdown("**🌐 Official Website**")
             if official_website:
                 st.markdown(f"[{official_website}]({official_website})")
-                
+
                 # Show if website was verified
                 has_official = data.get("has_official_website", False)
                 if has_official:
                     st.success("✓ Verified official website")
             else:
                 st.info("No official website found")
-        
+
         # Knowledge Graph data
         kg_data = data.get("knowledge_graph", {})
         if kg_data:
@@ -521,25 +532,120 @@ def render_references(data):
             st.markdown("**📊 Knowledge Graph Data**")
             with st.expander("View Knowledge Graph Information", expanded=False):
                 for key, value in kg_data.items():
-                    if value and key not in ['source', 'raw']:
+                    if value and key not in ["source", "raw"]:
                         st.markdown(f"**{key.replace('_', ' ').title()}:** {value}")
-    
+
     # Summary statistics at the bottom
     st.markdown("---")
     col1, col2, col3, col4 = st.columns(4)
-    
+
     with col1:
         serp_count = len(data.get("serp_links", []))
         st.metric("SERP Links", serp_count)
-    
+
     with col2:
         news_count = len(data.get("enrichments", {}).get("news", {}).get("sources", []))
         st.metric("News Articles", news_count)
-    
+
     with col3:
-        has_wiki = "✓" if data.get("enrichments", {}).get("wikipedia", {}).get("url") else "✗"
+        has_wiki = (
+            "✓" if data.get("enrichments", {}).get("wikipedia", {}).get("url") else "✗"
+        )
         st.metric("Wikipedia", has_wiki)
-    
+
     with col4:
         has_ded = "✓" if data.get("enrichments", {}).get("ded", {}) else "✗"
         st.metric("DED Data", has_ded)
+
+
+def render_top_news(data):
+    """Renders top news articles in an attractive card layout"""
+
+    # Extract news from different possible locations
+    news_articles = []
+
+    # Check enrichments.news.sources
+    if data.get("enrichments", {}).get("news", {}).get("sources"):
+        news_articles = data["enrichments"]["news"]["sources"]
+    # Check news_articles directly
+    elif data.get("news_articles"):
+        news_articles = data["news_articles"]
+    # Check enrichments.news directly
+    elif data.get("enrichments", {}).get("news"):
+        news_data = data["enrichments"]["news"]
+        if isinstance(news_data, list):
+            news_articles = news_data
+        elif isinstance(news_data, dict) and news_data.get("articles"):
+            news_articles = news_data["articles"]
+
+    if not news_articles:
+        st.info("📰 No recent news articles available")
+        return
+
+    # Display top 5 news articles
+    top_news = news_articles[:5] if len(news_articles) > 5 else news_articles
+
+    st.markdown(
+        f"**{len(news_articles)} articles found** • Showing top {len(top_news)}"
+    )
+
+    for idx, article in enumerate(top_news, 1):
+        # Handle different data structures
+        if isinstance(article, dict):
+            title = article.get("title", article.get("headline", "Untitled"))
+            url = article.get("url", article.get("link", "#"))
+            source = article.get("source", article.get("publisher", "Unknown Source"))
+            date = article.get("date", article.get("published", ""))
+            snippet = article.get("snippet", article.get("description", ""))
+        else:
+            # If article is a string or other format
+            title = str(article)
+            url = "#"
+            source = "News Source"
+            date = ""
+            snippet = ""
+
+        # Create news card
+        with st.container():
+            st.html(
+                textwrap.dedent(
+                    f"""
+            <div style="
+                background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%);
+                border-left: 4px solid #0077ff;
+                border-radius: 8px;
+                padding: 16px;
+                margin-bottom: 12px;
+                box-shadow: 0 2px 8px rgba(0, 51, 102, 0.08);
+                transition: all 0.2s ease;
+            ">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                    <span style="
+                        background: linear-gradient(135deg, #003366 0%, #0077ff 100%);
+                        color: white;
+                        padding: 4px 12px;
+                        border-radius: 12px;
+                        font-size: 12px;
+                        font-weight: 600;
+                    ">#{idx}</span>
+                    <span style="color: #64748b; font-size: 12px;">{date}</span>
+                </div>
+                <h4 style="margin: 8px 0; color: #003366; font-size: 16px; font-weight: 600;">
+                    <a href="{url}" target="_blank" style="text-decoration: none; color: inherit;">
+                        {title}
+                    </a>
+                </h4>
+                {f'<p style="color: #64748b; font-size: 14px; margin: 8px 0; line-height: 1.5;">{snippet[:150]}...</p>' if snippet else ''}
+                <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+                    <span style="color: #0077ff; font-size: 12px; font-weight: 600;">📰 {source}</span>
+                    <a href="{url}" target="_blank" style="
+                        color: #0077ff;
+                        font-size: 12px;
+                        text-decoration: none;
+                        margin-left: auto;
+                    ">Read more →</a>
+                </div>
+            </div>
+            """
+                )
+            )

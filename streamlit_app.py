@@ -7,7 +7,11 @@ import uuid
 import base64
 from pathlib import Path
 from intelligence_hub.ui.styles import get_custom_css
-from intelligence_hub.ui.dashboard import render_main_dashboard
+from intelligence_hub.ui.dashboard import render_main_dashboard, get_test_dashboard_data
+from intelligence_hub.ui.pipeline_viz import (
+    render_agent_pipeline,
+    get_default_agent_status,
+)
 from intelligence_hub.core.mock_data import get_company_data
 from intelligence_hub.llm.models import LLMModel
 
@@ -26,7 +30,6 @@ from intelligence_hub.graph.workflow import (
 )  # Split Graphs
 from intelligence_hub.ui.components import (
     render_header,
-    render_progress_chain,
     render_company_profile,
     render_financials_detailed,
     render_chart,
@@ -103,6 +106,8 @@ if "investigation_paused" not in st.session_state:
     st.session_state.investigation_paused = False
 if "intermediate_state" not in st.session_state:
     st.session_state.intermediate_state = None
+if "agent_status" not in st.session_state:
+    st.session_state.agent_status = get_default_agent_status()
 
 
 # --- Helper to append logs ---
@@ -113,7 +118,9 @@ def add_log(agent_name, action):
 
 
 # Helper to render the resolved name section
-def render_resolved_ui(placeholder=None, key="btn_continue_investigation"):
+def render_resolved_ui(
+    placeholder=None, key="btn_continue_investigation", show_button=True
+):
     # Use placeholder if provided, else main flow
     context = placeholder.container() if placeholder else st.container()
 
@@ -680,7 +687,11 @@ def render_resolved_ui(placeholder=None, key="btn_continue_investigation"):
             not st.session_state.canonical_name
         ) or st.session_state.is_resolving
         # Only show button if NOT complete (Resume case)
-        if not st.session_state.analysis_complete and st.session_state.canonical_name:
+        if (
+            show_button
+            and not st.session_state.analysis_complete
+            and st.session_state.canonical_name
+        ):
             if st.button(
                 "Continue Investigation ->",
                 key=key,
@@ -735,6 +746,8 @@ def run_investigation(
         st.session_state.investigation_paused = False
         st.session_state.intermediate_state = None
         st.session_state.thread_id = str(uuid.uuid4())
+        st.session_state.agent_status = get_default_agent_status()
+        st.session_state.agent_status["master_agent"] = "running"
 
         # 1. Initialize Baseline (Hybrid Approach)
         base_data = get_company_data(query)
@@ -743,16 +756,18 @@ def run_investigation(
     # UI Helpers
     def update_pipeline_ui():
         with pipeline_placeholder.container():
-            render_progress_chain(st.session_state.progress_stage)
+            # Use new pipeline visualization
+            data = st.session_state.get("data", {})
+            render_agent_pipeline(data, show_details=False)
 
-    def update_resolved_ui(stable_key=False):
-        # Use transient key by default to avoid duplicate keys in loop
-        if stable_key:
-            k = "btn_continue_investigation_internal"
-        else:
-            k = f"btn_resolving_{uuid.uuid4()}"
-
-        render_resolved_ui(resolved_placeholder, key=k)
+    def update_resolved_ui():
+        # Hide button during investigation to avoid duplicate key errors
+        # Button will appear after st.rerun() in main app flow
+        render_resolved_ui(
+            resolved_placeholder,
+            key="btn_continue_investigation_internal",
+            show_button=False,
+        )
 
     # Helper to update sidebar logs in real-time
     def update_sidebar_logs():
@@ -802,6 +817,11 @@ def run_investigation(
         # Update LLM config in case user changed settings before continuing
         input_data["llm_config"] = llm_config
         processed_logs = set(input_data.get("logs", []))
+        # Mark master as done, set parallel agents to running
+        st.session_state.agent_status["master_agent"] = "success"
+        st.session_state.agent_status["wikipedia_agent"] = "running"
+        st.session_state.agent_status["news_agent"] = "running"
+        st.session_state.agent_status["ded_agent"] = "running"
 
     # 3. Setup Stream
     label = (
@@ -831,6 +851,55 @@ def run_investigation(
         # Event corresponds to a node finishing
         for node, state in event.items():
             final_state = state  # Keep updating final state
+
+            # ---- Map LangGraph node to agent_status key ----
+            node_to_agent = {
+                "master_enrichment": "master_agent",
+                "wikipedia": "wikipedia_agent",
+                "news": "news_agent",
+                "ded": "ded_agent",
+                "scraper": "scraper",
+                "vectorizer": "vectorizer",
+                "pdf_agent": "pdf_agent",
+                "analyst": "analyst",
+                "start_enrichment": None,  # passthrough node
+            }
+            agent_key = node_to_agent.get(node)
+            if agent_key:
+                # Check if this node had an error
+                node_logs = state.get("logs", [])
+                has_error = any(
+                    "failed" in l.lower() or "error" in l.lower() for l in node_logs
+                )
+                st.session_state.agent_status[agent_key] = (
+                    "error" if has_error else "success"
+                )
+
+                # Set next sequential agents to "running"
+                if agent_key == "master_agent" and not has_error:
+                    # After master, resolution graph ends. Enrichment runs on resume.
+                    pass
+                elif node == "start_enrichment":
+                    # Parallel agents start
+                    st.session_state.agent_status["wikipedia_agent"] = "running"
+                    st.session_state.agent_status["news_agent"] = "running"
+                    st.session_state.agent_status["ded_agent"] = "running"
+                elif node in ("wikipedia", "news", "ded"):
+                    # Check if all parallel agents done -> scraper starts
+                    parallel_done = all(
+                        st.session_state.agent_status.get(k) in ("success", "error")
+                        for k in ["wikipedia_agent", "news_agent", "ded_agent"]
+                    )
+                    if parallel_done:
+                        st.session_state.agent_status["scraper"] = "running"
+                elif agent_key == "scraper" and not has_error:
+                    st.session_state.agent_status["vectorizer"] = "running"
+                elif agent_key == "vectorizer" and not has_error:
+                    st.session_state.agent_status["pdf_agent"] = "running"
+                elif agent_key == "pdf_agent" and not has_error:
+                    st.session_state.agent_status["analyst"] = "running"
+
+                update_pipeline_ui()
 
             # Capture canonical name from state if available
             state_canonical = state.get("canonical_name") or state.get("company_name")
@@ -935,7 +1004,6 @@ def run_investigation(
         st.session_state.investigation_paused = True
         st.session_state.is_resolving = False
         update_pipeline_ui()
-        update_resolved_ui(stable_key=True)
         st.toast(
             "Canonical Resolution Complete. Click 'Continue' to proceed.", icon="⏸️"
         )
@@ -1182,7 +1250,7 @@ st.markdown(
 )
 
 # Input and Buttons in single row
-cols = st.columns([6, 1, 1])
+cols = st.columns([5, 1, 1, 1.2])
 
 with cols[0]:
     query_input = st.text_input(
@@ -1198,6 +1266,10 @@ with cols[1]:
 with cols[2]:
     abort_clicked = st.button("🛑 Abort", type="secondary", use_container_width=True)
 
+with cols[3]:
+    test_data_clicked = st.button(
+        "📊 Test Dashboard", type="secondary", use_container_width=True
+    )
 
 # Canonical Name Section - professional styling
 st.markdown('<div class="ui-section-label"></div>', unsafe_allow_html=True)
@@ -1219,7 +1291,9 @@ st.markdown(
 
 pipeline_placeholder = st.empty()
 with pipeline_placeholder.container():
-    render_progress_chain(st.session_state.progress_stage)
+    # Use new pipeline visualization
+    data = st.session_state.get("data", {})
+    render_agent_pipeline(data, show_details=False)
 
 # Main Dashboard Placeholder
 dashboard_placeholder = st.empty()
@@ -1249,7 +1323,7 @@ if abort_clicked:
     st.session_state.canonical_name = None
     st.session_state.confidence_score = None
     st.session_state.is_resolving = False
-    st.session_state.investigation_error = None  # Clear error state
+    st.session_state.agent_status = get_default_agent_status()
 
     # Add log message
     add_log("System", "Investigation aborted by user")
@@ -1267,7 +1341,9 @@ if search_clicked and query_input:
 
     # Force UI update for instant feedback
     with pipeline_placeholder.container():
-        render_progress_chain(1)
+        # Use new pipeline visualization
+        data = st.session_state.get("data", {})
+        render_agent_pipeline(data, show_details=False)
 
     # Run investigation immediately (progress updates will stream)
     run_investigation(
@@ -1286,6 +1362,19 @@ elif (
     # but sidebar search button is explicit.
     # Let's rely on the button for the "Deep Search" feel requested.
     pass
+
+# Handle Test Data Button
+if test_data_clicked:
+    # Load mock data for testing from dashboard module
+    st.session_state.data = get_test_dashboard_data()
+    st.session_state.canonical_name = "Emirates NBD Bank PJSC"
+    st.session_state.analysis_complete = True
+    st.session_state.progress_stage = 5
+    # Set all agents to success for test visualization
+    st.session_state.agent_status = {k: "success" for k in get_default_agent_status()}
+    st.success("✅ Test data loaded! Scroll down to see the dashboard.")
+    st.rerun()
+
 
 # Final Dashboard Render (if analysis complete and not running investigation right now)
 if st.session_state.analysis_complete and st.session_state.data:

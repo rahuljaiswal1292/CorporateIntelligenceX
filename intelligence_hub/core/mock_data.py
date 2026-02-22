@@ -10,7 +10,7 @@ def get_company_data(query: str):
     query = query.upper().strip()
 
     # --- 1. Entity Resolution (Mock) ---
-    if "EMAAR" in query:
+    if False:  # "EMAAR" in query: (DISABLED for real testing)
         ticker = "EMAAR"
         exchange = "DFM"
         name = "Emaar Properties PJSC"

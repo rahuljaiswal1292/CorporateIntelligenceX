@@ -57,3 +57,8 @@ class AgentState(TypedDict):
     llm_config: Annotated[
         Dict[str, Any], replace
     ]  # Contains: model, temperature, top_p, frequency_penalty
+
+    # Presentation/UI Outputs
+    meta: Annotated[Dict[str, Any], replace]
+    financials: Annotated[Dict[str, Any], replace]
+    competitors: Annotated[List[Dict[str, Any]], replace]

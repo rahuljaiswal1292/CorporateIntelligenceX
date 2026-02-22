@@ -74,13 +74,25 @@ class PresentationAgent(BaseAgent):
         pdf_results = state.get("pdf_results", []) or []
 
         # 1. Meta Mapping
+        # 1. Resolve Description (Prevent mock leakage)
+        raw_desc = (
+            final_report.get("Executive_summary")
+            or enrichments.get("description")
+            or financial_data.get("profile", {}).get("description", "")
+        )
+
+        # Check if the description is the generic mock placeholder from mock_data.py
+        mock_marker = "is being analyzed by the Corporate Intelligence Agent"
+        if raw_desc and mock_marker in raw_desc:
+            # Try to build a better one or clear it
+            if enrichments.get("name"):
+                raw_desc = f"{enrichments['name']} analysis in progress..."
+            else:
+                raw_desc = ""
+
         meta = {
             "name": self.company_name,
-            "description": final_report.get("Executive_summary")
-            or enrichments.get("description")
-            or financial_data.get("profile", {}).get(
-                "description", "No description available."
-            ),
+            "description": raw_desc or "No description available.",
             "website": enrichments.get("official_website")
             or enrichments.get("website")
             or state.get("website")
@@ -110,16 +122,15 @@ class PresentationAgent(BaseAgent):
             fin = latest_pdf.get("financials", {})
             meta_pdf = latest_pdf.get("meta", {})
 
-            unit = fin.get("revenue", {}).get("unit")
+            rev_block = fin.get("revenue") or {}
+            unit = rev_block.get("unit")
             current_metrics = {
                 "period": meta_pdf.get("period")
                 or meta_pdf.get("report_date")
                 or "Latest Report",
-                "rev": self._format_currency(
-                    fin.get("revenue", {}).get("current"), unit
-                ),
+                "rev": self._format_currency(rev_block.get("current"), unit),
                 "profit": self._format_currency(
-                    fin.get("net_income", {}).get("current"), unit
+                    (fin.get("net_income") or {}).get("current"), unit
                 ),
             }
             # Add ratios if available in PDF (newly implemented or parsed)
@@ -134,36 +145,35 @@ class PresentationAgent(BaseAgent):
                 if ratio in fin:
                     current_metrics[ratio] = fin[ratio]
 
+            ni_block = fin.get("net_income") or {}
             last_year_metrics = {
                 "period": "Previous Year",
-                "rev": self._format_currency(
-                    fin.get("revenue", {}).get("previous"), unit
-                ),
-                "profit": self._format_currency(
-                    fin.get("net_income", {}).get("previous"), unit
-                ),
+                "rev": self._format_currency(rev_block.get("previous"), unit),
+                "profit": self._format_currency(ni_block.get("previous"), unit),
             }
 
         # Fallback to daily_summary or scraped data
-        daily = financial_data.get("daily_summary", {}).get("data", [])
+        daily_block = financial_data.get("daily_summary") or {}
+        daily = daily_block.get("data", [])
         if daily and not current_metrics.get("price"):
             latest_day = daily[0]
             current_metrics["price"] = f"AED {latest_day.get('Last', 'N/A')}"
             current_metrics["trend"] = latest_day.get("Change Percentage", "")
 
+        competitor_analysis = enrichments.get("Competitor Analysis") or {}
+        comp_data_block = competitor_analysis.get("data") or {}
+
         financials = {
             "current": current_metrics,
             "last_year": last_year_metrics,
-            "market_cap": enrichments.get("Competitor Analysis", {})
-            .get("data", {})
-            .get("market_cap")
-            or "N/A",
+            "market_cap": comp_data_block.get("market_cap") or "N/A",
         }
 
         # 3. Enrichments Mapping
         # News: Rename link -> url, published -> date
         news_articles = []
-        raw_articles = enrichments.get("news", {}).get("articles", [])
+        news_block = enrichments.get("news") or {}
+        raw_articles = news_block.get("articles", [])
         for art in raw_articles:
             news_articles.append(
                 {
@@ -176,19 +186,22 @@ class PresentationAgent(BaseAgent):
 
         # Wikipedia URL Extraction from sources
         wiki_url = None
-        sources = financial_data.get("sources", [])
+        sources = financial_data.get("sources", []) or []
         for src in sources:
+            if not src:
+                continue
             if (
-                "wikipedia" in src.get("title", "").lower()
-                or "wikipedia" in src.get("url", "").lower()
+                "wikipedia" in str(src.get("title", "")).lower()
+                or "wikipedia" in str(src.get("url", "")).lower()
             ):
                 wiki_url = src.get("url")
                 break
         if not wiki_url:
-            wiki_url = enrichments.get("wikipedia", {}).get("url")
+            wiki_url = (enrichments.get("wikipedia") or {}).get("url")
 
         # SERP Count
-        serp_count = enrichments.get("_metadata", {}).get("serp_api_calls", 0)
+        meta_block = enrichments.get("_metadata") or {}
+        serp_count = meta_block.get("serp_api_calls", 0)
 
         # DED Mapping
         ded_info = enrichments.get("uae_ded_license") or {}
@@ -202,29 +215,41 @@ class PresentationAgent(BaseAgent):
 
         # 4. Insights Mapping (action -> text)
         insights = []
+
+        # Helper to extract category/text with synonyms and case-insensitivity
+        def parse_insight(opt):
+            if not isinstance(opt, dict):
+                return {"category": "Insight", "text": str(opt)}
+
+            # Case-insensitive key lookup
+            keys = {k.lower(): v for k, v in opt.items()}
+
+            cat = keys.get("category") or keys.get("type") or "Insight"
+
+            # Text synonyms: action, finding, opportunity, text
+            txt = (
+                keys.get("action")
+                or keys.get("finding")
+                or keys.get("opportunity")
+                or keys.get("text")
+                or str(opt)
+            )
+
+            return {"category": str(cat), "text": str(txt)}
+
         strategic_opts = final_report.get("Strategic_banking_opportunities", [])
         if isinstance(strategic_opts, list):
             for opt in strategic_opts:
-                insights.append(
-                    {
-                        "category": opt.get("category", "Insight"),
-                        "text": opt.get("action") or opt.get("finding") or str(opt),
-                    }
-                )
+                insights.append(parse_insight(opt))
         else:
             # Fallback to top-level insights list
             raw_insights = state.get("insights", [])
             for opt in raw_insights:
-                insights.append(
-                    {
-                        "category": opt.get("category", "Insight"),
-                        "text": opt.get("action") or opt.get("finding") or str(opt),
-                    }
-                )
+                insights.append(parse_insight(opt))
 
         # 5. Competitors Mapping
         competitors = []
-        comp_data = enrichments.get("Competitor Analysis", {}).get("data", {})
+        comp_data = (enrichments.get("Competitor Analysis") or {}).get("data") or {}
         if "peers" in comp_data:
             for p in comp_data["peers"]:
                 competitors.append(
@@ -243,8 +268,7 @@ class PresentationAgent(BaseAgent):
             "enrichments": enrichments_block,
             "insights": insights,
             "competitors": competitors,
-            "logs": state.get("logs", [])
-            + [
+            "logs": [
                 f"Presentation Agent: Final dashboard structure ready for {self.company_name}"
             ],
             # Keep legacy keys for temporary compatibility if needed

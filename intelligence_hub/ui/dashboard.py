@@ -925,6 +925,74 @@ def render_main_dashboard(placeholder=None):
 
     st.html("<div style='margin: 40px 0;'></div>")
 
+    # === SECTION 8: KEY RISKS & CONSIDERATIONS - Premium Cards ===
+    st.html(
+        """
+    <div style="
+        font-family: 'Poppins', sans-serif;
+        font-size: 22px;
+        font-weight: 700;
+        color: #003366;
+        margin-bottom: 24px;
+        padding-bottom: 12px;
+        border-bottom: 3px solid #ef4444;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        letter-spacing: -0.3px;
+    ">
+        <span style="font-size: 28px;">⚠️</span>
+        <span>Key Risks & Considerations</span>
+    </div>
+    """
+    )
+
+    risks = data.get("risks", [])
+    if risks and len(risks) > 0:
+        # Display risks in 2 columns
+        risk_cols = st.columns(2)
+        for idx, item in enumerate(risks[:6]):
+            if isinstance(item, dict):
+                risk_title = item.get("risk", "Risk Factor")
+                consideration = item.get("consideration", "No details available.")
+
+                with risk_cols[idx % 2]:
+                    st.html(
+                        f"""
+                    <div style="
+                        background: linear-gradient(135deg, #fff5f5 0%, #fee2e2 100%);
+                        border-left: 4px solid #ef4444;
+                        border-radius: 12px;
+                        padding: 20px;
+                        margin-bottom: 16px;
+                        box-shadow: 0 2px 8px rgba(239, 68, 68, 0.06);
+                    ">
+                        <div style="
+                            font-family: 'Poppins', sans-serif;
+                            color: #ef4444;
+                            font-weight: 700;
+                            font-size: 11px;
+                            text-transform: uppercase;
+                            margin-bottom: 10px;
+                            letter-spacing: 0.8px;
+                        ">{risk_title}</div>
+                        <div style="
+                            font-family: 'Poppins', sans-serif;
+                            color: #334155;
+                            line-height: 1.6;
+                            font-size: 14px;
+                            font-weight: 400;
+                        ">{consideration}</div>
+                    </div>
+                    """
+                    )
+    else:
+        st.info(
+            "Key risks and considerations will appear here once analysis completes..."
+        )
+
+    st.html("<div style='margin: 40px 0;'></div>")
+
     # === SECTION 8: DATA SOURCES - Elegant Footer ===
     st.html(
         """

@@ -62,3 +62,4 @@ class AgentState(TypedDict):
     meta: Annotated[Dict[str, Any], replace]
     financials: Annotated[Dict[str, Any], replace]
     competitors: Annotated[List[Dict[str, Any]], replace]
+    risks: Annotated[List[Dict[str, Any]], replace]

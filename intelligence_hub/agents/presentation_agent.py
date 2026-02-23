@@ -261,12 +261,30 @@ class PresentationAgent(BaseAgent):
                     }
                 )
 
-        # 6. Final Updates
+        # 6. Risks Mapping
+        risks = []
+        raw_risks = final_report.get("Key_risks_and_considerations", [])
+        if isinstance(raw_risks, list):
+            for r in raw_risks:
+                if isinstance(r, dict):
+                    risks.append(
+                        {
+                            "risk": r.get("risk")
+                            or r.get("category")
+                            or "Unknown Risk",
+                            "consideration": r.get("consideration")
+                            or r.get("finding")
+                            or "No details available.",
+                        }
+                    )
+
+        # 7. Final Updates
         updates = {
             "meta": meta,
             "financials": financials,
             "enrichments": enrichments_block,
             "insights": insights,
+            "risks": risks,
             "competitors": competitors,
             "logs": [
                 f"Presentation Agent: Final dashboard structure ready for {self.company_name}"

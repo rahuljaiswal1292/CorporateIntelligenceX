@@ -136,7 +136,7 @@ class AnalystAgent(BaseAgent):
                 "structured",
             )
             files = [
-                f for f in os.listdir(search_pattern) if f.lower().endswith(".xls")
+                f for f in os.listdir(search_pattern) if f.lower().endswith(".csv")
             ]
 
             if not files:
@@ -150,11 +150,11 @@ class AnalystAgent(BaseAgent):
             try:
                 # Attempt to read as standard Excel (using explicit engine if needed, but auto detection is usually safer unless specific)
                 # If engine="xlrd" is forced for .xls but content is HTML, it fails.
-                df = pd.read_excel(file_path, engine="xlrd")
+                df = pd.read_csv(file_path)
             except Exception as excel_err:
                 # Fallback: Check if it's an HTML file masked as XLS
                 self.log(
-                    f"Standard Excel read failed ({excel_err}), attempting HTML parse...",
+                    f"Standard CSV read failed ({excel_err}), attempting HTML parse...",
                     "WARNING",
                 )
                 try:

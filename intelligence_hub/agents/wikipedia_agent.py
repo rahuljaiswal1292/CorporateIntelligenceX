@@ -305,8 +305,11 @@ class WikipediaAgent(BaseAgent):
             Result with Wikipedia data
         """
         basic_profile = state.get("enrichments", {})
-        canonical_name = basic_profile.get(
-            "canonical_name", state.get("company_name", self.company_name)
+        canonical_name = (
+            basic_profile.get("canonical_name")
+            or state.get("company_name")
+            or self.company_name
+            or "Unknown"
         )
         wikipedia_url = basic_profile.get("wikipedia_url")
 

@@ -6,6 +6,9 @@ import textwrap
 logo_url = "https://www.emiratesnbd.com/-/media/enbd/images/logos/favicon.png"
 
 
+logo_url = "https://www.emiratesnbd.com/-/media/enbd/images/logos/favicon.png"
+
+
 def render_header():
     """Renders the main dashboard header with Greeting and Process Flow."""
     st.markdown(
@@ -189,6 +192,9 @@ def render_financials_detailed(data):
 
     # --- Helper Helper for Custom Metric Card ---
     def make_metric_card(label, value, delta=None, sub=None):
+        if value is None:
+            value = "-"
+
         delta_html = ""
         if delta:
             # Check for positive/negative trend

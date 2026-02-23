@@ -138,11 +138,9 @@ class ScraperOrchestrator:
 
             tasks.append(no_op())
 
-        # Task B: Yahoo Finance (Sync -> Async)
+        # Task B: Yahoo Finance (Async)
         if ticker and ticker != "UNKNOWN":
-            tasks.append(
-                loop.run_in_executor(None, self.yahoo_scraper.scrape_ticker, ticker)
-            )
+            tasks.append(self.yahoo_scraper.scrape_ticker(ticker))
         else:
 
             async def no_op_y():
@@ -150,10 +148,8 @@ class ScraperOrchestrator:
 
             tasks.append(no_op_y())
 
-        # Task C: Wikipedia (Sync -> Async)
-        tasks.append(
-            loop.run_in_executor(None, self.wiki_scraper.scrape_profile, company_name)
-        )
+        # Task C: Wikipedia (Async)
+        tasks.append(self.wiki_scraper.scrape_profile(company_name))
 
         # Execute Parallel
         results = await asyncio.gather(*tasks, return_exceptions=True)

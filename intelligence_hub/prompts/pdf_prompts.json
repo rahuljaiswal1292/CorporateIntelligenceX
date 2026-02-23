@@ -1,22 +1,18 @@
 [
   {
-    "id": "financial_summary",
-    "prompt": "Extract a summary of the financial performance, including revenue, net profit, and key growth drivers.",
-    "category": "Financials"
+    "category": "toc_analysis",
+    "prompt": "Analyze the following Table of Contents (TOC) text. Identify the start page numbers for: 1) Consolidated Financial Statements, 2) Corporate Structure or Subsidiaries. Return ONLY a JSON object with keys 'financials_page' (int) and 'structure_page' (int). If not found, return null for that key."
   },
   {
-    "id": "risk_factors",
-    "prompt": "Identify the top 3 risk factors mentioned in the document.",
-    "category": "Risks"
+    "category": "meta",
+    "prompt": "Extract the following metadata from the text: 1) Report Date (ISO format YYYY-MM-DD), 2) Report Period (e.g., 'Q3 2024', 'Annual 2023'). Return as JSON with keys 'report_date' and 'period'."
   },
   {
-    "id": "strategic_outlook",
-    "prompt": "What are the company's future strategic goals and expansion plans?",
-    "category": "Strategy"
+    "category": "financials",
+    "prompt": "Extract financial data (Income Statement & Balance Sheet) focusing on 'Revenue', 'Net Profit/Income', 'Total Assets', 'Total Liabilities', 'Total Equity'. Compare current vs previous period. EXTRACT RAW values as they appear in the text. DO NOT multiply or convert. Instead, EXTRACT the currency (e.g., AED, USD) and unit (e.g., thousands, millions) separately. Return JSON with keys: 'current_period' (str), 'previous_period' (str), 'revenue' (obj: current, previous, currency, unit), 'net_income' (obj: current, previous, currency, unit), 'total_assets' (obj: current, previous, currency, unit), 'total_liabilities' (obj: current, previous, currency, unit), 'equity' (obj: current, previous, currency, unit)."
   },
   {
-    "id": "project_updates",
-    "prompt": "List any major ongoing projects or recent completions.",
-    "category": "Operations"
+    "category": "structure",
+    "prompt": "Extract information about the company's corporate structure, including a list of key subsidiaries and their ownership percentages if mentioned. Return as JSON with key 'subsidiaries' (list of objects with 'name' and 'ownership')."
   }
 ]

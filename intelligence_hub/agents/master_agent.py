@@ -36,7 +36,6 @@ from intelligence_hub.prompts import load_prompt
 from intelligence_hub.config.settings import config
 from intelligence_hub.scrapers.adx import ADXScraper
 from intelligence_hub.scrapers.dfm import DFMScraper
-
 import asyncio
 
 
@@ -80,6 +79,50 @@ class MasterAgent(BaseAgent):
         # Removed from master_agent initialization - they execute as separate nodes
         # self.worker_agents = [...]
         # self.worker_agents = [...]
+
+    def get_competitor_analysis(self, company_name: str) -> Dict:
+        """
+        Generates a competitor analysis using LLM knowledge.
+        Returns top 5 UAE peers with key metrics.
+        """
+        self.log(f"Generating competitor analysis for {company_name}...")
+
+        prompt = f"""
+        Identify the top 5 peer competitors for '{company_name}' in the UAE market (focus on same sector/exchange).
+        For each competitor, provide estimated key metrics based on your knowledge:
+        1. Market Cap (in AED, e.g., '10B AED')
+        2. P/E Ratio (approx)
+        3. Revenue Growth YoY (approx %)
+
+        Return strict JSON format with a single key 'peers', which is a list of objects.
+        Each object must have these exact keys:
+        - "Company": str
+        - "market_cap": str
+        - "pe_ratio": str
+        - "revenue_growth": str
+
+        Example:
+        {{
+          "peers": [
+            {{
+              "Company": "Competitor X",
+              "market_cap": "15B AED",
+              "pe_ratio": "12.5",
+              "revenue_growth": "5%"
+            }}
+          ]
+        }}
+        """
+
+        try:
+            response = self.llm_connector.analyze(prompt)
+            # clean markdown
+            clean_resp = response.replace("```json", "").replace("```", "").strip()
+            data = json.loads(clean_resp)
+            return data
+        except Exception as e:
+            self.log(f"Competitor analysis failed: {e}", "ERROR")
+            return {"peers": []}
 
     def resolve_query(self, query: str) -> Dict[str, str]:
         """Phase 0: Entity Resolution"""
@@ -136,25 +179,38 @@ class MasterAgent(BaseAgent):
         found_name = None
 
         try:
-            # Try ADX
-            _t, _n = safe_run_async(adx_scanner.search_ticker(query))
-            if _t:
-                found_ticker = _t
-                found_name = _n
-                found_exchange = "ADX"
-        except Exception:
-            pass
+            # Run ADX and DFM searches in parallel
+            self.log("Searching ADX and DFM in parallel...")
+            results = safe_run_async(
+                asyncio.gather(
+                    adx_scanner.search_ticker(query),
+                    dfm_scanner.search_ticker(query),
+                    return_exceptions=True,
+                )
+            )
 
-        if not found_ticker:
-            try:
-                # Try DFM
-                _t, _n = safe_run_async(dfm_scanner.search_ticker(query))
+            # Process ADX result
+            if results and len(results) > 0 and not isinstance(results[0], Exception):
+                _t, _n = results[0]
+                if _t:
+                    found_ticker = _t
+                    found_name = _n
+                    found_exchange = "ADX"
+
+            # Process DFM result (only if ADX didn't find it, or we prefer DFM)
+            if (
+                not found_ticker
+                and len(results) > 1
+                and not isinstance(results[1], Exception)
+            ):
+                _t, _n = results[1]
                 if _t:
                     found_ticker = _t
                     found_name = _n
                     found_exchange = "DFM"
-            except Exception:
-                pass
+        except Exception as e:
+            self.log(f"Dynamic resolution failed: {e}", "WARNING")
+            pass
 
         if found_ticker:
             self.log(f"Resolved via Dynamic Search: {found_name}")
@@ -477,9 +533,15 @@ class MasterAgent(BaseAgent):
         )
         self.log("Note: Enrichment agents now execute as separate workflow nodes")
 
-        # Phase 3: Save basic profile (aggregation now handled by analyst node)
-        self.log("PROGRESS:90:Saving basic profile")
-        self.save_to_disk(basic_profile, "basic_profile.json")
+        enrichment_results = []
+
+        # Competitor Analysis is now handled by a separate workflow node to reduce latency
+        if self.enable_enrichment:
+            self.log("Note: Competitor Analysis will be handled by dedicated node")
+
+        # Phase 3: Aggregate Results
+        self.log("PROGRESS:80:Phase 3 - Aggregating results")
+        final_profile = self.aggregate_results(basic_profile, enrichment_results)
 
         # Save basic profile to ChromaDB
         self.log("Storing basic profile to ChromaDB...")

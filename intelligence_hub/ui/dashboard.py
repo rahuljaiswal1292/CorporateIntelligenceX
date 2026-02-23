@@ -230,12 +230,19 @@ def render_main_dashboard(placeholder=None):
 
     with col1:
         founded = meta.get("founded", "N/A")
+        founding_year = None
         if founded and founded != "N/A":
-            try:
-                years = 2026 - int(founded) if str(founded).isdigit() else "N/A"
-                st.metric("Years Operating", f"{years}", f"Since {founded}")
-            except:
-                st.metric("Founded", founded)
+            import re
+
+            year_match = re.search(r"\b(1\d{3}|20\d{2})\b", str(founded))
+            if year_match:
+                founding_year = int(year_match.group(1))
+
+        if founding_year:
+            years = 2026 - founding_year
+            st.metric("Years Operating", f"{years}", f"Since {founded}")
+        elif founded and founded != "N/A":
+            st.metric("Founded", founded)
         else:
             st.metric("Founded", "N/A")
 

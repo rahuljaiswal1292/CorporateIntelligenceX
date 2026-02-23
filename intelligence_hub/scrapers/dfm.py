@@ -653,13 +653,14 @@ class DFMScraper:
         all_downloaded_files = []
         downloaded_count = 0
 
-        # Define target years (Current year back to 2020)
+        # Define target years (Current year back to 2024 for a 2-year window)
         current_year = datetime.now().year
         target_years = sorted(
-            list(set([str(y) for y in range(2020, current_year + 1)])), reverse=True
+            list(set([str(y) for y in range(current_year - 1, current_year + 1)])),
+            reverse=True,
         )
-        # Limit to top 6 years to keep it within reasonable time limits
-        target_years = target_years[:6]
+        # Limit to top 2 years as requested
+        target_years = target_years[:2]
         logger.info(f"Target years for reports: {target_years}")
 
         async def process_year_tab(year):

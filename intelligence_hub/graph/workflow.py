@@ -21,15 +21,14 @@ from intelligence_hub.storage.corporate_profile_store import CorporateProfileSto
 from intelligence_hub.config.config import CHROMADB_PERSIST_DIRECTORY
 
 
-def run_resolution_node(state: AgentState):
+def run_enrichment_node(state: AgentState):
     """
-    Phase 0: Canonical Resolution Only.
-    Fast check via Config, DB, or Exchange Search.
+    Executes the Master Coordination Agent for profile enrichment.
     """
-    query = state.get("query", "Unknown")
+    company_name = state.get("company_name") or state.get("query", "Unknown")
     logs = []
 
-    logs.append(f"Resolving entity for: {query}")
+    logs.append(f"Starting enrichment (and resolution) for {company_name}...")
 
     try:
         # Initialize dependencies
@@ -39,8 +38,10 @@ def run_resolution_node(state: AgentState):
         llm_config = state.get("llm_config", {})
         llm_connector = LLMConnector(config=llm_config)
 
+        # Log collector
         def log_handler(msg):
             logs.append(msg.strip())
+            print(msg.strip())
 
         # Initialize Master Agent - disable heavy enrichment for initial resolution
         agent = MasterAgent(
@@ -51,13 +52,19 @@ def run_resolution_node(state: AgentState):
             enable_enrichment=False,  # Defer heavy enrichment to parallel nodes
         )
 
-        # Run Phase 1
-        result = agent.run_serpapi_phase(state)
+        # Run agent
+        result = agent.run(state)
+
+        # Extract data
         full_profile = result.get("data", {})
-        ticker = full_profile.get("ticker", state.get("ticker"))
-        exchange = full_profile.get("exchange", state.get("exchange"))
-        website = full_profile.get("website", state.get("website"))
-        confidence = full_profile.get("confidence_score", 0)
+        metadata = result.get("metadata", {})
+        canonical_name = metadata.get("canonical_name") or company_name
+
+        # Extract resolution info
+        ticker = metadata.get("ticker", state.get("ticker"))
+        exchange = metadata.get("exchange", state.get("exchange"))
+        website = metadata.get("website", state.get("website"))
+        confidence = metadata.get("confidence", full_profile.get("confidence_score", 0))
 
         # Flatten 'enrichments' to top level of profile
         # User requested bringing DED, Competitor Analysis etc one level up.
@@ -79,8 +86,10 @@ def run_resolution_node(state: AgentState):
 
         return {
             "enrichments": full_profile,
+            "company_name": canonical_name,
+            "canonical_name": canonical_name,  # Explicit for UI
             "confidence": confidence,
-            "confidence_score": confidence,
+            "confidence_score": confidence,  # Explicit for UI
             "ticker": ticker,
             "exchange": exchange,
             "website": website,
@@ -88,8 +97,8 @@ def run_resolution_node(state: AgentState):
         }
 
     except Exception as e:
-        logs.append(f"Profiling failed: {str(e)}")
-        return {"logs": logs}
+        logs.append(f"Enrichment failed: {str(e)}")
+        return {"logs": logs, "enrichments": {"error": str(e)}}
 
 
 def run_wikipedia_node(state: AgentState):

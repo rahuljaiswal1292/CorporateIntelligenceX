@@ -242,6 +242,18 @@ class LLMConnector:
                 return self._get_mock_insights()
         return self._get_mock_insights()
 
+    def call_llm(self, messages: List[Dict[str, str]]) -> str:
+        """Sends a list of messages to the LLM and returns the text response."""
+        logger.info(f"[{self.mode}] Running Chat Completion...")
+        if self.llm is not None:
+            try:
+                response = self.llm.invoke(messages)
+                return response.content
+            except Exception as e:
+                logger.error(f"LLM Error: {str(e)}")
+                return "Error generating response."
+        return "LLM not initialized."
+
     def analyze_with_images(self, prompt: str, images: List[str]) -> str:
         """Sends a prompt and a list of base64 encoded images to the LLM."""
         logger.info(

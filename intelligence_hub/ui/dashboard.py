@@ -184,7 +184,7 @@ def render_main_dashboard(placeholder=None):
             letter-spacing: 0.02em;
             text-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
         ">
-            Corporate Intelligence Dashboard
+            Profiling Dashboard
         </div>
         <div style="
             font-family: 'Poppins', sans-serif;

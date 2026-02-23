@@ -321,21 +321,23 @@ def create_enrichment_graph():
     # ── Edges ──────────────────────────────────────────────────────────────
     workflow.set_entry_point("start_enrichment")
 
-    # Fan-out: start_enrichment → all three parallel enrichment nodes
+    # Fan-out: start_enrichment → all parallel enrichment nodes
     workflow.add_edge("start_enrichment", "wikipedia")
     workflow.add_edge("start_enrichment", "news")
     workflow.add_edge("start_enrichment", "ded")
+    workflow.add_edge("start_enrichment", "scraper")
+    workflow.add_edge("start_enrichment", "pdf_agent")
 
-    # Fan-in: all three parallel nodes → join_enrichment
+    # Fan-in: all parallel nodes → join_enrichment
     workflow.add_edge("wikipedia", "join_enrichment")
     workflow.add_edge("news", "join_enrichment")
     workflow.add_edge("ded", "join_enrichment")
+    workflow.add_edge("scraper", "join_enrichment")
+    workflow.add_edge("pdf_agent", "join_enrichment")
 
-    # Sequential pipeline after the join
-    workflow.add_edge("join_enrichment", "scraper")
-    workflow.add_edge("scraper", "vectorizer")
-    workflow.add_edge("vectorizer", "pdf_agent")
-    workflow.add_edge("pdf_agent", "analyst")
+    # Sequential pipeline after data acquisition
+    workflow.add_edge("join_enrichment", "vectorizer")
+    workflow.add_edge("vectorizer", "analyst")
     workflow.add_edge("analyst", END)
 
     return workflow.compile()

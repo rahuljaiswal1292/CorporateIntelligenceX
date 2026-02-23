@@ -46,6 +46,8 @@ from intelligence_hub.ui.components import (
     render_pdf_analysis,
     render_references,
 )
+from intelligence_hub.ui.chat_ui import render_chatbot
+
 
 image_path = os.path.join(
     os.path.dirname(__file__), "intelligence_hub", "ui", "favicon.jpg"
@@ -115,6 +117,8 @@ if "intermediate_state" not in st.session_state:
     st.session_state.intermediate_state = None
 if "agent_status" not in st.session_state:
     st.session_state.agent_status = get_default_agent_status()
+if "reset_counter" not in st.session_state:
+    st.session_state.reset_counter = 0
 
 
 # --- Formatting Helpers ---
@@ -185,7 +189,7 @@ def render_resolved_ui(
                 st.html(
                     textwrap.dedent(
                         f"""
-                    <div class="canonical-container" style="margin: 0;">
+                    <div class="canonical-container">
                         <div class="canonical-label">
                             <span class="canonical-icon">🏢</span>
                             <span class="canonical-title">RESOLVED COMPANY NAME</span>
@@ -203,7 +207,7 @@ def render_resolved_ui(
                 st.markdown(
                     textwrap.dedent(
                         """
-                    <div class="canonical-container" style="margin: 0;">
+                    <div class="canonical-container">
                         <div class="canonical-label">
                             <span class="canonical-icon">🏢</span>
                             <span class="canonical-title">RESOLVED COMPANY NAME</span>
@@ -578,25 +582,38 @@ def render_resolved_ui(
                 socials["Wikipedia"] = wiki_url
 
             if socials:
+                # Define high-quality colorful icons (Reliable PNG stickers)
+                icon_assets = {
+                    "linkedin": "https://img.icons8.com/color/48/linkedin.png",
+                    "twitter": "https://img.icons8.com/color/48/twitterx--v1.png",
+                    "x.com": "https://img.icons8.com/color/48/twitterx--v1.png",
+                    "facebook": "https://img.icons8.com/color/48/facebook-new.png",
+                    "instagram": "https://img.icons8.com/color/48/instagram-new.png",
+                    "youtube": "https://img.icons8.com/color/48/youtube-play.png",
+                    "wikipedia": "https://img.icons8.com/color/48/wikipedia.png",
+                }
+
+                social_html = ""
                 for platform, url in socials.items():
                     if not url:
                         continue
-                    icon = "🌐"
                     p_lower = platform.lower()
-                    if "linkedin" in p_lower:
-                        icon = "in"
-                    elif "twitter" in p_lower or "x.com" in p_lower:
-                        icon = "𝕏"
-                    elif "facebook" in p_lower:
-                        icon = "f"
-                    elif "instagram" in p_lower:
-                        icon = "📸"
-                    elif "youtube" in p_lower:
-                        icon = "▶️"
-                    elif "wikipedia" in p_lower:
-                        icon = "W"
 
-                    social_html += f'<a href="{url}" target="_blank" class="social-icon" title="{platform}" style="margin-right:12px; text-decoration:none; font-size:1.1rem; color:#555;">{icon}</a>'
+                    # Match asset
+                    img_src = "https://img.icons8.com/color/48/globe--v1.png"  # Global fallback
+                    for key, asset_url in icon_assets.items():
+                        if key in p_lower:
+                            img_src = asset_url
+                            break
+
+                    social_html += f"""
+                    <a href="{url}" target="_blank" class="social-icon" title="{platform}" 
+                       style="margin-right:12px; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; 
+                              width:36px; height:36px; border-radius:50%; background:white; border:1px solid #f0f0f0; 
+                              box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition:transform 0.2s ease;">
+                        <img src="{img_src}" style="width:20px; height:20px;" />
+                    </a>
+                    """
 
             # References Logic
             refs = list(profile.get("references", []))
@@ -687,11 +704,22 @@ def render_resolved_ui(
                 and show_button
             ):
                 st.html('<div style="height:20px;"></div>')
-                col_abort, col_continue = st.columns([1, 2.5])
+                col_continue, col_abort = st.columns([2.5, 1])
+
+                with col_continue:
+                    btn_disabled = not st.session_state.canonical_name
+                    if st.button(
+                        "🚀 GENERATE PROFILE",
+                        key=key,
+                        disabled=btn_disabled,
+                        type="primary",
+                        use_container_width=True,
+                    ):
+                        return True
 
                 with col_abort:
                     if st.button(
-                        "🛑 ABORT", key=f"{key}_abort", use_container_width=True
+                        "✖ CANCEL", key=f"{key}_abort", use_container_width=True
                     ):
                         st.session_state.abort_investigation = True
                         st.session_state.data = None
@@ -704,17 +732,6 @@ def render_resolved_ui(
                         st.session_state.investigation_paused = False
                         st.session_state.agent_status = get_default_agent_status()
                         st.rerun()
-
-                with col_continue:
-                    btn_disabled = not st.session_state.canonical_name
-                    if st.button(
-                        "CONTINUE PROFILING →",
-                        key=key,
-                        disabled=btn_disabled,
-                        type="primary",
-                        use_container_width=True,
-                    ):
-                        return True
         elif st.session_state.is_resolving:
             # Show a beautiful shimmer loading placeholder
             st.html(
@@ -914,24 +931,47 @@ def run_investigation(
                     # After master, resolution graph ends. Enrichment runs on resume.
                     pass
                 elif node == "start_enrichment":
-                    # Parallel agents start
+                    # Parallel Enrichment Phase: Start all tracks simultaneously (Visual)
                     st.session_state.agent_status["wikipedia_agent"] = "running"
                     st.session_state.agent_status["news_agent"] = "running"
                     st.session_state.agent_status["ded_agent"] = "running"
-                elif node in ("wikipedia", "news", "ded"):
-                    # Check if all parallel agents done -> scraper starts
-                    parallel_done = all(
-                        st.session_state.agent_status.get(k) in ("success", "error")
-                        for k in ["wikipedia_agent", "news_agent", "ded_agent"]
+                    st.session_state.agent_status["scraper"] = (
+                        "running"  # ADX/Exchange Scraper
                     )
-                    if parallel_done:
-                        st.session_state.agent_status["scraper"] = "running"
-                elif agent_key == "scraper" and not has_error:
-                    st.session_state.agent_status["vectorizer"] = "running"
-                elif agent_key == "vectorizer" and not has_error:
-                    st.session_state.agent_status["pdf_agent"] = "running"
-                elif agent_key == "pdf_agent" and not has_error:
-                    st.session_state.agent_status["analyst"] = "running"
+                    st.session_state.agent_status["yahoo_agent"] = "running"
+                    st.session_state.agent_status["pdf_agent"] = (
+                        "running"  # DED Filings
+                    )
+
+                    # Smart Skip Handling: If Exchange is known, mark the other as "completed" immediately
+                    exchange_val = str(state.get("exchange", "")).upper()
+                    if exchange_val == "DFM":
+                        # Emaar etc. are DFM. Mark ADX as completed immediately.
+                        st.session_state.agent_status["scraper"] = "success"
+                    elif exchange_val == "ADX":
+                        # Mark DFM as completed if this is strictly ADX
+                        st.session_state.agent_status["ded_agent"] = "success"
+
+                elif node in ("wikipedia", "news", "ded", "scraper", "pdf_agent"):
+                    # Mark the specific agent that finished as success
+                    agent_map = {
+                        "wikipedia": "wikipedia_agent",
+                        "news": "news_agent",
+                        "ded": "ded_agent",
+                        "scraper": "scraper",
+                        "pdf_agent": "pdf_agent",
+                    }
+                    if node in agent_map:
+                        st.session_state.agent_status[agent_map[node]] = "success"
+                        # Yahoo is usually handled via ScraperOrchestrator
+                        if node == "scraper":
+                            st.session_state.agent_status["yahoo_agent"] = "success"
+
+                elif node == "vectorizer":
+                    st.session_state.agent_status["vectorizer"] = "success"
+                elif node == "analyst":
+                    st.session_state.agent_status["analyst"] = "success"
+                    st.session_state.analysis_complete = True
 
                 update_pipeline_ui()
 
@@ -1046,8 +1086,22 @@ def run_investigation(
                     elif "Analyst" in log:
                         add_log("Analyst", log)
                         st.session_state.progress_stage = 4  # Analyze
+                        st.session_state.agent_status["analyst"] = "running"
+                        if "complete" in log.lower() or "finished" in log.lower():
+                            st.session_state.agent_status["analyst"] = "success"
                         update_pipeline_ui()
-                        # st.write(f"📊 {log}") # Disabled
+                    elif "Scraper" in log or "Scraping" in log:
+                        add_log("Harvester", log)
+                        # Specific matches for parallel UI tracks
+                        if "Wikipedia" in log:
+                            st.session_state.agent_status["wikipedia_agent"] = "success"
+                        if "Yahoo" in log:
+                            st.session_state.agent_status["yahoo_agent"] = "success"
+                        if "ADX" in log:
+                            st.session_state.agent_status["scraper"] = "success"
+                        if "DFM" in log:
+                            st.session_state.agent_status["ded_agent"] = "success"
+                        update_pipeline_ui()
                     else:
                         add_log("System", log)
 
@@ -1295,6 +1349,14 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
+    # ── IntelX Assistant panel (appended within same sidebar context) ──
+    _ix_ticker = st.session_state.get("ticker", "") or ""
+    if not _ix_ticker:
+        _ix_data = st.session_state.get("data") or {}
+        _ix_ticker = (_ix_data.get("company_profile") or {}).get("ticker", "") or ""
+    _ix_company = st.session_state.get("canonical_name", "") or ""
+    render_chatbot(_ix_ticker, _ix_company)
+
 
 # Banner with styled heading and tagline (matching reference)
 st.markdown(
@@ -1337,6 +1399,13 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# Render Progress Chain (Always visible)
+pipeline_placeholder = st.empty()
+with pipeline_placeholder.container():
+    # Use new pipeline visualization
+    data = st.session_state.get("data", {})
+    render_agent_pipeline(data, show_details=False)
+
 # Search Company Label - professional styling
 st.markdown(
     '<div class="ui-section-label"><span class="emoji">🔍</span><span>Search Company</span></div>',
@@ -1351,7 +1420,7 @@ with cols[0]:
         "company_input",
         placeholder="Enter company name (e.g., Tesla, Emirates NBD, ADNOC)",
         label_visibility="collapsed",
-        key="company_search_input",
+        key=f"company_search_input_{st.session_state.reset_counter}",
     )
 
 with cols[3]:
@@ -1360,10 +1429,10 @@ with cols[3]:
     )
 
 with cols[1]:
-    search_clicked = st.button("🔍 Search", type="primary", use_container_width=True)
+    search_clicked = st.button("� SEARCH", type="primary", use_container_width=True)
 
 with cols[2]:
-    abort_clicked = st.button("🛑 Abort", type="secondary", use_container_width=True)
+    reset_clicked = st.button("� RESET", type="secondary", use_container_width=True)
 
 
 # Canonical Name Section - professional styling
@@ -1377,18 +1446,6 @@ continue_clicked = False
 # Only render if NOT starting a new search (avoid duplicate key with run_investigation final state)
 if not search_clicked:
     continue_clicked = render_resolved_ui(resolved_placeholder)
-
-# Render Progress Chain (Always visible)
-st.markdown(
-    '<div class="ui-section-label"><span class="emoji">⚙️</span><span>STATUS TRACKER</span></div>',
-    unsafe_allow_html=True,
-)
-
-pipeline_placeholder = st.empty()
-with pipeline_placeholder.container():
-    # Use new pipeline visualization
-    data = st.session_state.get("data", {})
-    render_agent_pipeline(data, show_details=False)
 
 # Main Dashboard Placeholder
 dashboard_placeholder = st.empty()
@@ -1406,22 +1463,44 @@ if continue_clicked:
     )
     st.rerun()
 
-if abort_clicked:
+if reset_clicked:
     # Set abort flag FIRST to stop ongoing workflow
     st.session_state.abort_investigation = True
 
-    # Then clear all state
-    st.session_state.data = None
-    st.session_state.logs = []
-    st.session_state.progress_stage = 0
-    st.session_state.analysis_complete = False
-    st.session_state.canonical_name = None
-    st.session_state.confidence_score = None
-    st.session_state.is_resolving = False
+    # COMPREHENSIVE STATE CLEAR
+    keys_to_reset = [
+        "data",
+        "logs",
+        "progress_stage",
+        "analysis_complete",
+        "canonical_name",
+        "company_profile",
+        "confidence_score",
+        "is_resolving",
+        "investigation_paused",
+        "intermediate_state",
+        "abort_investigation",
+    ]
+
+    for key in keys_to_reset:
+        st.session_state[key] = (
+            None
+            if key != "logs"
+            and key != "progress_stage"
+            and key != "analysis_complete"
+            and key != "is_resolving"
+            and key != "investigation_paused"
+            and key != "abort_investigation"
+            else ([] if key == "logs" else (0 if key == "progress_stage" else False))
+        )
+
     st.session_state.agent_status = get_default_agent_status()
 
+    # INCREMENT COUNTER TO CLEAR WIDGET
+    st.session_state.reset_counter += 1
+
     # Add log message
-    add_log("System", "Investigation aborted by user")
+    add_log("System", "Dashboard fully reset")
 
     st.rerun()
 
@@ -1475,4 +1554,3 @@ if st.session_state.analysis_complete and st.session_state.data:
 elif not st.session_state.analysis_complete and st.session_state.progress_stage == 0:
     # Empty State - Show nothing or a welcome message
     pass
-# End of Streamlit App - Force Reload 1

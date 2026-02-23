@@ -21,14 +21,15 @@ from intelligence_hub.storage.corporate_profile_store import CorporateProfileSto
 from intelligence_hub.config.config import CHROMADB_PERSIST_DIRECTORY
 
 
-def run_enrichment_node(state: AgentState):
+def run_resolution_node(state: AgentState):
     """
-    Executes the Master Coordination Agent for profile enrichment.
+    Phase 0: Canonical Resolution Only.
+    Fast check via Config, DB, or Exchange Search.
     """
-    company_name = state.get("company_name") or state.get("query", "Unknown")
+    query = state.get("query", "Unknown")
     logs = []
 
-    logs.append(f"Starting enrichment (and resolution) for {company_name}...")
+    logs.append(f"Resolving entity for: {query}")
 
     try:
         # Initialize dependencies
@@ -38,10 +39,8 @@ def run_enrichment_node(state: AgentState):
         llm_config = state.get("llm_config", {})
         llm_connector = LLMConnector(config=llm_config)
 
-        # Log collector
         def log_handler(msg):
             logs.append(msg.strip())
-            print(msg.strip())
 
         # Initialize Master Agent - disable heavy enrichment for initial resolution
         agent = MasterAgent(
@@ -52,19 +51,13 @@ def run_enrichment_node(state: AgentState):
             enable_enrichment=False,  # Defer heavy enrichment to parallel nodes
         )
 
-        # Run agent
-        result = agent.run(state)
-
-        # Extract data
+        # Run Phase 1
+        result = agent.run_serpapi_phase(state)
         full_profile = result.get("data", {})
-        metadata = result.get("metadata", {})
-        canonical_name = metadata.get("canonical_name") or company_name
-
-        # Extract resolution info
-        ticker = metadata.get("ticker", state.get("ticker"))
-        exchange = metadata.get("exchange", state.get("exchange"))
-        website = metadata.get("website", state.get("website"))
-        confidence = metadata.get("confidence", full_profile.get("confidence_score", 0))
+        ticker = full_profile.get("ticker", state.get("ticker"))
+        exchange = full_profile.get("exchange", state.get("exchange"))
+        website = full_profile.get("website", state.get("website"))
+        confidence = full_profile.get("confidence_score", 0)
 
         # Flatten 'enrichments' to top level of profile
         # User requested bringing DED, Competitor Analysis etc one level up.
@@ -86,10 +79,8 @@ def run_enrichment_node(state: AgentState):
 
         return {
             "enrichments": full_profile,
-            "company_name": canonical_name,
-            "canonical_name": canonical_name,  # Explicit for UI
             "confidence": confidence,
-            "confidence_score": confidence,  # Explicit for UI
+            "confidence_score": confidence,
             "ticker": ticker,
             "exchange": exchange,
             "website": website,
@@ -97,8 +88,8 @@ def run_enrichment_node(state: AgentState):
         }
 
     except Exception as e:
-        logs.append(f"Enrichment failed: {str(e)}")
-        return {"logs": logs, "enrichments": {"error": str(e)}}
+        logs.append(f"Profiling failed: {str(e)}")
+        return {"logs": logs}
 
 
 def run_wikipedia_node(state: AgentState):
@@ -141,7 +132,9 @@ def run_wikipedia_node(state: AgentState):
         }
     except Exception as e:
         logs.append(f"Wikipedia Agent failed: {str(e)}")
-        return {"logs": logs}
+
+    # Only return logs — don't overwrite shared state fields that other parallel nodes own
+    return {"logs": logs}
 
 
 def run_news_node(state: AgentState):
@@ -184,7 +177,8 @@ def run_news_node(state: AgentState):
         }
     except Exception as e:
         logs.append(f"News Agent failed: {str(e)}")
-        return {"logs": logs}
+
+    return {"logs": logs}
 
 
 def run_ded_node(state: AgentState):
@@ -227,7 +221,21 @@ def run_ded_node(state: AgentState):
         }
     except Exception as e:
         logs.append(f"DED Agent failed: {str(e)}")
-        return {"logs": logs}
+
+    return {"logs": logs}
+
+
+def join_enrichment_node(state: AgentState):
+    """
+    Passthrough join node.
+
+    LangGraph requires a single downstream node to collect the results of
+    parallel branches. All three parallel enrichment agents (Wikipedia, News,
+    DED) converge here before the scraper runs. Their individual log lines
+    are merged automatically by the `Annotated[List, operator.add]` reducer
+    defined on AgentState.logs, so this node has nothing extra to do.
+    """
+    return {"logs": ["Enrichment agents complete — starting scraper phase."]}
 
 
 def run_competitor_analysis_node(state: AgentState):
@@ -365,7 +373,7 @@ def create_enrichment_graph():
 
     # Sequence: (Resolver removed) MasterEnrichment starts
 
-    # Edges - Parallel Start
+    # ── Edges ──────────────────────────────────────────────────────────────
     workflow.set_entry_point("start_enrichment")
 
     workflow.add_edge("start_enrichment", "wikipedia")

@@ -1,6 +1,6 @@
 import logging
-import json
-from intelligence_hub.connectors.web_scraper_connector import WebScraperConnector
+import asyncio
+from playwright.async_api import async_playwright
 from intelligence_hub.utils.storage_manager import StorageManager
 
 logger = logging.getLogger(__name__)
@@ -12,11 +12,18 @@ class YahooFinanceScraper:
     Used as fallback for Price/Financials if Exchange sites fail.
     """
 
-    def __init__(self, connector: WebScraperConnector):
-        self.connector = connector
+    def __init__(self):
         self.base_url = "https://finance.yahoo.com/quote"
+        self.browser = None
+        self.playwright = None
 
-    def scrape_ticker(self, ticker: str, exchange_suffix: str = ".AE") -> dict:
+    async def _get_browser(self):
+        if not self.browser:
+            self.playwright = await async_playwright().start()
+            self.browser = await self.playwright.chromium.launch(headless=True)
+        return self.browser
+
+    async def scrape_ticker(self, ticker: str, exchange_suffix: str = ".AE") -> dict:
         """
         Scrapes Yahoo Finance for a specific ticker (e.g. EMAAR.AE).
         """
@@ -24,23 +31,39 @@ class YahooFinanceScraper:
         url = f"{self.base_url}/{full_ticker}"
 
         logger.info(f"YF: Scraping {full_ticker}...")
-        html = self.connector.scrape(url)
 
-        if not html:
+        browser = await self._get_browser()
+        context = await browser.new_context(
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        )
+        page = await context.new_page()
+
+        try:
+            await page.goto(url, timeout=30000, wait_until="domcontentloaded")
+            html = await page.content()
+
+            if not html:
+                return {}
+
+            # Save Raw
+            StorageManager.save_raw(html, "yahoo", full_ticker)
+
+            data = {
+                "source": "Yahoo Finance",
+                "url": url,
+                "raw_html_snippet": html[:5000],  # Truncated for meta
+            }
+
+            StorageManager.save_structured(data, "yahoo", full_ticker)
+            return data
+        except Exception as e:
+            logger.error(f"YF: Error scraping {full_ticker}: {e}")
             return {}
-
-        # Save Raw
-        StorageManager.save_raw(html, "yahoo", full_ticker)
-
-        # Parse (Simple heuristic extraction or LLM-based)
-        # For simplicity in this demo, we assume extraction logic here or pass HTML to Analyst
-        # Returning a raw-ish dict for the Orchestrator to process
-
-        data = {
-            "source": "Yahoo Finance",
-            "url": url,
-            "raw_html_snippet": html[:5000],  # Truncated for meta
-        }
-
-        StorageManager.save_structured(data, "yahoo", full_ticker)
-        return data
+        finally:
+            await page.close()
+            await context.close()
+            if self.browser:
+                await self.browser.close()
+                await self.playwright.stop()
+                self.browser = None
+                self.playwright = None

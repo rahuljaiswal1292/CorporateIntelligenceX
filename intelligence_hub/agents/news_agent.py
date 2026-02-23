@@ -204,8 +204,11 @@ class NewsAgent(BaseAgent):
             Result with news data
         """
         basic_profile = state.get("enrichments", {})
-        canonical_name = basic_profile.get(
-            "canonical_name", state.get("company_name", self.company_name)
+        canonical_name = (
+            basic_profile.get("canonical_name")
+            or state.get("company_name")
+            or self.company_name
+            or "Unknown"
         )
 
         self.log("PROGRESS:0:Starting news search")

@@ -117,22 +117,6 @@ if "agent_status" not in st.session_state:
     st.session_state.agent_status = get_default_agent_status()
 
 
-# --- Formatting Helpers ---
-def format_val(val):
-    if val is None:
-        return "N/A"
-    try:
-        if isinstance(val, (int, float)):
-            if val > 1_000_000_000:
-                return f"AED {val/1_000_000_000:.1f}B"
-            if val > 1_000_000:
-                return f"AED {val/1_000_000:.1f}M"
-            return f"AED {val:,.0f}"
-        return str(val)
-    except:
-        return "N/A"
-
-
 # --- Helper to append logs ---
 def add_log(agent_name, action):
     timestamp = datetime.now().strftime("%H:%M:%S")
@@ -178,8 +162,11 @@ def render_resolved_ui(
                 )
             elif st.session_state.canonical_name:
                 # Resolved state
-                check = '<span class="canonical-check">✓</span>'
-
+                check = (
+                    '<span class="canonical-check">✓</span>'
+                    if st.session_state.canonical_name
+                    else ""
+                )
                 status_class = "resolved"
 
                 st.html(
@@ -863,13 +850,15 @@ def run_investigation(
     # Limit indentation changes by using a dummy block, or just unindent.
     # User wants to disable live logs.
 
-    # Stream the Graph execution
-    stream = graph.stream(input_data)
-    final_state = {}
+    # Stream the Graph execution (Use default 'updates' mode to track node progress)
+    # We use a config with thread_id for state persistence/sync
+    config = {"configurable": {"thread_id": st.session_state.thread_id}}
+    stream = graph.stream(input_data, config=config)
+    final_state = input_data.copy()
 
     # Initial Pipeline Update
     update_pipeline_ui()
-    update_resolved_ui()  # Initial Blink
+    update_resolved_ui()
 
     for event in stream:
         # Check if user requested abort
@@ -878,11 +867,9 @@ def run_investigation(
             # status.update removed
             return
 
-        # Event corresponds to a node finishing
-        for node, state in event.items():
-            final_state = state  # Keep updating final state
-
-            # ---- Map LangGraph node to agent_status key ----
+        # Event corresponds to a node finishing (in 'updates' mode)
+        for node, state_update in event.items():
+            # Update Agent Status based on finished node
             node_to_agent = {
                 "resolution": "master_agent",
                 "profiling": "master_agent",
@@ -893,282 +880,108 @@ def run_investigation(
                 "vectorizer": "vectorizer",
                 "pdf_agent": "pdf_agent",
                 "analyst": "analyst",
-                "start_enrichment": None,  # passthrough node
+                "presentation_agent": "analyst",  # Presentation marks analyst stage complete
             }
             agent_key = node_to_agent.get(node)
             if agent_key:
-                # Check if this node had an error — only look at NEW logs from this event
-                # (not all accumulated logs, which may contain unrelated 'error'/'failed' words)
-                node_logs = state.get("logs", [])
-                # Only flag error if the LAST log entry (the most recent) indicates failure
-                last_log = node_logs[-1].lower() if node_logs else ""
-                has_error = ("failed" in last_log and "error" in last_log) or (
-                    "exception" in last_log
-                )
-                st.session_state.agent_status[agent_key] = (
-                    "error" if has_error else "success"
-                )
+                st.session_state.agent_status[agent_key] = "success"
 
-                # Set next sequential agents to "running"
-                if agent_key == "master_agent" and not has_error:
-                    # After master, resolution graph ends. Enrichment runs on resume.
-                    pass
-                elif node == "start_enrichment":
-                    # Parallel agents start
-                    st.session_state.agent_status["wikipedia_agent"] = "running"
-                    st.session_state.agent_status["news_agent"] = "running"
-                    st.session_state.agent_status["ded_agent"] = "running"
-                elif node in ("wikipedia", "news", "ded"):
-                    # Check if all parallel agents done -> scraper starts
+                # Progression sequence (set running for next)
+                if node in ("wikipedia", "news", "ded"):
+                    # Check if all parallel agents finished
                     parallel_done = all(
                         st.session_state.agent_status.get(k) in ("success", "error")
                         for k in ["wikipedia_agent", "news_agent", "ded_agent"]
                     )
                     if parallel_done:
                         st.session_state.agent_status["scraper"] = "running"
-                elif agent_key == "scraper" and not has_error:
-                    st.session_state.agent_status["vectorizer"] = "running"
-                elif agent_key == "vectorizer" and not has_error:
+                elif node == "scraper":
                     st.session_state.agent_status["pdf_agent"] = "running"
-                elif agent_key == "pdf_agent" and not has_error:
+                    st.session_state.progress_stage = 3  # Move to Financials
+                elif node == "pdf_agent":
+                    st.session_state.agent_status["vectorizer"] = "running"
+                elif node == "vectorizer":
                     st.session_state.agent_status["analyst"] = "running"
+                    st.session_state.progress_stage = 4  # Move to Analyst
+                elif node == "analyst":
+                    pass  # presentation_agent will finish it
 
-                update_pipeline_ui()
-
-            # Capture canonical name from state if available
-            state_canonical = state.get("canonical_name") or state.get("company_name")
-
-            # Capture full profile data if available
-            if "data" in state and isinstance(state["data"], dict):
-                st.session_state.company_profile = state["data"]
-            elif "enrichments" in state and isinstance(state["enrichments"], dict):
-                # Sometimes under enrichments key
-                st.session_state.company_profile = state["enrichments"]
-            elif node == "profiling" and isinstance(state, dict):
-                # profilng node might return enrichments directly in the state
-                if "enrichments" in state:
-                    st.session_state.company_profile = state["enrichments"]
-
-            # Ensure UI reflects key state changes (async population)
-            update_resolved_ui()
-
+            # Capture canonical name from update if present
+            state_canonical = state_update.get("canonical_name") or state_update.get(
+                "company_name"
+            )
             if state_canonical and not st.session_state.canonical_name:
-                import re as _re
-
-                # Strip any HTML tags that might come from state (e.g. </div> from profiler output)
-                state_canonical = _re.sub(r"<[^>]+>", "", str(state_canonical)).strip()
-                if state_canonical:
-                    st.session_state.canonical_name = state_canonical
-                # Capture confidence score if available
-                if state.get("confidence") or state.get("confidence_score"):
-                    confidence = state.get("confidence") or state.get(
-                        "confidence_score"
-                    )
-                    st.session_state.confidence_score = (
-                        round(confidence)
-                        if isinstance(confidence, (int, float))
-                        else None
-                    )
+                st.session_state.canonical_name = state_canonical
                 st.session_state.is_resolving = False
-
-                # Mark Stage 1 as Complete (Green) immediately
                 st.session_state.progress_stage = 2
-                update_pipeline_ui()
-                update_resolved_ui()  # Resolved Name + Dashboard Refresh!
+                update_resolved_ui()
 
-            # Check for new logs
-            current_logs = state.get("logs", [])
+            # Capture profile data for Summary Card (Phase 1)
+            if node == "master_enrichment" and "enrichments" in state_update:
+                st.session_state.company_profile = state_update["enrichments"]
+                update_resolved_ui()
+
+            # Check for logs
+            current_logs = state_update.get("logs", [])
             for log in current_logs:
                 if log not in processed_logs:
                     processed_logs.add(log)
+                    add_log("System", log)
 
-                    # UI Logic for Logs and Progress
-                    if "Resolved" in log or "Canonical Name" in log:
-                        add_log("Resolver", log)
-                        st.session_state.progress_stage = 1  # Canonical Resolution
-                        update_pipeline_ui()
-                        # st.write(f"✅ {log}") # Disabled
+        # Periodic UI update for live feedback
+        update_pipeline_ui()
 
-                        # Extract canonical name from log if not already set
-                        if (
-                            "Canonical Name: " in log
-                            and not st.session_state.canonical_name
-                        ):
-                            parts = log.split("Canonical Name: ")
-                            if len(parts) > 1:
-                                import re as _re
+    # After stream ends, get the ABSOLUTE FINAL state for consistency
+    final_full_state = graph.get_state(config).values
+    final_state = final_full_state
 
-                                raw_name = parts[1].strip()
-                                clean_name = _re.sub(r"<[^>]+>", "", raw_name).strip()
-                                if clean_name:
-                                    st.session_state.canonical_name = clean_name
-                                st.session_state.is_resolving = False
-
-                                # Mark Stage 1 as Complete (Green) immediately
-                                st.session_state.progress_stage = 2
-                                update_pipeline_ui()
-                                update_resolved_ui()  # Resolved via log + Dashboard Refresh!
-                        elif " to " in log and not st.session_state.canonical_name:
-                            parts = log.split(" to ")
-                            if len(parts) > 1:
-                                import re as _re
-
-                                # Strip any HTML tags in case log contains markup
-                                raw_name = parts[1].strip()
-                                clean_name = _re.sub(r"<[^>]+>", "", raw_name).strip()
-                                if clean_name:
-                                    st.session_state.canonical_name = clean_name
-                                st.session_state.is_resolving = False
-
-                                # Mark Stage 1 as Complete (Green) immediately
-                                st.session_state.progress_stage = 2
-                                update_pipeline_ui()
-                                update_resolved_ui()  # Resolved via log + Dashboard Refresh!
-                    elif "SERP" in log or "Profiling" in log:
-                        add_log("SERP Agent", log)
-                        # Only set to 1 if we haven't advanced to later stages (Resolution Done = 2)
-                        if st.session_state.progress_stage < 2:
-                            st.session_state.progress_stage = 1  # Merged with Canonical
-                        update_pipeline_ui()
-                        # st.write(f"🔍 {log}") # Disabled
-                    elif "Enrichment" in log or "Scraping" in log:
-                        add_log("Harvester", log)
-                        st.session_state.progress_stage = (
-                            2  # Parallel Enrichment & Scraping
-                        )
-                        update_pipeline_ui()
-                        # st.write(f"⚡ {log}") # Disabled
-                    elif "Vectorizer" in log:
-                        add_log("Vectorizer", log)
-                        st.session_state.progress_stage = 3  # Vectorize
-                        update_pipeline_ui()
-                        # st.write(f"🧠 {log}") # Disabled
-                    elif "Analyst" in log:
-                        add_log("Analyst", log)
-                        st.session_state.progress_stage = 4  # Analyze
-                        update_pipeline_ui()
-                        # st.write(f"📊 {log}") # Disabled
-                    else:
-                        add_log("System", log)
-
+    # 4. Handle Completion
     # 4. Handle Completion
     if not resume_mode:
         # Resolution Complete -> Pause
         st.session_state.intermediate_state = final_state
         st.session_state.investigation_paused = True
         st.session_state.is_resolving = False
+
+        # Name resolution check
+        if final_state.get("canonical_name"):
+            st.session_state.canonical_name = final_state["canonical_name"]
+            st.session_state.agent_status["master_agent"] = "success"
+
+        # Ensure profile is captured for Phase 1 Summary Card
+        if final_state.get("enrichments"):
+            st.session_state.company_profile = final_state["enrichments"]
+
         update_pipeline_ui()
+        update_resolved_ui()
         st.toast(
             "Canonical Resolution Complete. Click 'Continue' to proceed.", icon="⏸️"
         )
-        # status.update removed
     else:
         # Enrichment Complete -> Finish
         st.session_state.investigation_paused = False
         st.session_state.analysis_complete = True
+        st.session_state.progress_stage = 5  # Complete
 
-        # Update Data with Real Intelligence (Using final state)
-        if final_state.get("financial_data"):
+        # Update Data from PresentationAgent (full overwrite)
+        if final_state and "meta" in final_state and "financials" in final_state:
+            # Full replacement to ensure no mock data leaks from initial session state
+            st.session_state.data = final_state
+            st.session_state.agent_status["analyst"] = "success"
+            add_log(
+                "System",
+                f"Intelligence Hub: Analysis complete for {st.session_state.canonical_name}",
+            )
+        elif final_state.get("financial_data"):
+            # Fallback
             real_data = final_state["financial_data"]
-
-            # A. Update Financials
             if "financials" in real_data:
-                real_fin = real_data["financials"]
-                # Map Revenue
-                if "revenue" in real_fin:
-                    val = real_fin["revenue"]
-                    st.session_state.data["financials"]["current"]["rev"] = (
-                        f"AED {val/1_000_000_000:.1f}B"
-                        if val > 1e9
-                        else f"AED {val:,.0f}"
-                    )
-                # Map Profit
-                if "net_income" in real_fin:  # Scrapers might use net_income
-                    val = real_fin["net_income"]
-                    st.session_state.data["financials"]["current"]["profit"] = (
-                        f"AED {val/1_000_000_000:.1f}B"
-                        if val > 1e9
-                        else f"AED {val:,.0f}"
-                    )
+                st.session_state.data["financials"] = real_data["financials"]
+            if "insights" in final_state:
+                st.session_state.data["insights"] = final_state["insights"]
 
-            # B. Update Profile (if Wiki scraped)
-            if "profile" in real_data:
-                prof = real_data["profile"]
-                if "profile" not in st.session_state.data:
-                    st.session_state.data["profile"] = {}  # Initialize if missing
-
-                if "description" in prof:
-                    st.session_state.data["profile"]["description"] = prof[
-                        "description"
-                    ]
-                if "sector" in prof:
-                    st.session_state.data["profile"]["sector"] = prof["sector"]
-
-            # C. Update Sources
-            if "sources" in real_data:
-                st.session_state.data["sources"] = real_data["sources"]
-
-                current_fin = {
-                    "rev": format_val(real_fin.get("revenue")),
-                    "profit": format_val(real_fin.get("net_income")),
-                    "period": "LTM",  # Default to LTM for scraped data
-                    "trend": None,  # clear mock trend
-                    "price": (
-                        format_val(real_fin.get("price"))
-                        if "price" in real_fin
-                        else "N/A"
-                    ),
-                }
-
-                # Add Daily Summary if available (from Analyst)
-                if "daily_summary" in real_data:
-                    # Storing it for potential future use or display
-                    current_fin["daily_summary"] = real_data["daily_summary"]
-
-                # OVERWRITE with Real Data
-                st.session_state.data["financials"] = {
-                    "current": current_fin,
-                    "last_year": {},  # Clear mock history
-                    "last_quarter": {},  # Clear mock history
-                }
-
-                # Clear Mock Chart (since we don't have real chart data yet)
-                st.session_state.data["chart"] = {}
-
-            # 2. Update Profile (Overwrite Mock)
-            if "profile" in real_data and real_data["profile"]:
-                prof = real_data["profile"]
-                # Ensure we don't lose the structure if we overwrite,
-                # but we want to replace mock content.
-                # Initialize properly if overwriting
-                st.session_state.data["profile"] = {
-                    "description": prof.get("description", "No description available."),
-                    "sector": prof.get("sector", "Unknown Sector"),
-                    "website": prof.get("website", ""),
-                    # Keep other keys like 'est_date' from mock?
-                    # User said "agent state should be considered".
-                    # If agent didn't find est_date, we probably shouldn't show a fake one.
-                    "est_date": prof.get("est_date", "N/A"),
-                    "shareholders": prof.get("shareholders", []),
-                }
-
-                # If we have enrichment data for shareholders/exchange, map it?
-                # PresentationAgent puts it in profile?
-                # PresentationAgent implementation:
-                # if enrichments.get("description"): final...["profile"]["description"] = ...
-                # It doesn't seem to map shareholders explicitly in PresentationAgent.
-                # We stick to what's in real_data["profile"].
-
-            # 3. Update Sources
-            if "sources" in real_data:
-                st.session_state.data["sources"] = real_data["sources"]
-
-        # C. Insights
-        if final_state.get("insights"):
-            st.session_state.data["insights"] = final_state["insights"]
-
-        # status.update removed as UI disabled
         update_pipeline_ui()
+        update_resolved_ui()
 
 
 # --- Sidebar ---
@@ -1354,20 +1167,19 @@ with cols[0]:
         key="company_search_input",
     )
 
-with cols[3]:
-    test_data_clicked = st.button(
-        "📊 Test Dashboard", type="secondary", use_container_width=True
-    )
-
 with cols[1]:
     search_clicked = st.button("🔍 Search", type="primary", use_container_width=True)
 
 with cols[2]:
     abort_clicked = st.button("🛑 Abort", type="secondary", use_container_width=True)
 
+with cols[3]:
+    test_data_clicked = st.button(
+        "📊 Test Dashboard", type="secondary", use_container_width=True
+    )
 
 # Canonical Name Section - professional styling
-st.html('<div class="ui-section-label"></div>')
+st.markdown('<div class="ui-section-label"></div>', unsafe_allow_html=True)
 
 # Canonical Name Display
 # Canonical Name Display

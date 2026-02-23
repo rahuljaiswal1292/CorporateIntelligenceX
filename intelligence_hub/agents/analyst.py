@@ -265,8 +265,8 @@ class AnalystAgent(BaseAgent):
          Return STRICTLY JSON format being concise and professional with the below keys.
         1. Executive_summary
         2. Company_overview
-        3. Strategic_banking_opportunities
-        4. Key_risks_and_considerations
+        3. Strategic_banking_opportunities (list of objects with keys: category, finding, source, trigger, action)
+        4. Key_risks_and_considerations (list of objects with keys: risk, consideration)
         """
 
         try:

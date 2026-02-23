@@ -1,4 +1,5 @@
 import streamlit as st
+import plotly.graph_objects as go
 
 
 def get_test_dashboard_data():
@@ -674,38 +675,103 @@ def render_main_dashboard(placeholder=None):
     """
     )
 
-    # Placeholder for stock chart
-    st.html(
+    # Real stock chart
+    chart_data = data.get("chart", {})
+    if chart_data and "dates" in chart_data:
+        fig = go.Figure(
+            data=[
+                go.Candlestick(
+                    x=chart_data["dates"],
+                    open=chart_data["open"],
+                    high=chart_data["high"],
+                    low=chart_data["low"],
+                    close=chart_data["close"],
+                    increasing_line_color="#10B981",
+                    decreasing_line_color="#EF4444",
+                    name="Price",
+                )
+            ]
+        )
+
+        fig.update_layout(
+            xaxis_rangeslider_visible=False,
+            height=450,
+            margin=dict(l=10, r=10, t=10, b=10),
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            hovermode="x unified",
+            xaxis=dict(
+                showgrid=True,
+                gridcolor="#f1f5f9",
+                tickfont=dict(color="#64748b", size=11),
+                rangeslider=dict(visible=False),
+                type="category",
+            ),
+            yaxis=dict(
+                showgrid=True,
+                gridcolor="#f1f5f9",
+                tickfont=dict(color="#64748b", size=11),
+                side="right",
+            ),
+        )
+
+        # Add volume if available
+        if "volume" in chart_data:
+            fig.add_trace(
+                go.Bar(
+                    x=chart_data["dates"],
+                    y=chart_data["volume"],
+                    name="Volume",
+                    marker_color="rgba(0, 51, 102, 0.1)",
+                    yaxis="y2",
+                )
+            )
+            fig.update_layout(
+                yaxis2=dict(
+                    title="Volume",
+                    overlaying="y",
+                    side="left",
+                    showgrid=False,
+                    tickfont=dict(color="#94a3b8", size=10),
+                )
+            )
+
+        st.plotly_chart(
+            fig, use_container_width=True, key="dashboard_stock_performance"
+        )
+    else:
+        # Fallback to placeholder if no data
+        st.html(
+            """
+        <div style="
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 60px 40px;
+            text-align: center;
+            box-shadow: 0 4px 16px rgba(0, 51, 102, 0.08);
+        ">
+            <div style="
+                font-family: 'Poppins', sans-serif;
+                font-size: 48px;
+                margin-bottom: 16px;
+                opacity: 0.3;
+            ">📊</div>
+            <div style="
+                font-family: 'Poppins', sans-serif;
+                color: #64748b;
+                font-size: 16px;
+                font-weight: 500;
+            ">Stock performance data currently unavailable</div>
+            <div style="
+                font-family: 'Poppins', sans-serif;
+                color: #94a3b8;
+                font-size: 13px;
+                margin-top: 8px;
+            ">Historical price data and terminal stats will appear here shortly</div>
+        </div>
         """
-    <div style="
-        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 60px 40px;
-        text-align: center;
-        box-shadow: 0 4px 16px rgba(0, 51, 102, 0.08);
-    ">
-        <div style="
-            font-family: 'Poppins', sans-serif;
-            font-size: 48px;
-            margin-bottom: 16px;
-            opacity: 0.3;
-        ">📊</div>
-        <div style="
-            font-family: 'Poppins', sans-serif;
-            color: #64748b;
-            font-size: 16px;
-            font-weight: 500;
-        ">Stock performance chart will be displayed here</div>
-        <div style="
-            font-family: 'Poppins', sans-serif;
-            color: #94a3b8;
-            font-size: 13px;
-            margin-top: 8px;
-        ">Historical price data, volume, and technical indicators</div>
-    </div>
-    """
-    )
+        )
 
     st.html("<div style='margin: 40px 0;'></div>")
 

@@ -263,7 +263,7 @@ def render_main_dashboard(placeholder=None):
             industry = industry[:20] + "..."
         st.metric("Industry", industry if industry != "N/A" else "N/A")
 
-    st.markdown("<div style='margin: 40px 0;'></div>", unsafe_allow_html=True)
+    st.html("<div style='margin: 40px 0;'></div>")
 
     # === SECTION 2 & 3: COMPANY PROFILE + FINANCIALS - Two Column Layout ===
     col_left, col_right = st.columns([1.2, 1])
@@ -331,7 +331,7 @@ def render_main_dashboard(placeholder=None):
                     font-size: 14px;
                     font-weight: 400;
                 ">{description}</p>
-                {f'<div style="margin-bottom: 16px;"><a href="{website}" target="_blank" style="font-family: \'Poppins\', sans-serif; color: #0077ff; text-decoration: none; font-weight: 600; font-size: 14px;">🌐 Visit Website →</a></div>' if website != "#" else ''}
+                {f'<div style="margin-bottom: 16px;"><a href="{website}" target="_blank" style="font-family: Poppins, sans-serif; color: #0077ff; text-decoration: none; font-weight: 600; font-size: 14px;">🌐 Visit Website →</a></div>' if website != "#" else ''}
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
                     <div>
@@ -402,7 +402,7 @@ def render_main_dashboard(placeholder=None):
                             margin-bottom: 12px;
                             box-shadow: 0 2px 8px rgba(0, 51, 102, 0.06);
                         ">
-                            {f'<div style="font-family: \'Poppins\', sans-serif; color: #003366; font-size: 13px; font-weight: 700; margin-bottom: 12px;">{trade_name}</div>' if trade_name else ''}
+                            {f'<div style="font-family: Poppins, sans-serif; color: #003366; font-size: 13px; font-weight: 700; margin-bottom: 12px;">{trade_name}</div>' if trade_name else ''}
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                                 <div>
                                     <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;">License No.</div>
@@ -467,7 +467,7 @@ def render_main_dashboard(placeholder=None):
                     <div>
                         <div style="font-family: 'Poppins', sans-serif; color: rgba(255, 255, 255, 0.8); font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.8px;">Total Revenue</div>
                         <div style="font-family: 'Poppins', sans-serif; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">{curr.get("rev", "N/A")}</div>
-                        {f'<div style="font-family: \'Poppins\', sans-serif; color: #4ade80; font-size: 12px; font-weight: 600; margin-top: 4px;">↑ {curr.get("trend", "")}</div>' if curr.get("trend") else ''}
+                        {f'<div style="font-family: Poppins, sans-serif; color: #4ade80; font-size: 12px; font-weight: 600; margin-top: 4px;">↑ {curr.get("trend", "")}</div>' if curr.get("trend") else ''}
                     </div>
                     <div>
                         <div style="font-family: 'Poppins', sans-serif; color: rgba(255, 255, 255, 0.8); font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.8px;">Net Profit</div>
@@ -559,7 +559,7 @@ def render_main_dashboard(placeholder=None):
         else:
             st.info("Financial data pending...")
 
-    st.markdown("<div style='margin: 40px 0;'></div>", unsafe_allow_html=True)
+    st.html("<div style='margin: 40px 0;'></div>")
 
     # === SECTION 4: LATEST NEWS - Enhanced Card Design ===
     st.html(
@@ -665,7 +665,7 @@ def render_main_dashboard(placeholder=None):
     else:
         st.info("📰 No recent news articles available")
 
-    st.markdown("<div style='margin: 40px 0;'></div>", unsafe_allow_html=True)
+    st.html("<div style='margin: 40px 0;'></div>")
 
     # === SECTION 5: STOCK PERFORMANCE - Chart Placeholder ===
     st.html(
@@ -722,7 +722,7 @@ def render_main_dashboard(placeholder=None):
     """
     )
 
-    st.markdown("<div style='margin: 40px 0;'></div>", unsafe_allow_html=True)
+    st.html("<div style='margin: 40px 0;'></div>")
 
     # === SECTION 6: KEY COMPETITORS - Card Grid ===
     st.html(
@@ -845,7 +845,7 @@ def render_main_dashboard(placeholder=None):
     else:
         st.info("⚔️ Competitor analysis data will appear here once available")
 
-    st.markdown("<div style='margin: 40px 0;'></div>", unsafe_allow_html=True)
+    st.html("<div style='margin: 40px 0;'></div>")
 
     # === SECTION 7: STRATEGIC INSIGHTS - Premium Cards ===
     st.html(
@@ -916,7 +916,7 @@ def render_main_dashboard(placeholder=None):
     else:
         st.info("Strategic insights will appear here once analysis completes...")
 
-    st.markdown("<div style='margin: 40px 0;'></div>", unsafe_allow_html=True)
+    st.html("<div style='margin: 40px 0;'></div>")
 
     # === SECTION 8: DATA SOURCES - Elegant Footer ===
     st.html(

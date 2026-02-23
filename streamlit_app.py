@@ -1,4 +1,11 @@
 import streamlit as st
+import asyncio
+import sys
+
+# Windows-specific fix for Playwright/asyncio
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
 import time
 from datetime import datetime
 import textwrap
@@ -62,11 +69,11 @@ st.set_page_config(
     page_title="CorporateIntelligenceX",
     page_icon=image_path_ico,
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
 # --- Apply Custom CSS ---
-st.markdown(get_custom_css(), unsafe_allow_html=True)
+st.html(get_custom_css())
 
 # Load additional custom CSS from file
 custom_css_path = (
@@ -75,7 +82,7 @@ custom_css_path = (
 if custom_css_path.exists():
     with open(custom_css_path, "r", encoding="utf-8") as f:
         custom_css = f"<style>{f.read()}</style>"
-        st.markdown(custom_css, unsafe_allow_html=True)
+        st.html(custom_css)
 
 # --- Session State ---
 if "logs" not in st.session_state:
@@ -123,6 +130,10 @@ def render_resolved_ui(
 ):
     # Use placeholder if provided, else main flow
     context = placeholder.container() if placeholder else st.container()
+
+    # Check if we should return early (user clicked Abort)
+    if st.session_state.get("abort_investigation", False):
+        return False
 
     with context:
         # Layout: Name Display | Continue Button
@@ -176,7 +187,7 @@ def render_resolved_ui(
                 )
             else:
                 # Default state
-                st.html(
+                st.markdown(
                     textwrap.dedent(
                         """
                     <div class="canonical-container" style="margin: 0;">
@@ -189,7 +200,8 @@ def render_resolved_ui(
                         </div>
                     </div>
                     """
-                    )
+                    ),
+                    unsafe_allow_html=True,
                 )
 
         # (Button moved to bottom)
@@ -460,8 +472,10 @@ def render_resolved_ui(
                     ]
                 )
             elif isinstance(leadership_data, dict):
-                # Flatten dict values: "Name" or "Name (Role)"
-                for k, v in list(leadership_data.items())[:4]:
+                # Convert to list of keys to slice safely
+                l_keys = list(leadership_data.keys())
+                for k in l_keys[:4]:
+                    v = leadership_data[k]
                     # If key is Role (CEO) and value is Name (Amit Jain), show Name
                     if k.lower() in ["ceo", "founder", "chairman", "president"]:
                         leadership_names.append(v)
@@ -477,9 +491,11 @@ def render_resolved_ui(
                     ]
                 )
             elif isinstance(shareholders, dict):
-                for k, v in list(shareholders.items())[:4]:
+                s_keys = list(shareholders.keys())
+                for k in s_keys[:4]:
+                    v = shareholders[k]
                     # If key is Name (longer) and value is Role (shorter description)
-                    if len(k) > len(v):
+                    if len(k) > len(str(v)):
                         shareholders_names.append(f"{k} ({v})")
                     else:
                         shareholders_names.append(f"{v} ({k})")
@@ -569,120 +585,137 @@ def render_resolved_ui(
 
                     social_html += f'<a href="{url}" target="_blank" class="social-icon" title="{platform}" style="margin-right:12px; text-decoration:none; font-size:1.1rem; color:#555;">{icon}</a>'
 
-            # References Logic (Robust)
-            ref_html = ""
-            try:
-                raw_refs = profile.get("references", [])
-                refs = list(raw_refs) if isinstance(raw_refs, (list, tuple)) else []
+            # References Logic
+            refs = list(profile.get("references", []))
 
-                # Incorporate Organic Results (SERP Links)
-                organic = profile.get("organic_results", [])
-                seen_urls = set()
-                for r in refs:
-                    if isinstance(r, dict):
-                        seen_urls.add(r.get("url") or r.get("link"))
+            # Incorporate Organic Results (SERP Links)
+            organic = profile.get("organic_results", [])
+            seen_urls = {r.get("url") or r.get("link") for r in refs}
 
-                if organic and isinstance(organic, list):
-                    for res in organic[:5]:
-                        if not isinstance(res, dict):
-                            continue
-                        link = res.get("link")
-                        if link and link not in seen_urls:
-                            raw_source = res.get("source") or res.get("title", "Link")
-                            source_name = str(raw_source)
-                            if " - " in source_name:
-                                source_name = source_name.split(" - ")[-1]
-                            refs.append({"source": source_name[:20], "url": link})
-                            seen_urls.add(link)
+            if organic and isinstance(organic, list):
+                for res in organic[:5]:
+                    link = res.get("link")
+                    if link and link not in seen_urls:
+                        # Attempt to extract a short source name
+                        raw_source = res.get("source") or res.get("title", "Link")
+                        # Simple heuristic: often "Title - Source" or just "Source"
+                        source_name = raw_source
+                        if " - " in source_name:
+                            source_name = source_name.split(" - ")[-1]
 
-                ref_links = []
-                for r in refs[:8]:
-                    if not isinstance(r, dict):
-                        continue
-                    name = r.get("source") or r.get("name") or "Source"
-                    url = r.get("url") or r.get("link")
-                    if url:
-                        ref_links.append(
-                            f'<a href="{url}" target="_blank" style="color:#0066cc; text-decoration:none; margin-right:10px; font-size:0.85rem;">🔗 {name}</a>'
-                        )
+                        refs.append({"source": source_name[:20], "url": link})
+                        seen_urls.add(link)
 
-                if ref_links:
-                    ref_html = f"""
-                    <div class="summary-section" style="margin-top:15px; border-top:1px solid #eee; padding-top:10px;">
-                        <h4 style="margin-bottom:8px;">References</h4>
-                        <div style="display:flex; flex-wrap:wrap; gap:5px;">{" ".join(ref_links)}</div>
+            if not refs:
+                # Fallback to KG Source
+                kg = profile.get("knowledge_graph", {})
+                src = kg.get("source", {})
+                if isinstance(src, dict) and src.get("link"):
+                    refs.append(
+                        {
+                            "source": src.get("name", "Source")[:20],
+                            "url": src.get("link"),
+                        }
+                    )
+
+            if refs:
+                ref_html = f"""
+                <div class="summary-section" style="margin-top:20px; border-top:1px solid #eee; padding-top:10px;">
+                    <h4 style="margin-bottom:12px; font-size:1rem; color:#202124;">References</h4>
+                    <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                        {"".join([f'<a href="{r["url"]}" target="_blank" class="ref-tag" style="padding:4px 12px; background:#f1f3f4; border-radius:16px; color:#1a73e8; text-decoration:none; font-size:0.85rem; border:1px solid #dadce0;">{r["source"]}</a>' for r in refs[:4]])}
                     </div>
-                    """
-            except Exception:
-                ref_html = ""
+                </div>
+                """
 
-        # Render Summary Card HTML (Always Visible)
-        st.html(
-            f"""
-        <div class="summary-card">
-            <div class="summary-header">
-                <div class="summary-title">
-                    Summary Card
-                    {badge_html}
-                    {f'<div class="summary-ticker" style="margin-left:auto">{ticker_display}</div>' if ticker_display and ticker_display != "N/A" else ''}
+        # --- Render the Card ---
+        # We always render the card shell if we have a canonical name
+        if st.session_state.canonical_name:
+            card_html = f"""
+            <div class="summary-card">
+                <div class="summary-header">
+                    <div style="flex:1; display:flex; align-items:center; gap:20px;">
+                        <div>
+                            <h2 style="margin:0; font-size:1.5rem; color:#202124;">{st.session_state.canonical_name}</h2>
+                            <div style="color:#70757a; font-size:0.9rem; margin-top:4px;">{reason_text}</div>
+                        </div>
+                        {badge_html}
+                    </div>
+                </div>
+                
+                <div style="display:grid; grid-template-columns: 2fr 1fr; gap:30px; margin-top:15px;">
+                    <div>
+                        {website_html}
+                        <div style="color:#4d5156; font-size:1rem; line-height:1.6; margin-bottom:15px;">
+                            {desc}
+                        </div>
+                        {qa_html}
+                        {ref_html}
+                    </div>
+                    <div style="border-left:1px solid #eee; padding-left:20px;">
+                        {kg_html}
+                        {stakeholders_html}
+                        <div style="margin-top:20px;">
+                            <div style="margin-bottom:12px;"><strong style="color:#555;">CONNECT</strong></div>
+                            <div class="social-links" style="margin-top:0;">
+                                {social_html}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            
-            <div style="font-size: 0.8rem; color: #666; margin-top: -10px; margin-bottom: 15px; font-style: italic;">
-                Confidence Reasoning: {reason_text}
-            </div>
-            
-            <div class="summary-description">
-                {desc}
-            </div>
-            
-            {website_html}
-            
-            {kg_html}
-            
-            <div class="summary-grid">
-                {f'''<div class="summary-section">
-                    <h4>Key Stakeholders</h4>
-                    <div>{stakeholders_html}</div>
-                </div>''' if show_stakeholders else ''}
-            </div>
-            
-            {qa_html}
-            
-            <div class="summary-section">
-                <h4>Connect</h4>
-                <div class="social-links">
-                    {social_html}
-                </div>
-            </div>
+            """
+            st.html(card_html)
 
-            {ref_html}
-        </div>
-        </div>
-        """
-        )
-
-        # Render Continue Button Below Summary Card
-        st.markdown('<div style="margin-top: 15px;"></div>', unsafe_allow_html=True)
-
-        # Button logic
-        btn_disabled = (
-            not st.session_state.canonical_name
-        ) or st.session_state.is_resolving
-        # Only show button if NOT complete (Resume case)
-        if (
-            show_button
-            and not st.session_state.analysis_complete
-            and st.session_state.canonical_name
-        ):
-            if st.button(
-                "Continue Investigation ->",
-                key=key,
-                disabled=btn_disabled,
-                type="primary",
-                use_container_width=True,
+            # Continue/Abort Controls (Only show if paused)
+            if (
+                st.session_state.investigation_paused
+                and not st.session_state.analysis_complete
+                and show_button
             ):
-                return True
+                st.html('<div style="height:20px;"></div>')
+                col_abort, col_continue = st.columns([1, 2.5])
+
+                with col_abort:
+                    if st.button(
+                        "🛑 ABORT", key=f"{key}_abort", use_container_width=True
+                    ):
+                        st.session_state.abort_investigation = True
+                        st.session_state.data = None
+                        st.session_state.logs = []
+                        st.session_state.progress_stage = 0
+                        st.session_state.analysis_complete = False
+                        st.session_state.canonical_name = None
+                        st.session_state.confidence_score = None
+                        st.session_state.is_resolving = False
+                        st.session_state.investigation_paused = False
+                        st.session_state.agent_status = get_default_agent_status()
+                        st.rerun()
+
+                with col_continue:
+                    btn_disabled = not st.session_state.canonical_name
+                    if st.button(
+                        "CONTINUE PROFILING →",
+                        key=key,
+                        disabled=btn_disabled,
+                        type="primary",
+                        use_container_width=True,
+                    ):
+                        return True
+        elif st.session_state.is_resolving:
+            # Show a beautiful shimmer loading placeholder
+            st.html(
+                """
+            <div class="summary-card" style="opacity: 0.7;">
+                <div class="shimmer" style="height: 30px; width: 60%; margin-bottom: 20px;"></div>
+                <div class="shimmer" style="height: 100px; width: 100%; margin-bottom: 20px;"></div>
+                <div style="display: flex; gap: 20px;">
+                    <div class="shimmer" style="height: 200px; flex: 2;"></div>
+                    <div class="shimmer" style="height: 200px; flex: 1;"></div>
+                </div>
+            </div>
+            """
+            )
 
     return False
 
@@ -727,6 +760,7 @@ def run_investigation(
         st.session_state.abort_investigation = False
         st.session_state.is_resolving = True  # Resolving starts now
         st.session_state.investigation_paused = False
+        st.session_state.company_profile = None  # Clear old profile
         st.session_state.intermediate_state = None
         st.session_state.thread_id = str(uuid.uuid4())
         st.session_state.agent_status = get_default_agent_status()
@@ -837,7 +871,8 @@ def run_investigation(
         for node, state_update in event.items():
             # Update Agent Status based on finished node
             node_to_agent = {
-                "master_enrichment": "master_agent",
+                "resolution": "master_agent",
+                "profiling": "master_agent",
                 "wikipedia": "wikipedia_agent",
                 "news": "news_agent",
                 "ded": "ded_agent",
@@ -982,6 +1017,21 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
+    # --- System Summary (Moved to Top) ---
+    st.markdown(
+        '<div class="sidebar-heading">📊 System Info</div>',
+        unsafe_allow_html=True,
+    )
+    st.caption(f"System Status: **ONLINE**")
+    st.caption(f"Vector DB: **ChromaDB**")
+
+    # Resolve LLM Provider name for display
+    current_model_val = st.session_state.get("llm_model_select", LLMModel.GPT_4O.value)
+    llm_provider = "Google" if "gemini" in current_model_val.lower() else "OpenAI"
+    st.caption(f"LLM Provider: **{llm_provider}**")
+
+    st.markdown("---")
+
     # --- Model Configuration ---
     st.markdown(
         '<div class="sidebar-heading">🛠️ Model Configuration</div>',
@@ -992,30 +1042,39 @@ with st.sidebar:
     st.selectbox(
         "LLM Model",
         [model.value for model in LLMModel],
-        index=0,
+        index=[model.value for model in LLMModel].index(LLMModel.GPT_4O.value),
+        format_func=lambda x: x.replace("models/", ""),
         key="llm_model_select",
         help="Select the underlying Large Language Model for agents.",
     )
 
     # Parameters
     st.slider(
-        "Temperature",
+        "Creativity Level",
         0.0,
         1.0,
         0.0,
         0.1,
         key="llm_temperature",
-        help="Controls randomness.",
+        help="Higher = More creative; Lower = More precise.",
     )
-    st.slider("Top P", 0.0, 1.0, 1.0, 0.05, key="llm_top_p", help="Nucleus sampling.")
     st.slider(
-        "Frequency Penalty",
+        "Idea Diversity",
+        0.0,
+        1.0,
+        1.0,
+        0.05,
+        key="llm_top_p",
+        help="Higher = Diverse ideas; Lower = Most predictable result.",
+    )
+    st.slider(
+        "Repitition Control",
         0.0,
         2.0,
         0.0,
         0.1,
         key="llm_freq_penalty",
-        help="Penalize frequent tokens.",
+        help="Higher = Reduces repetitive phrasing; Lower = Standard output.",
     )
 
     st.markdown("---")
@@ -1049,9 +1108,6 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-    st.markdown("---")
-    st.caption(f"System Status: **ONLINE**")
-    st.caption(f"Vector DB: **ChromaDB**")
 
 # Banner with styled heading and tagline (matching reference)
 st.markdown(
@@ -1070,7 +1126,7 @@ st.markdown(
 )
 
 # Feature tiles below banner
-st.html(
+st.markdown(
     """
     <div class="feature-grid">
         <div class="feature-card">
@@ -1090,7 +1146,8 @@ st.html(
             <p>Deep insights, trend analysis, and predictive intelligence</p>
         </div>
     </div>
-    """
+    """,
+    unsafe_allow_html=True,
 )
 
 # Search Company Label - professional styling
@@ -1135,7 +1192,7 @@ if not search_clicked:
 
 # Render Progress Chain (Always visible)
 st.markdown(
-    '<div class="ui-section-label"><span class="emoji">⚙️</span><span>Pipeline</span></div>',
+    '<div class="ui-section-label"><span class="emoji">⚙️</span><span>STATUS TRACKER</span></div>',
     unsafe_allow_html=True,
 )
 
@@ -1148,7 +1205,7 @@ with pipeline_placeholder.container():
 # Main Dashboard Placeholder
 dashboard_placeholder = st.empty()
 
-# Action: Continue Investigation
+# Action: Continue Profiling
 if continue_clicked:
     # Ensure invalid states are cleared
     st.session_state.investigation_paused = False
@@ -1183,9 +1240,6 @@ if abort_clicked:
 
 # Trigger Search
 if search_clicked and query_input:
-    # Set resolving state immediately
-    st.session_state.is_resolving = True
-    st.session_state.canonical_name = None
     st.session_state.progress_stage = 1
     st.session_state.investigation_paused = False
 
@@ -1233,3 +1287,4 @@ if st.session_state.analysis_complete and st.session_state.data:
 elif not st.session_state.analysis_complete and st.session_state.progress_stage == 0:
     # Empty State - Show nothing or a welcome message
     pass
+# End of Streamlit App - Force Reload 1

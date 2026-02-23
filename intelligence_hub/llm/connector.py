@@ -1,10 +1,10 @@
 import os
 import logging
 import json
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-from langchain_core.messages import HumanMessage, SystemMessage
 from typing import List, Dict, Any, Optional, Union
-from intelligence_hub.llm.models import LLMConfig, LLMModel
+from langchain_core.messages import HumanMessage
+
+from intelligence_hub.llm.models import LLMConfig, LLMModel, LLMProvider
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -17,7 +17,15 @@ VISION_MODELS = {"gpt-4o", "gpt-4o-mini"}
 
 class LLMConnector:
     """
-    Connector for OpenAI GPT-4 & Embeddings.
+    Connector for LLM providers: OpenAI GPT-4 or Google Gemini.
+
+    Provider and API key are resolved automatically:
+      1. Explicit constructor args
+      2. Values in the config dict / LLMConfig object
+      3. LLM_PROVIDER env var
+      4. Auto-detected from the model name (gemini-* → Google, gpt-* → OpenAI)
+      5. Provider-specific env vars: GOOGLE_API_KEY / OPENAI_API_KEY
+      6. Generic fallback: LLM_API_KEY
     """
 
     def __init__(
@@ -28,26 +36,13 @@ class LLMConnector:
         temperature: Optional[float] = None,
         top_p: Optional[float] = None,
         frequency_penalty: Optional[float] = None,
+        provider: Optional[str] = None,
     ):
-        """
-        Initialize LLM Connector
-
-        Args:
-            api_key: OpenAI API key (optional, defaults to env var)
-            config: LLMConfig object or dict with configuration (optional)
-            model: Model name (optional, overrides config)
-            temperature: Temperature parameter (optional, overrides config)
-            top_p: Top-p parameter (optional, overrides config)
-            frequency_penalty: Frequency penalty (optional, overrides config)
-        """
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
-
-        # Handle config parameter
+        # --- Resolve config object ---
         if config is not None:
-            if isinstance(config, dict):
-                llm_config = LLMConfig.from_dict(config)
-            else:
-                llm_config = config
+            llm_config = (
+                LLMConfig.from_dict(config) if isinstance(config, dict) else config
+            )
         else:
             llm_config = LLMConfig()
 
@@ -63,103 +58,211 @@ class LLMConnector:
             else llm_config.frequency_penalty
         )
 
+        # --- Resolve provider ---
+        # Priority:
+        # 1. Auto-detect from 'model' arg if provided
+        # 2. Auto-detect from 'llm_config.model' if 'model' arg is None
+        # 3. Explicit arg 'provider'
+        # 4. Provider from llm_config
+        # 5. LLM_PROVIDER env var
+
+        resolved_provider = None
+
+        # 1 & 2. Model-based detection takes precedence to avoid endpoint mismatch
+        if model:
+            resolved_provider = LLMModel.detect_provider(model)
+        elif llm_config.model:
+            resolved_provider = LLMModel.detect_provider(llm_config.model)
+
+        # 3. Explicit provider arg (if provided, it overrides detection)
+        if provider:
+            resolved_provider = provider
+
+        # 4. Config-based fallback
+        if not resolved_provider:
+            resolved_provider = llm_config.provider
+
+        # 5. Env-based fallback
+        if not resolved_provider:
+            resolved_provider = os.getenv("LLM_PROVIDER")
+
+        # Helper to get string value from Enum or string
+        def safe_get_str(v):
+            if v is None:
+                return None
+            if hasattr(v, "value"):
+                return str(v.value)
+            return str(v)
+
+        self.provider = (safe_get_str(resolved_provider) or "google").lower()
+
+        # --- Resolve API key ---
+        # Priority: explicit arg > config api_key > provider-specific env var > generic fallback
+        resolved_key = None
+
+        if api_key:
+            resolved_key = api_key
+        elif getattr(llm_config, "api_key", None):
+            resolved_key = llm_config.api_key
+
+        # Provider-specific resolution to avoid cross-pollination of keys
+        google_key = os.getenv("GOOGLE_API_KEY")
+        openai_key = os.getenv("OPENAI_API_KEY")
+        generic_key = os.getenv("LLM_API_KEY")
+
+        if not resolved_key:
+            if self.provider == "google":
+                # For Google, prioritize GOOGLE_API_KEY, then check if LLM_API_KEY looks like a Google key
+                resolved_key = google_key
+                if (
+                    not resolved_key
+                    and generic_key
+                    and not generic_key.startswith("sk-")
+                ):
+                    resolved_key = generic_key
+            else:
+                # For OpenAI, prioritize OPENAI_API_KEY, then check if LLM_API_KEY looks like an OpenAI key
+                resolved_key = openai_key
+                if not resolved_key and generic_key and generic_key.startswith("sk-"):
+                    resolved_key = generic_key
+                # Final fallback for generic key if no other key found
+                if not resolved_key:
+                    resolved_key = generic_key
+
+        self.api_key = resolved_key
+
+        # --- Initialise LLM & Embeddings ---
         if self.api_key:
-            self.llm = ChatOpenAI(
-                model=self.model,
-                openai_api_key=self.api_key,
-                temperature=self.temperature,
-                top_p=self.top_p,
-                frequency_penalty=self.frequency_penalty,
-            )
-            self.embeddings = OpenAIEmbeddings(
-                model="text-embedding-3-small", openai_api_key=self.api_key
-            )
-            self.mode = "LIVE"
+            self._init_llm()
         else:
             self.llm = None
             self.embeddings = None
             self.mode = "MOCK"
-            logger.warning("OPENAI_API_KEY not found. Running in MOCK MODE.")
+            logger.warning(
+                f"No API key found for provider '{self.provider}'. Running in MOCK MODE. "
+                f"Set GOOGLE_API_KEY or OPENAI_API_KEY (or LLM_API_KEY) in your .env file."
+            )
+
+    def _init_llm(self):
+        """Initialise the correct LangChain LLM and embeddings for the resolved provider."""
+        try:
+            if self.provider == "google":
+                from langchain_google_genai import (
+                    ChatGoogleGenerativeAI,
+                    GoogleGenerativeAIEmbeddings,
+                )
+
+                # Standard Google model string: "gemini-1.5-flash"
+                # Some versions of LangChain Google GenAI client automatically
+                # add "models/" prefix, others require it.
+                # We'll normalize to a string the library expects.
+                target_model = self.model
+                if target_model.startswith("models/"):
+                    target_model = target_model[len("models/") :]
+
+                # Ensure model name is clean for ChatGoogleGenerativeAI
+                # The library often handles the prefix, but sometimes having it (or not having it)
+                # leads to 404s depending on the version.
+                clean_model = self.model.replace("models/", "")
+
+                self.llm = ChatGoogleGenerativeAI(
+                    model=clean_model,
+                    google_api_key=self.api_key,
+                    temperature=self.temperature,
+                )
+
+                # Standard embedding model
+                embed_model = os.getenv("EMBEDDING_MODEL", "embedding-001")
+                if embed_model.startswith("models/"):
+                    embed_model = embed_model[len("models/") :]
+
+                self.embeddings = GoogleGenerativeAIEmbeddings(
+                    model=embed_model,
+                    google_api_key=self.api_key,
+                )
+                self.mode = "LIVE (Google Gemini)"
+                logger.info(f"LLM initialised: Google Gemini — {target_model}")
+
+            else:
+                # Default: OpenAI
+                from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+
+                self.llm = ChatOpenAI(
+                    model=self.model,
+                    openai_api_key=self.api_key,
+                    temperature=self.temperature,
+                    top_p=self.top_p,
+                    frequency_penalty=self.frequency_penalty,
+                )
+                self.embeddings = OpenAIEmbeddings(
+                    model="text-embedding-3-small",
+                    openai_api_key=self.api_key,
+                )
+                self.mode = "LIVE (OpenAI)"
+                display_model = self.model.replace("models/", "")
+                logger.info(f"LLM initialised: OpenAI — {display_model}")
+
+        except ImportError as e:
+            logger.error(
+                f"Missing dependency for provider '{self.provider}': {e}. "
+                "Install: pip install langchain-google-genai  (for Google)"
+            )
+            self.llm = None
+            self.embeddings = None
+            self.mode = "MOCK"
+
+        except Exception as e:
+            logger.error(
+                f"Failed to initialise LLM for provider '{self.provider}': {e}"
+            )
+            self.llm = None
+            self.embeddings = None
+            self.mode = "MOCK"
 
     def embed(self, text: str) -> List[float]:
         """Generates a vector embedding for the given text."""
-        if self.mode == "LIVE":
+        if self.embeddings:
             try:
                 return self.embeddings.embed_query(text)
             except Exception as e:
                 logger.error(f"Embedding failed: {e}")
-                return [0.0] * 1536  # Fallback (OpenAI dim)
-        else:
-            return [0.1] * 1536  # Mock vector
+                return [0.0] * 1536
+        return [0.1] * 1536  # Mock vector
 
     def analyze(self, prompt: str) -> str:
-        """
-        Sends a prompt to the LLM and returns the text response.
-        """
+        """Sends a prompt to the LLM and returns the text response."""
         logger.info(f"[{self.mode}] Running Analysis...")
-
-        if self.mode == "LIVE":
+        if self.llm is not None:
             try:
                 response = self.llm.invoke(prompt)
                 return response.content
             except Exception as e:
                 logger.error(f"LLM Error: {str(e)}")
-                return self._get_mock_insights()  # Fallback on error
-        else:
-            return self._get_mock_insights()
+                return self._get_mock_insights()
+        return self._get_mock_insights()
 
     def analyze_with_images(self, prompt: str, images: List[str]) -> str:
-        """
-        Sends a prompt and a list of base64 encoded images to the LLM.
-        """
+        """Sends a prompt and a list of base64 encoded images to the LLM."""
         logger.info(
             f"[{self.mode}] Running Vision Analysis with {len(images)} images..."
         )
-
-        if self.mode == "LIVE":
-            content_parts = [{"type": "text", "text": prompt}]
-            for img_b64 in images:
-                content_parts.append(
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"},
-                    }
-                )
-
-            message = HumanMessage(content=content_parts)
-
-            # Try primary model first if it's in vision list
-            if self.model in VISION_MODELS:
-                try:
-                    response = self.llm.invoke([message])
-                    return response.content
-                except Exception as e:
-                    # Catch the specific vision error and fall back
-                    error_msg = str(e)
-                    if "image_url is only supported by certain models" in error_msg:
-                        logger.warning(
-                            f"Model {self.model} claimed vision support but failed. Falling back to gpt-4o."
-                        )
-                    else:
-                        logger.error(f"LLM Vision Primary Error: {error_msg}")
-                        raise e  # Re-raise if it's not a model compatibility issue
-
-            # Fallback path (used if primary not in list OR if primary failed with model error)
+        if self.llm is not None:
             try:
-                logger.info("Using gpt-4o fallback for vision analysis.")
-                vision_llm = ChatOpenAI(
-                    model="gpt-4o",
-                    openai_api_key=self.api_key,
-                    temperature=self.temperature,
-                    top_p=self.top_p,
-                )
-                response = vision_llm.invoke([message])
+                content_parts = [{"type": "text", "text": prompt}]
+                for img_b64 in images:
+                    content_parts.append(
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"},
+                        }
+                    )
+                message = HumanMessage(content=content_parts)
+                response = self.llm.invoke([message])
                 return response.content
             except Exception as e:
-                logger.error(f"LLM Vision Fallback Error: {str(e)}")
+                logger.error(f"LLM Vision Error: {str(e)}")
                 return self._get_mock_insights()
-        else:
-            return self._get_mock_insights()
+        return self._get_mock_insights()
 
     def _get_mock_insights(self) -> str:
         """Returns a mocked JSON string of strategic insights."""

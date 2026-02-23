@@ -36,7 +36,6 @@ from intelligence_hub.prompts import load_prompt
 from intelligence_hub.config.settings import config
 from intelligence_hub.scrapers.adx import ADXScraper
 from intelligence_hub.scrapers.dfm import DFMScraper
-from intelligence_hub.connectors.web_scraper_connector import WebScraperConnector
 import asyncio
 
 
@@ -78,6 +77,7 @@ class MasterAgent(BaseAgent):
 
         # Worker agents (Wikipedia, News, DED) are now workflow nodes
         # Removed from master_agent initialization - they execute as separate nodes
+        # self.worker_agents = [...]
         # self.worker_agents = [...]
 
     def get_competitor_analysis(self, company_name: str) -> Dict:
@@ -158,9 +158,8 @@ class MasterAgent(BaseAgent):
         # 3. Dynamic Search (Fallback)
         self.log("Starting dynamic resolution via scrapers...")
 
-        sb_connector = WebScraperConnector()
-        adx_scanner = ADXScraper(sb_connector)
-        dfm_scanner = DFMScraper(sb_connector)
+        adx_scanner = ADXScraper()
+        dfm_scanner = DFMScraper()
 
         def safe_run_async(coro):
             try:
@@ -528,6 +527,7 @@ class MasterAgent(BaseAgent):
             self.log(f"Confirmed canonical name for enrichment: {canonical_name}")
 
         # Phase 2: Enrichment now handled by workflow nodes (Wikipedia, News, DED)
+        # Removed: enrichment_results = self.run_enrichment_phase(basic_profile)
         self.log(
             "PROGRESS:40:Phase 2 - Child agents (Wikipedia, News, DED) running as workflow nodes"
         )

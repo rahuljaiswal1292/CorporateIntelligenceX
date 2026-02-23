@@ -14,7 +14,7 @@ class AgentState(TypedDict):
     # Resolver Outputs
     ticker: str
     company_name: str
-    canonical_name: str # Added for UI consistency
+    canonical_name: str  # Added for UI consistency
     exchange: str  # ADX, DFM, or UNKNOWN
     website: str
 
@@ -38,6 +38,6 @@ class AgentState(TypedDict):
 
     # Enrichment Data
     enrichments: Dict[str, Any]
-    
+
     # LLM Configuration
     llm_config: Dict[str, Any]  # Contains: model, temperature, top_p, frequency_penalty

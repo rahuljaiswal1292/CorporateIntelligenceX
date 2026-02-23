@@ -16,7 +16,7 @@ def get_test_dashboard_data():
             "sector": "Banking & Financial Services",
             "industry": "Banking",
             "exchange": "DFM",
-            "ticker": "EMIRATESNBD"
+            "ticker": "EMIRATESNBD",
         },
         "financials": {
             "current": {
@@ -30,14 +30,10 @@ def get_test_dashboard_data():
                 "npl_ratio": "4.1%",
                 "capital_adequacy": "18.5%",
                 "cost_to_income": "32.7%",
-                "liquidity_coverage_ratio": "165%"
+                "liquidity_coverage_ratio": "165%",
             },
-            "last_year": {
-                "period": "2024",
-                "rev": "AED 23.1B",
-                "profit": "AED 11.5B"
-            },
-            "market_cap": "AED 68.5B"
+            "last_year": {"period": "2024", "rev": "AED 23.1B", "profit": "AED 11.5B"},
+            "market_cap": "AED 68.5B",
         },
         "enrichments": {
             "news": {
@@ -46,20 +42,20 @@ def get_test_dashboard_data():
                         "title": "Gulf's Third Biggest Bank Leads Funding Round Into Property App",
                         "url": "https://www.bloomberg.com/news/articles/2026-02-17/gulf-s-third-biggest-bank-leads-funding-round",
                         "source": "Bloomberg",
-                        "date": "Feb 17, 2026"
+                        "date": "Feb 17, 2026",
                     },
                     {
                         "title": "UAE's Emirates NBD Secures $3 Billion Stake in India's RBL Bank",
                         "url": "https://www.msn.com/en-us/money/companies/uae-emirates-nbd-secures",
                         "source": "MSN",
-                        "date": "Feb 16, 2026"
+                        "date": "Feb 16, 2026",
                     },
                     {
                         "title": "Dubai Emirates NBD tightens price on 5-year €500mln green bond",
                         "url": "https://www.zawya.com/en/business/banking/dubai-emirates-nbd-tightens-price",
                         "source": "ZAWYA",
-                        "date": "Feb 11, 2026"
-                    }
+                        "date": "Feb 11, 2026",
+                    },
                 ]
             },
             "wikipedia": {"url": "https://en.wikipedia.org/wiki/Emirates_NBD"},
@@ -70,68 +66,68 @@ def get_test_dashboard_data():
                 "status": "Active",
                 "expiry_date": "31-Dec-2027",
                 "trade_name": "Emirates NBD Bank PJSC",
-                "url": "https://www.ded.ae"
-            }
+                "url": "https://www.ded.ae",
+            },
         },
         "insights": [
             {
                 "category": "Strategic Growth",
-                "text": "Emirates NBD is actively expanding its regional footprint through strategic acquisitions, including the recent $3B stake in India's RBL Bank, positioning itself as a major player in South Asian markets."
+                "text": "Emirates NBD is actively expanding its regional footprint through strategic acquisitions, including the recent $3B stake in India's RBL Bank, positioning itself as a major player in South Asian markets.",
             },
             {
                 "category": "Sustainability",
-                "text": "The bank's €500M green bond issuance demonstrates strong commitment to sustainable finance and ESG principles, aligning with UAE's net-zero ambitions."
+                "text": "The bank's €500M green bond issuance demonstrates strong commitment to sustainable finance and ESG principles, aligning with UAE's net-zero ambitions.",
             },
             {
                 "category": "Digital Innovation",
-                "text": "Leading funding rounds in proptech startups indicates the bank's focus on digital transformation and innovation in the real estate financing sector."
+                "text": "Leading funding rounds in proptech startups indicates the bank's focus on digital transformation and innovation in the real estate financing sector.",
             },
             {
                 "category": "Financial Performance",
-                "text": "Strong YoY revenue growth of 10% and profit increase of 11.3% reflect robust operational performance and effective risk management strategies."
+                "text": "Strong YoY revenue growth of 10% and profit increase of 11.3% reflect robust operational performance and effective risk management strategies.",
             },
             {
                 "category": "Market Position",
-                "text": "As the third-largest bank in the Gulf region with AED 68.5B market cap, Emirates NBD maintains a dominant position in the MENAT banking sector."
-            }
+                "text": "As the third-largest bank in the Gulf region with AED 68.5B market cap, Emirates NBD maintains a dominant position in the MENAT banking sector.",
+            },
         ],
         "competitors": [
             {
                 "Company": "First Abu Dhabi Bank",
                 "Mkt Cap": "AED 112.5B",
                 "P/E": "12.3",
-                "Rev Growth": "+9.5%"
+                "Rev Growth": "+9.5%",
             },
             {
                 "Company": "Abu Dhabi Commercial Bank",
                 "Mkt Cap": "AED 45.2B",
                 "P/E": "10.8",
-                "Rev Growth": "+7.2%"
+                "Rev Growth": "+7.2%",
             },
             {
                 "Company": "Dubai Islamic Bank",
                 "Mkt Cap": "AED 38.7B",
                 "P/E": "11.5",
-                "Rev Growth": "+8.9%"
+                "Rev Growth": "+8.9%",
             },
             {
                 "Company": "Mashreq Bank",
                 "Mkt Cap": "AED 28.3B",
                 "P/E": "9.7",
-                "Rev Growth": "+6.4%"
+                "Rev Growth": "+6.4%",
             },
             {
                 "Company": "Abu Dhabi Islamic Bank",
                 "Mkt Cap": "AED 24.1B",
                 "P/E": "10.2",
-                "Rev Growth": "+5.8%"
+                "Rev Growth": "+5.8%",
             },
             {
                 "Company": "RAK Bank",
                 "Mkt Cap": "AED 6.8B",
                 "P/E": "8.9",
-                "Rev Growth": "+4.3%"
-            }
+                "Rev Growth": "+4.3%",
+            },
         ],
         "logs": [
             "Starting enrichment for Emirates NBD Bank PJSC...",
@@ -150,25 +146,27 @@ def get_test_dashboard_data():
             "PDF Agent: Analyzing financial statements...",
             "PDF Agent completed",
             "Analyst Agent: Generating insights...",
-            "Analyst Agent completed successfully"
-        ]
+            "Analyst Agent completed successfully",
+        ],
     }
+
 
 def render_main_dashboard(placeholder=None):
     """
     Renders an elegant, professional intelligence dashboard with premium styling.
     Each section updates independently as agents complete their tasks.
     """
-    
+
     # Get data from session state
     data = st.session_state.get("data", {})
-    
+
     if not data:
         st.info("📊 Dashboard will appear here once investigation completes...")
         return
-    
+
     # Dashboard Header - Dark gradient matching main UI banner
-    st.html("""
+    st.html(
+        """
     <div style="
         background: linear-gradient(90deg, #003366 0%, #00509e 100%);
         border-radius: 12px;
@@ -199,14 +197,15 @@ def render_main_dashboard(placeholder=None):
         </div>
     </div>
     """)
-    
+
     # Extract data safely with fallbacks
     meta = data.get("meta", {})
     financials = data.get("financials", {})
     enrichments = data.get("enrichments", {})
-    
+
     # === SECTION 1: KEY METRICS - Premium Card Design ===
-    st.html("""
+    st.html(
+        """
     <div style="
         font-family: 'Poppins', sans-serif;
         font-size: 20px;
@@ -224,9 +223,9 @@ def render_main_dashboard(placeholder=None):
         <span>Key Performance Indicators</span>
     </div>
     """)
-    
+
     col1, col2, col3, col4 = st.columns(4)
-    
+
     with col1:
         founded = meta.get("founded", "N/A")
         if founded and founded != "N/A":
@@ -237,36 +236,39 @@ def render_main_dashboard(placeholder=None):
                 st.metric("Founded", founded)
         else:
             st.metric("Founded", "N/A")
-    
+
     with col2:
-        revenue = financials.get("current", {}).get("rev", "N/A") if financials else "N/A"
+        revenue = (
+            financials.get("current", {}).get("rev", "N/A") if financials else "N/A"
+        )
         trend = financials.get("current", {}).get("trend", None) if financials else None
         # Shorten revenue display
         if len(revenue) > 12:
             revenue = revenue[:12] + "..."
         st.metric("Revenue", revenue if revenue != "N/A" else "Pending", trend)
-    
+
     with col3:
         hq = meta.get("headquarters", meta.get("hq", "N/A"))
         # Shorten HQ display
         if len(hq) > 15:
             hq = hq[:15] + "..."
         st.metric("Headquarters", hq if hq != "N/A" else "N/A")
-    
+
     with col4:
         industry = meta.get("sector", meta.get("industry", "N/A"))
-        # Shorten industry display  
+        # Shorten industry display
         if len(industry) > 20:
             industry = industry[:20] + "..."
         st.metric("Industry", industry if industry != "N/A" else "N/A")
-    
-    st.markdown("<div style='margin: 40px 0;'></div>", unsafe_allow_html=True)
-    
+
+    st.html("<div style='margin: 40px 0;'></div>")
+
     # === SECTION 2 & 3: COMPANY PROFILE + FINANCIALS - Two Column Layout ===
     col_left, col_right = st.columns([1.2, 1])
-    
+
     with col_left:
-        st.html("""
+        st.html(
+            """
         <div style="
             font-family: 'Poppins', sans-serif;
             font-size: 20px;
@@ -284,15 +286,15 @@ def render_main_dashboard(placeholder=None):
             <span>Company Profile</span>
         </div>
         """)
-        
+
         if meta:
             company_name = meta.get("name", "Unknown Company")
             description = meta.get("description", "No description available")
             website = meta.get("website", "#")
-            
+
             # Get DED data - handle both single license (dict) and multiple licenses (list)
             ded_data = enrichments.get("ded", {})
-            
+
             # Normalize to list format
             if isinstance(ded_data, dict) and ded_data:
                 licenses = [ded_data]  # Single license
@@ -300,8 +302,9 @@ def render_main_dashboard(placeholder=None):
                 licenses = ded_data  # Multiple licenses
             else:
                 licenses = []  # No licenses
-            
-            st.html(f"""
+
+            st.html(
+                f"""
             <div style="
                 background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
                 border: 1px solid #e2e8f0;
@@ -325,7 +328,7 @@ def render_main_dashboard(placeholder=None):
                     font-size: 14px;
                     font-weight: 400;
                 ">{description}</p>
-                {f'<div style="margin-bottom: 16px;"><a href="{website}" target="_blank" style="font-family: \'Poppins\', sans-serif; color: #0077ff; text-decoration: none; font-weight: 600; font-size: 14px;">🌐 Visit Website →</a></div>' if website != "#" else ''}
+                {f'<div style="margin-bottom: 16px;"><a href="{website}" target="_blank" style="font-family: Poppins, sans-serif; color: #0077ff; text-decoration: none; font-weight: 600; font-size: 14px;">🌐 Visit Website →</a></div>' if website != "#" else ''}
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
                     <div>
@@ -347,11 +350,12 @@ def render_main_dashboard(placeholder=None):
                 </div>
             </div>
             """)
-            
+
             # DED License Information - Separate section below profile
             if licenses:
                 license_count = len(licenses)
-                st.html(f"""
+                st.html(
+                    f"""
                 <div style="
                     font-family: 'Poppins', sans-serif;
                     color: #003366;
@@ -367,22 +371,23 @@ def render_main_dashboard(placeholder=None):
                     <span>DED License Information {f'({license_count} Licenses)' if license_count > 1 else ''}</span>
                 </div>
                 """)
-                
+
                 # Display licenses in a grid (2 columns for multiple licenses, 1 for single)
                 if license_count == 1:
                     cols = st.columns(1)
                 else:
                     cols = st.columns(2)
-                
+
                 for idx, lic in enumerate(licenses):
                     license_number = lic.get("license_number", "N/A")
                     activity_type = lic.get("activity_type", "N/A")
                     lic_status = lic.get("status", "N/A")
                     expiry_date = lic.get("expiry_date", "N/A")
                     trade_name = lic.get("trade_name", "")
-                    
+
                     with cols[idx % len(cols)]:
-                        st.html(f"""
+                        st.html(
+                            f"""
                         <div style="
                             background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
                             border: 1px solid #e2e8f0;
@@ -392,7 +397,7 @@ def render_main_dashboard(placeholder=None):
                             margin-bottom: 12px;
                             box-shadow: 0 2px 8px rgba(0, 51, 102, 0.06);
                         ">
-                            {f'<div style="font-family: \'Poppins\', sans-serif; color: #003366; font-size: 13px; font-weight: 700; margin-bottom: 12px;">{trade_name}</div>' if trade_name else ''}
+                            {f'<div style="font-family: Poppins, sans-serif; color: #003366; font-size: 13px; font-weight: 700; margin-bottom: 12px;">{trade_name}</div>' if trade_name else ''}
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                                 <div>
                                     <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;">License No.</div>
@@ -415,9 +420,10 @@ def render_main_dashboard(placeholder=None):
                         """)
         else:
             st.info("Company profile data pending...")
-    
+
     with col_right:
-        st.html("""
+        st.html(
+            """
         <div style="
             font-family: 'Poppins', sans-serif;
             font-size: 20px;
@@ -435,12 +441,13 @@ def render_main_dashboard(placeholder=None):
             <span>Financial Snapshot</span>
         </div>
         """)
-        
+
         if financials and "current" in financials:
             curr = financials.get("current", {})
-            
+
             # Primary Metrics - Revenue & Profit
-            st.html(f"""
+            st.html(
+                f"""
             <div style="
                 background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
                 border-radius: 12px;
@@ -453,7 +460,7 @@ def render_main_dashboard(placeholder=None):
                     <div>
                         <div style="font-family: 'Poppins', sans-serif; color: rgba(255, 255, 255, 0.8); font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.8px;">Total Revenue</div>
                         <div style="font-family: 'Poppins', sans-serif; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">{curr.get("rev", "N/A")}</div>
-                        {f'<div style="font-family: \'Poppins\', sans-serif; color: #4ade80; font-size: 12px; font-weight: 600; margin-top: 4px;">↑ {curr.get("trend", "")}</div>' if curr.get("trend") else ''}
+                        {f'<div style="font-family: Poppins, sans-serif; color: #4ade80; font-size: 12px; font-weight: 600; margin-top: 4px;">↑ {curr.get("trend", "")}</div>' if curr.get("trend") else ''}
                     </div>
                     <div>
                         <div style="font-family: 'Poppins', sans-serif; color: rgba(255, 255, 255, 0.8); font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.8px;">Net Profit</div>
@@ -462,13 +469,14 @@ def render_main_dashboard(placeholder=None):
                 </div>
             </div>
             """)
-            
+
             # Key Banking Ratios - 3 cards with professional blue palette
             roe = curr.get("roe", "N/A")
             roa = curr.get("roa", "N/A")
             npl_ratio = curr.get("npl_ratio", "N/A")
-            
-            st.html(f"""
+
+            st.html(
+                f"""
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
                 <div style="
                     background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%);
@@ -502,14 +510,15 @@ def render_main_dashboard(placeholder=None):
                 </div>
             </div>
             """)
-            
+
             # Additional Metrics - 2x2 Grid
             capital_adequacy = curr.get("capital_adequacy", "N/A")
             cost_to_income = curr.get("cost_to_income", "N/A")
             lcr = curr.get("liquidity_coverage_ratio", "N/A")
             price = curr.get("price", "N/A")
-            
-            st.html(f"""
+
+            st.html(
+                f"""
             <div style="
                 background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
                 border: 1px solid #cbd5e1;
@@ -539,11 +548,12 @@ def render_main_dashboard(placeholder=None):
             """)
         else:
             st.info("Financial data pending...")
-    
-    st.markdown("<div style='margin: 40px 0;'></div>", unsafe_allow_html=True)
-    
+
+    st.html("<div style='margin: 40px 0;'></div>")
+
     # === SECTION 4: LATEST NEWS - Enhanced Card Design ===
-    st.html("""
+    st.html(
+        """
     <div style="
         font-family: 'Poppins', sans-serif;
         font-size: 22px;
@@ -561,14 +571,14 @@ def render_main_dashboard(placeholder=None):
         <span>Latest News & Market Updates</span>
     </div>
     """)
-    
+
     # Check for news in multiple locations
     news_data = enrichments.get("news", {})
     news_articles = news_data.get("sources", []) if isinstance(news_data, dict) else []
-    
+
     if not news_articles:
         news_articles = data.get("news_articles", [])
-    
+
     if news_articles and len(news_articles) > 0:
         # Display top 3 news in a grid
         news_cols = st.columns(3)
@@ -578,9 +588,10 @@ def render_main_dashboard(placeholder=None):
                 url = article.get("url", "#")
                 source = article.get("source", "News Source")
                 date = article.get("date", "")
-                
+
                 with news_cols[idx]:
-                    st.html(f"""
+                    st.html(
+                        f"""
                     <div style="
                         background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
                         border: 1px solid #e2e8f0;
@@ -641,11 +652,12 @@ def render_main_dashboard(placeholder=None):
                     """)
     else:
         st.info("📰 No recent news articles available")
-    
-    st.markdown("<div style='margin: 40px 0;'></div>", unsafe_allow_html=True)
-    
+
+    st.html("<div style='margin: 40px 0;'></div>")
+
     # === SECTION 5: STOCK PERFORMANCE - Chart Placeholder ===
-    st.html("""
+    st.html(
+        """
     <div style="
         font-family: 'Poppins', sans-serif;
         font-size: 22px;
@@ -663,9 +675,10 @@ def render_main_dashboard(placeholder=None):
         <span>Stock Performance & Market Trends</span>
     </div>
     """)
-    
+
     # Placeholder for stock chart
-    st.html("""
+    st.html(
+        """
     <div style="
         background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
         border: 1px solid #e2e8f0;
@@ -694,11 +707,12 @@ def render_main_dashboard(placeholder=None):
         ">Historical price data, volume, and technical indicators</div>
     </div>
     """)
-    
-    st.markdown("<div style='margin: 40px 0;'></div>", unsafe_allow_html=True)
-    
+
+    st.html("<div style='margin: 40px 0;'></div>")
+
     # === SECTION 6: KEY COMPETITORS - Card Grid ===
-    st.html("""
+    st.html(
+        """
     <div style="
         font-family: 'Poppins', sans-serif;
         font-size: 22px;
@@ -716,10 +730,10 @@ def render_main_dashboard(placeholder=None):
         <span>Key Competitors & Market Position</span>
     </div>
     """)
-    
+
     # Get competitors data
     competitors = data.get("competitors", [])
-    
+
     if competitors and len(competitors) > 0:
         # Display competitors in a 3-column grid
         comp_cols = st.columns(3)
@@ -729,9 +743,10 @@ def render_main_dashboard(placeholder=None):
                 mkt_cap = comp.get("Mkt Cap", "N/A")
                 pe_ratio = comp.get("P/E", "N/A")
                 rev_growth = comp.get("Rev Growth", "N/A")
-                
+
                 with comp_cols[idx % 3]:
-                    st.html(f"""
+                    st.html(
+                        f"""
                     <div style="
                         background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
                         border: 1px solid #e2e8f0;
@@ -813,11 +828,12 @@ def render_main_dashboard(placeholder=None):
                     """)
     else:
         st.info("⚔️ Competitor analysis data will appear here once available")
-    
-    st.markdown("<div style='margin: 40px 0;'></div>", unsafe_allow_html=True)
-    
+
+    st.html("<div style='margin: 40px 0;'></div>")
+
     # === SECTION 7: STRATEGIC INSIGHTS - Premium Cards ===
-    st.html("""
+    st.html(
+        """
     <div style="
         font-family: 'Poppins', sans-serif;
         font-size: 22px;
@@ -835,7 +851,7 @@ def render_main_dashboard(placeholder=None):
         <span>Strategic Insights & RM Summary</span>
     </div>
     """)
-    
+
     insights = data.get("insights", [])
     if insights and len(insights) > 0:
         # Display insights in 2 columns
@@ -844,9 +860,10 @@ def render_main_dashboard(placeholder=None):
             if isinstance(insight, dict):
                 category = insight.get("category", "General")
                 text = insight.get("text", insight.get("insight", ""))
-                
+
                 with insight_cols[idx % 2]:
-                    st.html(f"""
+                    st.html(
+                        f"""
                     <div style="
                         background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
                         border-left: 4px solid #0077ff;
@@ -880,11 +897,12 @@ def render_main_dashboard(placeholder=None):
                     st.markdown(f"• {insight}")
     else:
         st.info("Strategic insights will appear here once analysis completes...")
-    
-    st.markdown("<div style='margin: 40px 0;'></div>", unsafe_allow_html=True)
-    
+
+    st.html("<div style='margin: 40px 0;'></div>")
+
     # === SECTION 8: DATA SOURCES - Elegant Footer ===
-    st.html("""
+    st.html(
+        """
     <div style="
         background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
         border-radius: 12px;
@@ -907,7 +925,7 @@ def render_main_dashboard(placeholder=None):
             <span>Data Sources & References</span>
         </div>
     """)
-    
+
     sources_count = 0
     if enrichments:
         if enrichments.get("wikipedia"):
@@ -916,15 +934,16 @@ def render_main_dashboard(placeholder=None):
             sources_count += 1
         if enrichments.get("serp"):
             sources_count += 1
-    
+
     wiki_status = "✓" if enrichments.get("wikipedia") else "○"
     wiki_color = "#10b981" if enrichments.get("wikipedia") else "#cbd5e1"
     news_status = "✓" if enrichments.get("news") else "○"
     news_color = "#10b981" if enrichments.get("news") else "#cbd5e1"
     serp_status = "✓" if enrichments.get("serp") else "○"
     serp_color = "#10b981" if enrichments.get("serp") else "#cbd5e1"
-    
-    st.html(f"""
+
+    st.html(
+        f"""
         <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 14px; margin-bottom: 16px; font-weight: 400;">
             Analysis based on <strong style="color: #003366; font-weight: 700;">{sources_count} verified data sources</strong>
         </div>

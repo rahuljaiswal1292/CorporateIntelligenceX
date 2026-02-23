@@ -42,7 +42,11 @@ def render_agent_pipeline(data: dict = None, show_details: bool = False):
         },
         {
             "label": "Profile Enrichment",
-            "agents": [("wikipedia_agent", "Wikipedia"), ("news_agent", "News"), ("ded_agent", "DED")],
+            "agents": [
+                ("wikipedia_agent", "Wikipedia"),
+                ("news_agent", "News"),
+                ("ded_agent", "DED"),
+            ],
             "parallel": True,
         },
         {
@@ -77,17 +81,45 @@ def render_agent_pipeline(data: dict = None, show_details: bool = False):
 
     def style_for(status):
         if status == "success":
-            return {"bg": "#10b981", "bdr": "#059669", "lbl": "#065f46", "txt": "#047857", "ico": "✓",
-                    "badge_bg": "#ecfdf5", "badge_bdr": "#a7f3d0"}
+            return {
+                "bg": "#10b981",
+                "bdr": "#059669",
+                "lbl": "#065f46",
+                "txt": "#047857",
+                "ico": "✓",
+                "badge_bg": "#ecfdf5",
+                "badge_bdr": "#a7f3d0",
+            }
         elif status == "error":
-            return {"bg": "#ef4444", "bdr": "#dc2626", "lbl": "#991b1b", "txt": "#b91c1c", "ico": "✗",
-                    "badge_bg": "#fef2f2", "badge_bdr": "#fecaca"}
+            return {
+                "bg": "#ef4444",
+                "bdr": "#dc2626",
+                "lbl": "#991b1b",
+                "txt": "#b91c1c",
+                "ico": "✗",
+                "badge_bg": "#fef2f2",
+                "badge_bdr": "#fecaca",
+            }
         elif status == "running":
-            return {"bg": "#3b82f6", "bdr": "#2563eb", "lbl": "#1e40af", "txt": "#2563eb", "ico": "⟳",
-                    "badge_bg": "#eff6ff", "badge_bdr": "#93c5fd"}
+            return {
+                "bg": "#3b82f6",
+                "bdr": "#2563eb",
+                "lbl": "#1e40af",
+                "txt": "#2563eb",
+                "ico": "⟳",
+                "badge_bg": "#eff6ff",
+                "badge_bdr": "#93c5fd",
+            }
         else:
-            return {"bg": "#cbd5e1", "bdr": "#94a3b8", "lbl": "#64748b", "txt": "#94a3b8", "ico": "○",
-                    "badge_bg": "#f8fafc", "badge_bdr": "#e2e8f0"}
+            return {
+                "bg": "#cbd5e1",
+                "bdr": "#94a3b8",
+                "lbl": "#64748b",
+                "txt": "#94a3b8",
+                "ico": "○",
+                "badge_bg": "#f8fafc",
+                "badge_bdr": "#e2e8f0",
+            }
 
     # CSS animation for running state
     pulse_css = """
@@ -105,15 +137,21 @@ def render_agent_pipeline(data: dict = None, show_details: bool = False):
         is_parallel = stage["parallel"]
 
         # Pulse animation for running dots
-        anim = "animation:pulse-dot 1.2s ease-in-out infinite;" if ss == "running" else ""
+        anim = (
+            "animation:pulse-dot 1.2s ease-in-out infinite;" if ss == "running" else ""
+        )
 
         # Build agent display
         if is_parallel:
             agent_badges = ""
             for key, name in stage["agents"]:
                 a_s = style_for(get_status(key))
-                a_anim = "animation:pulse-dot 1.2s ease-in-out infinite;" if get_status(key) == "running" else ""
-                agent_badges += f'''
+                a_anim = (
+                    "animation:pulse-dot 1.2s ease-in-out infinite;"
+                    if get_status(key) == "running"
+                    else ""
+                )
+                agent_badges += f"""
                     <div style="
                         display:flex;align-items:center;gap:4px;
                         background:{a_s['badge_bg']};
@@ -123,9 +161,9 @@ def render_agent_pipeline(data: dict = None, show_details: bool = False):
                         <span style="font-size:9px;color:{a_s['txt']};font-weight:700;">{a_s['ico']}</span>
                         <span style="font-size:9px;color:{a_s['lbl']};font-weight:600;white-space:nowrap;">{name}</span>
                     </div>
-                '''
+                """
 
-            agents_html = f'''
+            agents_html = f"""
                 <div style="
                     border:1px dashed {s['bdr']};
                     border-radius:6px;
@@ -137,12 +175,13 @@ def render_agent_pipeline(data: dict = None, show_details: bool = False):
                     {agent_badges}
                     <div style="font-size:7px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;margin-top:1px;font-weight:700;">parallel</div>
                 </div>
-            '''
+            """
         else:
             agent_names = " → ".join(name for _, name in stage["agents"])
             agents_html = f'<div style="font-size:10px;color:{s["txt"]};line-height:1.4;margin-top:4px;">{agent_names}</div>'
 
-        step_htmls.append(f"""
+        step_htmls.append(
+            f"""
             <div style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:0;">
                 <div style="
                     width:34px;height:34px;border-radius:50%;
@@ -157,7 +196,8 @@ def render_agent_pipeline(data: dict = None, show_details: bool = False):
                     {agents_html}
                 </div>
             </div>
-        """)
+        """
+        )
 
     # Connectors
     items = []
@@ -172,15 +212,18 @@ def render_agent_pipeline(data: dict = None, show_details: bool = False):
                 lc = "#93c5fd"
             else:
                 lc = "#e2e8f0"
-            items.append(f'''
+            items.append(
+                f"""
                 <div style="flex:0.4;display:flex;align-items:flex-start;padding-top:16px;">
                     <div style="height:2px;width:100%;background:{lc};border-radius:2px;"></div>
                 </div>
-            ''')
+            """
+            )
 
     full_html = "".join(items)
 
-    st.html(f"""
+    st.html(
+        f"""
     <style>{pulse_css}</style>
     <div style="
         background:linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%);
@@ -194,4 +237,5 @@ def render_agent_pipeline(data: dict = None, show_details: bool = False):
             {full_html}
         </div>
     </div>
-    """)
+    """
+    )

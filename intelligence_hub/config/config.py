@@ -11,7 +11,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 # Default LLM Provider & Model
 # These define the app-wide defaults; users can override in the UI.
 # Values are read from .env (LLM_PROVIDER / LLM_MODEL) with sensible fallbacks.
-DEFAULT_LLM_PROVIDER = os.getenv("LLM_PROVIDER", "google")  # google or openai
+DEFAULT_LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai")  # google or openai
 
 # Best-model-per-provider fallbacks (used when LLM_MODEL is not set in .env)
 _DEFAULT_MODEL_BY_PROVIDER = {

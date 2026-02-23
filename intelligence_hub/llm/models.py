@@ -67,11 +67,11 @@ class LLMConfig:
 
     def __init__(
         self,
-        model: str = LLMModel.GEMINI_15_FLASH,
+        model: str = LLMModel.GPT_4O,
         temperature: float = 0.3,
         top_p: float = 1.0,
         frequency_penalty: float = 0.0,
-        provider: str = LLMProvider.GOOGLE,
+        provider: str = LLMProvider.OPENAI,
         api_key: Optional[str] = None,
     ):
         """
@@ -104,11 +104,11 @@ class LLMConfig:
             LLMConfig instance
         """
         return cls(
-            model=config_dict.get("model", LLMModel.GEMINI_15_FLASH),
+            model=config_dict.get("model", LLMModel.GPT_4O),
             temperature=config_dict.get("temperature", 0.3),
             top_p=config_dict.get("top_p", 1.0),
             frequency_penalty=config_dict.get("frequency_penalty", 0.0),
-            provider=config_dict.get("provider", LLMProvider.GOOGLE),
+            provider=config_dict.get("provider", LLMProvider.OPENAI),
             api_key=config_dict.get("api_key"),
         )
 

@@ -161,7 +161,7 @@ def render_resolved_ui(
         with col_display:
             if st.session_state.is_resolving and not st.session_state.canonical_name:
                 # Resolving state
-                st.markdown(
+                st.html(
                     textwrap.dedent(
                         """
                     <div class="canonical-container" style="margin: 0;">
@@ -174,19 +174,15 @@ def render_resolved_ui(
                         </div>
                     </div>
                     """
-                    ),
-                    unsafe_allow_html=True,
+                    )
                 )
             elif st.session_state.canonical_name:
                 # Resolved state
-                check = (
-                    '<span class="canonical-check">✓</span>'
-                    if st.session_state.analysis_complete
-                    else ""
-                )
+                check = '<span class="canonical-check">✓</span>'
+
                 status_class = "resolved"
 
-                st.markdown(
+                st.html(
                     textwrap.dedent(
                         f"""
                     <div class="canonical-container" style="margin: 0;">
@@ -200,8 +196,7 @@ def render_resolved_ui(
                         </div>
                     </div>
                     """
-                    ),
-                    unsafe_allow_html=True,
+                    )
                 )
             else:
                 # Default state
@@ -652,11 +647,13 @@ def render_resolved_ui(
             card_html = f"""
             <div class="summary-card">
                 <div class="summary-header">
-                    <div style="flex:1;">
-                        <h2 style="margin:0; font-size:1.5rem; color:#202124;">{st.session_state.canonical_name}</h2>
-                        <div style="color:#70757a; font-size:0.9rem; margin-top:4px;">{reason_text}</div>
+                    <div style="flex:1; display:flex; align-items:center; gap:20px;">
+                        <div>
+                            <h2 style="margin:0; font-size:1.5rem; color:#202124;">{st.session_state.canonical_name}</h2>
+                            <div style="color:#70757a; font-size:0.9rem; margin-top:4px;">{reason_text}</div>
+                        </div>
+                        {badge_html}
                     </div>
-                    {badge_html}
                 </div>
                 
                 <div style="display:grid; grid-template-columns: 2fr 1fr; gap:30px; margin-top:15px;">
@@ -672,8 +669,10 @@ def render_resolved_ui(
                         {kg_html}
                         {stakeholders_html}
                         <div style="margin-top:20px;">
-                            <div style="margin-bottom:8px;"><strong style="color:#555;">CONNECT</strong></div>
-                            {social_html}
+                            <div style="margin-bottom:12px;"><strong style="color:#555;">CONNECT</strong></div>
+                            <div class="social-links" style="margin-top:0;">
+                                {social_html}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1214,12 +1213,8 @@ with st.sidebar:
     st.caption(f"Vector DB: **ChromaDB**")
 
     # Resolve LLM Provider name for display
-    current_model_val = st.session_state.get(
-        "llm_model_select", LLMModel.GEMINI_15_FLASH.value
-    )
-    llm_provider = (
-        "Google" if "gemini" in current_model_val.lower() else "OpenAI"
-    )
+    current_model_val = st.session_state.get("llm_model_select", LLMModel.GPT_4O.value)
+    llm_provider = "Google" if "gemini" in current_model_val.lower() else "OpenAI"
     st.caption(f"LLM Provider: **{llm_provider}**")
 
     st.markdown("---")
@@ -1234,7 +1229,7 @@ with st.sidebar:
     st.selectbox(
         "LLM Model",
         [model.value for model in LLMModel],
-        index=[model.value for model in LLMModel].index(LLMModel.GEMINI_15_FLASH.value),
+        index=[model.value for model in LLMModel].index(LLMModel.GPT_4O.value),
         format_func=lambda x: x.replace("models/", ""),
         key="llm_model_select",
         help="Select the underlying Large Language Model for agents.",
@@ -1385,7 +1380,7 @@ if not search_clicked:
 
 # Render Progress Chain (Always visible)
 st.markdown(
-    '<div class="ui-section-label"><span class="emoji">⚙️</span><span>Pipeline</span></div>',
+    '<div class="ui-section-label"><span class="emoji">⚙️</span><span>STATUS TRACKER</span></div>',
     unsafe_allow_html=True,
 )
 

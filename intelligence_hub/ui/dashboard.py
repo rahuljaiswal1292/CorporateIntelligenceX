@@ -777,9 +777,7 @@ def render_main_dashboard(placeholder=None):
                 )
             )
 
-        st.plotly_chart(
-            fig, use_container_width=True, key="dashboard_stock_performance"
-        )
+        st.plotly_chart(fig, width="stretch", key="dashboard_stock_performance")
     else:
         # Fallback to placeholder if no data
         st.html(

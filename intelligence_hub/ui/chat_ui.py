@@ -283,24 +283,24 @@ def render_chatbot_panel(ticker: str, company_name: str):
 
         c1, c2 = st.columns(2)
         with c1:
-            if st.button("📊 Revenue", key="ix_btn_rev", use_container_width=True):
+            if st.button("📊 Revenue", key="ix_btn_rev", width="stretch"):
                 st.session_state.ix_inject = (
                     f"What are the latest revenue trends for {company_name}?"
                 )
         with c2:
-            if st.button("⚠️ Risks", key="ix_btn_risk", use_container_width=True):
+            if st.button("⚠️ Risks", key="ix_btn_risk", width="stretch"):
                 st.session_state.ix_inject = (
                     f"What are the key risks for {company_name}?"
                 )
 
         c3, c4 = st.columns(2)
         with c3:
-            if st.button("🏛️ Strategy", key="ix_btn_strat", use_container_width=True):
+            if st.button("🏛️ Strategy", key="ix_btn_strat", width="stretch"):
                 st.session_state.ix_inject = (
                     f"What is the strategic vision for {company_name}?"
                 )
         with c4:
-            if st.button("🗞️ News", key="ix_btn_news", use_container_width=True):
+            if st.button("🗞️ News", key="ix_btn_news", width="stretch"):
                 st.session_state.ix_inject = (
                     f"Summarize recent news for {company_name}."
                 )
@@ -369,7 +369,7 @@ def render_chatbot_panel(ticker: str, company_name: str):
         )
     with send_col:
         send_clicked = st.button(
-            "➤", key="ix_send_btn", use_container_width=True, type="primary"
+            "➤", key="ix_send_btn", width="stretch", type="primary"
         )
 
     if st.session_state.ix_inject:
@@ -410,7 +410,7 @@ def render_chatbot_panel(ticker: str, company_name: str):
         if st.button(
             "🗑️ Reset Conversation",
             key="ix_clear",
-            use_container_width=True,
+            width="stretch",
             type="secondary",
         ):
             st.session_state.ix_messages = []

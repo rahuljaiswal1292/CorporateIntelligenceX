@@ -55,6 +55,7 @@ def run_resolution_node(state: AgentState):
             "ticker": resolution.get("ticker"),
             "exchange": resolution.get("exchange"),
             "website": resolution.get("website"),
+            "description": resolution.get("description"),
             "logs": logs,
         }
     except Exception as e:
@@ -102,26 +103,15 @@ def run_profiling_node(state: AgentState):
         # website = metadata.get("website", state.get("website"))
         # confidence = metadata.get("confidence", full_profile.get("confidence_score", 0))
 
-        # Flatten 'enrichments' to top level of profile
-        # User requested bringing DED, Competitor Analysis etc one level up.
-        # Currently: state['enrichments'] -> full_profile -> 'enrichments' -> 'DED'
-        # Target: state['enrichments'] -> 'DED'
         if "enrichments" in full_profile:
             inner_enrichments = full_profile.pop("enrichments")
             full_profile.update(inner_enrichments)
 
-        # Flatten 'enrichments' to top level of profile
-        # User requested bringing DED, Competitor Analysis etc one level up.
-        # Currently: state['enrichments'] -> full_profile -> 'enrichments' -> 'DED'
-        # Target: state['enrichments'] -> 'DED'
-        if "enrichments" in full_profile:
-            inner_enrichments = full_profile.pop("enrichments")
-            full_profile.update(inner_enrichments)
-
-        logs.append(f"Enrichment completed. Canonical Name: {canonical_name}")
+        logs.append(f"Enrichment completed. Canonical Name: {company_name}")
 
         return {
             "enrichments": full_profile,
+            "canonical_name": company_name,
             "confidence": confidence,
             "confidence_score": confidence,
             "ticker": ticker,
@@ -382,6 +372,25 @@ def create_enrichment_graph():
         )
         return pdf_agent.run(state)
 
+    def run_presentation_agent_node(state: AgentState):
+        """Wrapper for PresentationAgent"""
+        company_name = (
+            state.get("canonical_name")
+            or state.get("company_name")
+            or state.get("query", "Unknown")
+        )
+
+        # Extract LLM config from state
+        llm_config = state.get("llm_config", {})
+        llm_connector = LLMConnector(config=llm_config)
+
+        agent = PresentationAgent(
+            company_name=company_name,
+            llm_connector=llm_connector,
+            profile_store=store,
+        )
+        return agent.run(state)
+
     workflow = StateGraph(AgentState)
 
     # ── Nodes ──────────────────────────────────────────────────────────────
@@ -395,6 +404,7 @@ def create_enrichment_graph():
     workflow.add_node("wikipedia", run_wikipedia_node)
     workflow.add_node("news", run_news_node)
     workflow.add_node("ded", run_ded_node)
+    workflow.add_node("competitors", run_competitor_analysis_node)
 
     # ── FAN-IN fix: explicit join node ────────────────────────────────────
     # LangGraph cannot compile a graph where multiple edges arrive at the
@@ -403,9 +413,13 @@ def create_enrichment_graph():
     # resolves the compilation error.
     workflow.add_node("join_enrichment", join_enrichment_node)
 
+    def run_scraper_node(state: AgentState):
+        """Wrapper for scraper.run"""
+        return scraper.run(state)
+
     # Sequential post-enrichment nodes
-    workflow.add_node("scraper", scraper.run)
-    workflow.add_node("vectorizer", vectorizer.run)
+    workflow.add_node("scraper", run_scraper_node)
+    workflow.add_node("vectorizer", lambda state: vectorizer.run(state))
     workflow.add_node("analyst", run_analyst_node)
     workflow.add_node("pdf_agent", run_pdf_agent_node)
     workflow.add_node("presentation_agent", run_presentation_agent_node)

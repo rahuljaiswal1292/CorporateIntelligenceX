@@ -107,6 +107,7 @@ class PdfAgent(BaseAgent):
                 False,
                 f"Directory not found for {safe_company_name} (checked: {', '.join(potential_paths)})",
             )
+
     def _get_file_hash(self, file_path: str) -> str:
         """Calculate MD5 hash of the first 64KB of the file for duplicate detection."""
         hasher = hashlib.md5()
@@ -530,7 +531,7 @@ class PdfAgent(BaseAgent):
         except:
             return {}
 
-    def run(self, state: AgentState) -> AgentState:
+    def run(self, state: AgentState):
         """Run PDF agent workflow"""
         logs = state.get("logs", [])
         should_run, reasoning = self.should_execute(state)

@@ -90,9 +90,18 @@ def render_agent_pipeline(data: dict = None, show_details: bool = False):
         if any(s == "running" for s in statuses):
             return "running", "active"
 
-        # If any agents are still pending, the stage is pending (unless it's already active/error)
-        if not agents or any(s == "pending" for s in statuses):
+        if not agents:
             return "pending", "pending"
+
+        if any(s == "pending" for s in statuses):
+            return "pending", "pending"
+
+        # Only if all agents are success
+        if all(s == "success" for s in statuses):
+            return "success", "completed"
+
+        return "pending", "pending"
+
     def style_for(status):
         if status == "success":
             return {
@@ -135,12 +144,6 @@ def render_agent_pipeline(data: dict = None, show_details: bool = False):
                 "badge_bdr": "#e2e8f0",
             }
 
-        # Only if all agents are success
-        if all(s == "success" for s in statuses):
-            return "success", "completed"
-
-        return "pending", "pending"
-
     # Define stages
     stages = [
         {"id": "intent", "label": "Search Input", "icon": "🔍"},
@@ -151,7 +154,11 @@ def render_agent_pipeline(data: dict = None, show_details: bool = False):
             "icon": "🌐",
             "is_parallel": True,
         },
-        {"id": "vectorizing_stocks", "label": "Stocks & Financials Agent", "icon": "💹"},
+        {
+            "id": "vectorizing_stocks",
+            "label": "Stocks & Financials Agent",
+            "icon": "💹",
+        },
         {"id": "vectorizing_neural", "label": "Vectorization Agent", "icon": "🧠"},
         {"id": "synthesis", "label": "Strategic Insights Agent", "icon": "📊"},
     ]

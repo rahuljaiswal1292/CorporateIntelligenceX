@@ -18,7 +18,7 @@
     "id": "project_updates",
     "prompt": "List any major ongoing projects or recent completions.",
     "category": "Operations"
-  }
+  },
   {
     "category": "toc_analysis",
     "prompt": "Analyze the following Table of Contents (TOC) text. Identify the start page numbers for: 1) Consolidated Financial Statements, 2) Corporate Structure or Subsidiaries. Return ONLY a JSON object with keys 'financials_page' (int) and 'structure_page' (int). If not found, return null for that key."

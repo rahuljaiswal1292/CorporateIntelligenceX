@@ -89,13 +89,19 @@ class DFMScraper:
     Handles dynamic content, document downloads, and detailed extraction.
     """
 
-    def __init__(self, max_age_years: int = 3):
+    def __init__(self, max_age_years: int = None):
         self.base_url = "https://www.dfm.ae"
         self.browser: Optional[Browser] = None
         self.playwright = None
 
+        # Use global config for max age, allow override
+        self.max_age_years = (
+            max_age_years if max_age_years is not None else config.SCRAPE_MAX_AGE_YEARS
+        )
+        self.freshness_days = config.SCRAPE_FRESHNESS_DAYS
+
         # Initialize enhanced DFM specific download manager and bot handler
-        self.download_manager = DFMDownloadManager(max_age_years=max_age_years)
+        self.download_manager = DFMDownloadManager(max_age_years=self.max_age_years)
         self.downloaded_texts = set()  # Track downloaded items by text/content
         self.downloaded_urls = (
             set()
@@ -107,6 +113,20 @@ class DFMScraper:
         self.active_writes = set()
         self.file_lock = asyncio.Lock()
 
+        # ── Download coordination (shared across popup handler + DFMDownloadManager + year tabs) ──
+        self.attempted_urls = (
+            set()
+        )  # Normalized URLs currently being attempted or completed
+        self.completed_urls = set()  # Normalized URLs successfully downloaded
+        self.failed_urls = (
+            {}
+        )  # norm_url -> {"method", "error", "original_url", "ticker", "page_type"}
+        self.url_lock = asyncio.Lock()  # Thread-safe URL registration
+
+        # Wire the download manager to our shared URL registry
+        self.download_manager.global_attempted_urls = self.attempted_urls
+        self.download_manager.global_completed_urls = self.completed_urls
+
         # Initialize Smart Agents
         self.vector_agent = VectorizerAgent() if VectorizerAgent else None
         self.summarizer_agent = (
@@ -117,6 +137,11 @@ class DFMScraper:
 
         # Resource management - limit total concurrent browser pages to 10
         self.semaphore = asyncio.Semaphore(10)
+
+        logger.info(
+            f"DFMScraper initialized: max_age_years={self.max_age_years}, "
+            f"freshness_days={self.freshness_days}"
+        )
 
     async def _setup_browser(self):
         """Initialize Playwright browser with stealth settings"""
@@ -169,6 +194,49 @@ class DFMScraper:
 
         return page
 
+    # ── URL coordination helpers ──────────────────────────────────────────
+
+    def _normalize_url(self, url: str) -> str:
+        """Normalize a URL for deduplication (strip query, decode, lowercase)."""
+        return unquote(url).split("?")[0].lower().strip()
+
+    async def _register_url(self, url: str, method: str) -> bool:
+        """
+        Register a URL for download. Returns True if this is the first attempt,
+        False if already attempted/completed (caller should skip).
+        """
+        normalized = self._normalize_url(url)
+        async with self.url_lock:
+            if normalized in self.attempted_urls:
+                logger.debug(
+                    f"URL already attempted, skipping ({method}): ...{normalized[-60:]}"
+                )
+                return False
+            self.attempted_urls.add(normalized)
+            return True
+
+    async def _mark_completed(self, url: str):
+        """Mark a URL as successfully downloaded."""
+        normalized = self._normalize_url(url)
+        async with self.url_lock:
+            self.completed_urls.add(normalized)
+            self.failed_urls.pop(normalized, None)
+
+    async def _mark_failed(
+        self, url: str, method: str, error: str, ticker: str = "", page_type: str = ""
+    ):
+        """Mark a URL as failed, recording method for alternate-method retry."""
+        normalized = self._normalize_url(url)
+        async with self.url_lock:
+            if normalized not in self.completed_urls:
+                self.failed_urls[normalized] = {
+                    "method": method,
+                    "error": str(error)[:200],
+                    "original_url": url,
+                    "ticker": ticker,
+                    "page_type": page_type,
+                }
+
     async def _handle_download_event(
         self, download_or_page, ticker, page_type, is_page=False
     ):
@@ -187,9 +255,17 @@ class DFMScraper:
                     ext in url.lower()
                     for ext in [".pdf", "document", "download", "feeds.dfm.ae"]
                 ):
+                    # ── Dedup check: skip if already attempted by any method ──
+                    if not await self._register_url(url, "popup"):
+                        try:
+                            await download_or_page.close()
+                        except:
+                            pass
+                        return
+
                     try:
                         response = await download_or_page.context.request.get(
-                            url, timeout=45000
+                            url, timeout=60000  # 60s (was 45s) for large PDFs
                         )
                         if response.status == 200:
                             cd = response.headers.get("content-disposition", "")
@@ -217,9 +293,11 @@ class DFMScraper:
                             self.active_writes.add(path)
                             try:
                                 await self._safe_save_file(path, body)
+                                await self._mark_completed(url)
                             finally:
                                 self.active_writes.discard(path)
                     except Exception as e:
+                        await self._mark_failed(url, "popup", str(e), ticker, page_type)
                         logger.warning(f"Failed to fetch binary for popup {url}: {e}")
                     finally:
                         try:
@@ -304,7 +382,7 @@ class DFMScraper:
             # 1. Wait for Loading spinner to disappear (if present)
             # DFM often has a loading overlay.
             try:
-                await page.wait_for_load_state("networkidle", timeout=6000)
+                await page.wait_for_load_state("networkidle", timeout=3000)
             except:
                 pass
 
@@ -344,9 +422,68 @@ class DFMScraper:
         except Exception as e:
             logger.warning(f"Wait for content warning ({page_type}): {e}")
 
+    # ── Scraping Metadata helpers ──────────────────────────────────────────
+
+    def _get_metadata_path(self, ticker: str) -> str:
+        """Returns the path to the scraping_metadata.json for a ticker."""
+        return os.path.join(config.DATA_DIR, "dfm", ticker, "scraping_metadata.json")
+
+    def _load_scraping_metadata(self, ticker: str) -> dict:
+        """Load scraping metadata for a ticker. Returns empty dict if not found."""
+        path = self._get_metadata_path(ticker)
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception as e:
+                logger.warning(f"Failed to load scraping metadata for {ticker}: {e}")
+        return {}
+
+    def _save_scraping_metadata(self, ticker: str, metadata: dict):
+        """Save scraping metadata for a ticker."""
+        path = self._get_metadata_path(ticker)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(metadata, f, indent=2, default=str)
+            logger.info(f"Saved scraping metadata for {ticker}")
+        except Exception as e:
+            logger.error(f"Failed to save scraping metadata for {ticker}: {e}")
+
+    def _is_data_fresh(self, ticker: str) -> bool:
+        """
+        Check if existing scraped data is fresh (within SCRAPE_FRESHNESS_DAYS).
+        Uses scraping_metadata.json to determine the last full scrape timestamp.
+        """
+        metadata = self._load_scraping_metadata(ticker)
+        last_full_scrape = metadata.get("last_full_scrape")
+        if not last_full_scrape:
+            return False
+
+        try:
+            last_dt = datetime.fromisoformat(last_full_scrape)
+            age_days = (datetime.now() - last_dt).days
+            is_fresh = age_days < self.freshness_days
+            if is_fresh:
+                logger.info(
+                    f"Data for {ticker} is fresh ({age_days} days old, "
+                    f"threshold={self.freshness_days} days). Skipping full scrape."
+                )
+            else:
+                logger.info(
+                    f"Data for {ticker} is stale ({age_days} days old, "
+                    f"threshold={self.freshness_days} days). Full scrape needed."
+                )
+            return is_fresh
+        except Exception as e:
+            logger.warning(f"Failed to parse last scrape date for {ticker}: {e}")
+            return False
+
     async def scrape_company(self, ticker: str) -> dict:
         """
         Scrapes DFM for a given company ticker using direct Playwright automation.
+        If existing data is fresh (within SCRAPE_FRESHNESS_DAYS), only runs
+        the stock extractor for latest prices.
         """
         ticker = ticker.upper()
         logger.info(f"Starting Advanced DFM Scrape for {ticker}")
@@ -361,6 +498,53 @@ class DFMScraper:
             "documents": [],
         }
 
+        # ── Freshness Check ──
+        # If data is fresh, only run stock extractor for latest prices
+        if self._is_data_fresh(ticker):
+            logger.info(
+                f"Existing data for {ticker} is within {self.freshness_days} days. "
+                f"Running only stock extractor for latest prices."
+            )
+            try:
+                await self._setup_browser()
+                context = await self.browser.new_context(
+                    accept_downloads=True,
+                    viewport={"width": 1920, "height": 1080},
+                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                )
+                page = await self._create_stealth_page(context)
+                base_url = f"https://www.dfm.ae/the-exchange/market-information/company/{ticker}"
+                daily_url = f"{base_url}/trading/daily-summary"
+                try:
+                    await page.goto(
+                        daily_url, wait_until="domcontentloaded", timeout=60000
+                    )
+                except:
+                    pass
+                await self._wait_for_dfm_content(page, "daily_summary")
+                stock_data = await self._extract_daily_summary(
+                    page, ticker, "daily_summary"
+                )
+                if stock_data:
+                    data["daily_summary"] = stock_data
+                await page.close()
+
+                # Update metadata with stock-only refresh
+                metadata = self._load_scraping_metadata(ticker)
+                metadata["last_stock_refresh"] = datetime.now().isoformat()
+                metadata["stock_refresh_count"] = (
+                    metadata.get("stock_refresh_count", 0) + 1
+                )
+                self._save_scraping_metadata(ticker, metadata)
+
+                logger.info(f"Stock-only refresh complete for {ticker}")
+            except Exception as e:
+                logger.error(f"Stock-only refresh failed for {ticker}: {e}")
+            finally:
+                await self._teardown_browser()
+            return data
+
+        # ── Full Scrape ──
         # Safe initialization
         downloaded_files = []
 
@@ -579,8 +763,111 @@ class DFMScraper:
 
             data["documents"] = list(set(downloaded_files))  # Deduplicate
 
+            # ── Retry failed downloads with alternate method ──
+            if self.failed_urls:
+                failed_count = len(self.failed_urls)
+                logger.info(
+                    f"Retrying {failed_count} failed download(s) with alternate method..."
+                )
+                retry_context = await self.browser.new_context(
+                    accept_downloads=True,
+                    viewport={"width": 1920, "height": 1080},
+                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/120.0.0.0 Safari/537.36",
+                )
+                retry_page = await self._create_stealth_page(retry_context)
+
+                for norm_url, info in list(self.failed_urls.items()):
+                    original_url = info.get("original_url", norm_url)
+                    failed_method = info.get("method", "unknown")
+                    fail_page_type = info.get("page_type", "reports")
+                    target_dir = os.path.join(
+                        config.DATA_DIR, "dfm", ticker, fail_page_type, "structured"
+                    )
+                    os.makedirs(target_dir, exist_ok=True)
+
+                    try:
+                        # Allow re-attempt
+                        async with self.url_lock:
+                            self.attempted_urls.discard(norm_url)
+
+                        if failed_method == "popup":
+                            # Popup failed → try DFMDownloadManager direct URL strategy
+                            doc_info = {
+                                "url": original_url,
+                                "text": "Retry",
+                                "expected_type": "pdf",
+                            }
+                            result = await self.download_manager._download_from_url(
+                                retry_page, original_url, doc_info, target_dir
+                            )
+                        else:
+                            # DFMDownloadManager failed → try direct HTTP fetch
+                            result = None
+                            try:
+                                response = await retry_context.request.get(
+                                    original_url, timeout=90000
+                                )
+                                if response.status == 200:
+                                    filename = unquote(
+                                        original_url.split("?")[0].split("/")[-1]
+                                    )
+                                    filename = re.sub(
+                                        r"[%\s_\-]+", " ", filename
+                                    ).strip()
+                                    if not filename or len(filename) < 5:
+                                        filename = f"retry_{int(time.time())}.pdf"
+                                    if not filename.lower().endswith(".pdf"):
+                                        filename += ".pdf"
+                                    path = os.path.join(target_dir, filename)
+                                    body = await response.body()
+                                    await self._safe_save_file(path, body)
+                                    result = path
+                            except Exception as e:
+                                logger.debug(f"Retry HTTP fetch failed: {e}")
+
+                        if result:
+                            downloaded_files.append(result)
+                            async with self.url_lock:
+                                self.completed_urls.add(norm_url)
+                                self.failed_urls.pop(norm_url, None)
+                            logger.info(
+                                f"✓ Retry succeeded: {os.path.basename(str(result))}"
+                            )
+                        else:
+                            logger.warning(
+                                f"✗ Retry also failed: ...{original_url[-50:]}"
+                            )
+                    except Exception as e:
+                        logger.warning(f"Retry error for ...{original_url[-50:]}: {e}")
+
+                try:
+                    await retry_page.close()
+                except:
+                    pass
+
+                # Update documents list with retried files
+                data["documents"] = list(set(downloaded_files))
+
+            # Log download coordination stats
+            logger.info(
+                f"Download stats: {len(self.completed_urls)} completed, "
+                f"{len(self.failed_urls)} still failed, "
+                f"{len(self.attempted_urls)} total attempted"
+            )
+
             # Save final structured data
             StorageManager.save_structured(data, "dfm", ticker)
+
+            # Save scraping metadata for freshness tracking
+            metadata = self._load_scraping_metadata(ticker)
+            metadata["last_full_scrape"] = datetime.now().isoformat()
+            metadata["max_age_years"] = self.max_age_years
+            metadata["pages_scraped"] = list(urls.keys())
+            metadata["documents_count"] = len(data.get("documents", []))
+            metadata["full_scrape_count"] = metadata.get("full_scrape_count", 0) + 1
+            self._save_scraping_metadata(ticker, metadata)
 
             return data
 
@@ -645,22 +932,26 @@ class DFMScraper:
         self, page: Page, ticker: str, page_type: str
     ) -> dict:
         """
-        Interact with Reports page to download all English documents for years 2020+.
+        Interact with Reports page to download all English documents
+        within the configured SCRAPE_MAX_AGE_YEARS window.
         Iterates through relevant year tabs and extracts from each.
         """
-        logger.info("Interacting with Reports page (2020-2026 focus)...")
+        logger.info(
+            f"Interacting with Reports page (last {self.max_age_years} years)..."
+        )
 
         all_downloaded_files = []
         downloaded_count = 0
 
-        # Define target years (Current year back to 2020)
+        # Define target years based on SCRAPE_MAX_AGE_YEARS config
         current_year = datetime.now().year
+        start_year = current_year - self.max_age_years
         target_years = sorted(
-            list(set([str(y) for y in range(2020, current_year + 1)])), reverse=True
+            [str(y) for y in range(start_year, current_year + 1)], reverse=True
         )
-        # Limit to top 6 years to keep it within reasonable time limits
-        target_years = target_years[:6]
-        logger.info(f"Target years for reports: {target_years}")
+        logger.info(
+            f"Target years for reports (last {self.max_age_years} years): {target_years}"
+        )
 
         async def process_year_tab(year):
             async with self.semaphore:
@@ -1067,6 +1358,7 @@ class DFMScraper:
             count = await rows.count()
 
             headers = []
+            start_idx = 0  # Default: start from first row
 
             # Try to find header row (first row with th or distinctive visuals)
             if count > 0:
@@ -1436,12 +1728,12 @@ class DFMScraper:
 
 if __name__ == "__main__":
     tickers = [
-        "AIRARABIA",
-        "DU",
-        "EMAAR",
-        "EMIRATESNBD",
+        # "AIRARABIA",
+        # "DU",
+        # "EMAAR",
+        # "EMIRATESNBD",
         "MASQ",
-        "TALABAT",
+        # "TALABAT",
     ]
 
     async def run_scraper():

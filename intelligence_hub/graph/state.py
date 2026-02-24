@@ -45,7 +45,7 @@ class AgentState(TypedDict):
 
     # Analyst Outputs
     insights: Annotated[List[Dict[str, str]], replace]
-    final_report: Annotated[str, replace]
+    final_report: Annotated[Any, replace]
 
     # Logs for UI
     logs: Annotated[List[str], operator.add]

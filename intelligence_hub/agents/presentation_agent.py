@@ -46,8 +46,11 @@ class PresentationAgent(BaseAgent):
         try:
             val_float = float(str(value).replace(",", ""))
             # Handle unit scaling if provided (e.g. from PDF 'thousands')
-            if unit and "thousand" in unit.lower():
+            unit_lower = unit.lower() if unit else ""
+            if "thousand" in unit_lower or "000" in unit_lower:
                 val_float *= 1000
+            elif "million" in unit_lower:
+                val_float *= 1_000_000
 
             if val_float >= 1_000_000_000:
                 return f"AED {val_float / 1_000_000_000:.1f}B"

@@ -70,7 +70,13 @@ class PresentationAgent(BaseAgent):
         )
 
         enrichments = state.get("enrichments", {}) or {}
+        if isinstance(enrichments, list):
+            enrichments = enrichments[0] if enrichments and isinstance(enrichments[0], dict) else {}
+
         financial_data = state.get("financial_data", {}) or {}
+        if isinstance(financial_data, list):
+            financial_data = financial_data[0] if financial_data and isinstance(financial_data[0], dict) else {}
+
         final_report = state.get("final_report", {}) or {}
 
         # Defensive check for final_report (handled list case from legacy/LLM errors)

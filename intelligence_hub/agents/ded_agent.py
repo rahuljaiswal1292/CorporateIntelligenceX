@@ -105,7 +105,7 @@ class DEDAgent(BaseAgent):
         self,
         company_name: str,
         top_k: int = 10,
-        similarity_threshold: float = 0.5,
+        similarity_threshold: float = 0.05,
     ) -> Dict:
         """
         Query DED license database via ChromaDB using hybrid approach:
@@ -131,7 +131,7 @@ class DEDAgent(BaseAgent):
         try:
             # Get DED collection
             try:
-                collection = self.chroma_client.get_collection(name="uae_ded_licenses")
+                collection = self.chroma_client.get_collection(name="selected_corporates")
             except Exception:
                 self.log(
                     "DED licenses collection not found in ChromaDB",

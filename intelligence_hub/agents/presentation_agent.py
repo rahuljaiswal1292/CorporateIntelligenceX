@@ -160,25 +160,51 @@ class PresentationAgent(BaseAgent):
         chart_data = {}
         if daily:
             try:
-                # Sort by date ascending for the chart (Format: DD-MM-YYYY)
+                # Determine exchange to handle date format and column names
+                is_adx = exchange.lower() == "adx"
+                date_fmt = "%Y-%m-%d" if is_adx else "%d-%m-%Y"
+
+                # Sort by date ascending for the chart
                 sorted_daily = sorted(
-                    daily, key=lambda x: datetime.strptime(x["Date"], "%d-%m-%Y")
+                    daily, key=lambda x: datetime.strptime(x["Date"], date_fmt)
                 )
+
+                # ADX uses 'Close' and 'Change %', DFM uses 'Last' and 'Change Percentage'
+                close_key = "Close" if is_adx else "Last"
+
                 chart_data = {
                     "dates": [d["Date"] for d in sorted_daily],
                     "open": [d["Open"] for d in sorted_daily],
                     "high": [d["High"] for d in sorted_daily],
                     "low": [d["Low"] for d in sorted_daily],
-                    "close": [d["Last"] for d in sorted_daily],
+                    "close": [d.get(close_key, d.get("Last")) for d in sorted_daily],
                     "volume": [d["Volume"] for d in sorted_daily],
                 }
             except Exception as e:
                 self.log(f"Failed to format chart data: {e}", "WARNING")
 
         if daily and not current_metrics.get("price"):
-            latest_day = daily[0]
-            current_metrics["price"] = f"AED {latest_day.get('Last', 'N/A')}"
-            current_metrics["trend"] = latest_day.get("Change Percentage", "")
+            # Sort by date descending to get the most recent day for metrics
+            is_adx = exchange.lower() == "adx"
+            date_fmt = "%Y-%m-%d" if is_adx else "%d-%m-%Y"
+
+            try:
+                sorted_for_metrics = sorted(
+                    daily,
+                    key=lambda x: datetime.strptime(x["Date"], date_fmt),
+                    reverse=True,
+                )
+                latest_day = sorted_for_metrics[0]
+
+                close_key = "Close" if is_adx else "Last"
+                trend_key = "Change %" if is_adx else "Change Percentage"
+
+                current_metrics["price"] = (
+                    f"AED {latest_day.get(close_key, latest_day.get('Last', 'N/A'))}"
+                )
+                current_metrics["trend"] = latest_day.get(trend_key, "")
+            except Exception as e:
+                self.log(f"Failed to extract latest metrics: {e}", "WARNING")
 
         competitor_analysis = enrichments.get("Competitor Analysis") or {}
         comp_data_block = competitor_analysis.get("data") or {}

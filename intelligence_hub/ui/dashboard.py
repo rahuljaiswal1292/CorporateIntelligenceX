@@ -147,7 +147,48 @@ def get_test_dashboard_data():
             "PDF Agent: Analyzing financial statements...",
             "PDF Agent completed",
             "Analyst Agent: Generating insights...",
+            "Analyst Agent: Generating insights...",
             "Analyst Agent completed successfully",
+        ],
+        "sources": [
+            {
+                "title": "Official Website",
+                "url": "https://www.emiratesnbd.com",
+                "type": "official",
+            },
+            {
+                "title": "Wikipedia Profile",
+                "url": "https://en.wikipedia.org/wiki/Emirates_NBD",
+                "type": "reference",
+            },
+            {
+                "title": "Bloomberg: Gulf Banking Funding",
+                "url": "https://www.bloomberg.com/news/articles/2026-02-17/gulf-s-third-biggest-bank-leads-funding-round",
+                "type": "news",
+                "source": "Bloomberg",
+            },
+            {
+                "title": "MSN: RBL Bank Stake",
+                "url": "https://www.msn.com/en-us/money/companies/uae-emirates-nbd-secures",
+                "type": "news",
+                "source": "MSN",
+            },
+            {
+                "title": "ZAWYA: Green Bond",
+                "url": "https://www.zawya.com/en/business/banking/dubai-emirates-nbd-tightens-price",
+                "type": "news",
+                "source": "ZAWYA",
+            },
+            {
+                "title": "DFM Listing Page",
+                "url": "https://www.dfm.ae/en/issuers/listed-securities/securities-details?id=EMIRATESNBD",
+                "type": "exchange",
+            },
+            {
+                "title": "Annual Report 2025 (PDF)",
+                "url": "https://www.emiratesnbd.com/-/media/enbd/files/annual-report-2025.pdf",
+                "type": "pdf",
+            },
         ],
     }
 
@@ -1037,9 +1078,64 @@ def render_main_dashboard(placeholder=None):
 
     st.html("<div style='margin: 40px 0;'></div>")
 
-    # === SECTION 8: DATA SOURCES - Elegant Footer ===
-    st.html(
+    # === SECTION 8: DATA SOURCES & REFERENCES - Elegant Footer ===
+    all_sources = data.get("sources", [])
+
+    # Categorize and build the sources HTML first
+    source_items_html = ""
+    if all_sources:
+        type_icons = {
+            "official": "🌐",
+            "reference": "📖",
+            "news": "📰",
+            "pdf": "📄",
+            "disclosure": "📄",
+            "exchange": "🏛️",
+        }
+
+        source_items_html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">'
+        for src in all_sources:
+            icon = type_icons.get(src.get("type", ""), "🔗")
+            title = src.get("title", "Reference Link")
+            url = src.get("url", "#")
+            source_name = src.get("source", "")
+            source_tag = (
+                f'<span style="font-size: 10px; color: #64748b; margin-left: 4px;">({source_name})</span>'
+                if source_name
+                else ""
+            )
+
+            source_items_html += f"""
+            <a href="{url}" target="_blank" style="
+                text-decoration: none;
+                background: white;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 12px;
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                transition: all 0.2s ease;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            ">
+                <span style="font-size: 18px;">{icon}</span>
+                <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    <div style="font-family: 'Poppins', sans-serif; color: #1e293b; font-size: 13px; font-weight: 600;">{title}</div>
+                    <div style="font-family: 'Poppins', sans-serif; color: #0077ff; font-size: 11px;">{url[:40]}{'...' if len(url) > 40 else ''} {source_tag}</div>
+                </div>
+            </a>
+            """
+        source_items_html += "</div>"
+    else:
+        source_items_html = """
+        <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 14px; font-weight: 400;">
+            No specific reference URLs identified for this investigation.
+        </div>
         """
+
+    # Render everything in one cohesive block
+    st.html(
+        f"""
     <div style="
         background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
         border-radius: 12px;
@@ -1052,7 +1148,7 @@ def render_main_dashboard(placeholder=None):
             font-size: 18px;
             font-weight: 700;
             color: #003366;
-            margin-bottom: 16px;
+            margin-bottom: 20px;
             display: flex;
             align-items: center;
             gap: 10px;
@@ -1061,44 +1157,7 @@ def render_main_dashboard(placeholder=None):
             <span style="font-size: 22px;">📚</span>
             <span>Data Sources & References</span>
         </div>
-    """
-    )
-
-    sources_count = 0
-    if enrichments:
-        if enrichments.get("wikipedia"):
-            sources_count += 1
-        if enrichments.get("news"):
-            sources_count += 1
-        if enrichments.get("serp"):
-            sources_count += 1
-
-    wiki_status = "✓" if enrichments.get("wikipedia") else "○"
-    wiki_color = "#10b981" if enrichments.get("wikipedia") else "#cbd5e1"
-    news_status = "✓" if enrichments.get("news") else "○"
-    news_color = "#10b981" if enrichments.get("news") else "#cbd5e1"
-    serp_status = "✓" if enrichments.get("serp") else "○"
-    serp_color = "#10b981" if enrichments.get("serp") else "#cbd5e1"
-
-    st.html(
-        f"""
-        <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 14px; margin-bottom: 16px; font-weight: 400;">
-            Analysis based on <strong style="color: #003366; font-weight: 700;">{sources_count} verified data sources</strong>
-        </div>
-        <div style="display: flex; gap: 24px; flex-wrap: wrap;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="color: {wiki_color}; font-size: 18px; font-weight: 700;">{wiki_status}</span>
-                <span style="font-family: 'Poppins', sans-serif; color: #475569; font-size: 14px; font-weight: 600;">Wikipedia</span>
-            </div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="color: {news_color}; font-size: 18px; font-weight: 700;">{news_status}</span>
-                <span style="font-family: 'Poppins', sans-serif; color: #475569; font-size: 14px; font-weight: 600;">News Articles</span>
-            </div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="color: {serp_color}; font-size: 18px; font-weight: 700;">{serp_status}</span>
-                <span style="font-family: 'Poppins', sans-serif; color: #475569; font-size: 14px; font-weight: 600;">Web Search</span>
-            </div>
-        </div>
+        {source_items_html}
     </div>
     """
     )

@@ -72,6 +72,18 @@ class PresentationAgent(BaseAgent):
         enrichments = state.get("enrichments", {}) or {}
         financial_data = state.get("financial_data", {}) or {}
         final_report = state.get("final_report", {}) or {}
+
+        # Defensive check for final_report (handled list case from legacy/LLM errors)
+        if isinstance(final_report, list):
+            self.log(
+                "Presentation Agent: final_report is a list, attempting to resolve to dict",
+                "WARNING",
+            )
+            if len(final_report) > 0 and isinstance(final_report[0], dict):
+                final_report = final_report[0]
+            else:
+                final_report = {}
+
         pdf_results = state.get("pdf_results", []) or []
 
         # 1. Meta Mapping
@@ -259,6 +271,85 @@ class PresentationAgent(BaseAgent):
             "ded": ded_info,
         }
 
+        # --- Aggregate Sources for "Data Sources and References" ---
+        data_sources = []
+
+        # 1. Official Website
+        if meta.get("website") and meta["website"] != "#":
+            data_sources.append(
+                {
+                    "title": "Official Website",
+                    "url": meta["website"],
+                    "type": "official",
+                }
+            )
+
+        # 2. Wikipedia
+        if wiki_url:
+            data_sources.append(
+                {"title": "Wikipedia Profile", "url": wiki_url, "type": "reference"}
+            )
+
+        # 3. News Articles (Top 5)
+        for art in news_articles[:5]:
+            if art.get("url"):
+                data_sources.append(
+                    {
+                        "title": art.get("title", "News Article"),
+                        "url": art.get("url"),
+                        "type": "news",
+                        "source": art.get("source"),
+                    }
+                )
+
+        # 4. PDF Reports
+        doc_urls = state.get("doc_urls", []) or []
+        for url in doc_urls:
+            if isinstance(url, str) and url.lower().endswith(".pdf"):
+                data_sources.append(
+                    {"title": "Corporate Disclosure (PDF)", "url": url, "type": "pdf"}
+                )
+            elif isinstance(url, dict) and url.get("url"):
+                data_sources.append(
+                    {
+                        "title": url.get("title", "Disclosure"),
+                        "url": url["url"],
+                        "type": "disclosure",
+                    }
+                )
+
+        # 5. Scraper Sources
+        scraper_sources = financial_data.get("sources", []) or []
+        for src in scraper_sources:
+            if not src:
+                continue
+            url = src.get("url")
+            title = src.get("title") or "Exchange Data Source"
+            if url and not any(d["url"] == url for d in data_sources):
+                data_sources.append({"title": title, "url": url, "type": "exchange"})
+
+        # 6. PDF Results (Metadata)
+        for pdf in pdf_results:
+            pdf_meta = pdf.get("meta", {})
+            if pdf_meta.get("url"):
+                url = pdf_meta["url"]
+                if not any(d["url"] == url for d in data_sources):
+                    data_sources.append(
+                        {
+                            "title": f"Report: {pdf_meta.get('period', 'Financial Statement')}",
+                            "url": url,
+                            "type": "pdf",
+                        }
+                    )
+
+        # Deduplicate by URL
+        unique_sources = []
+        seen_urls = set()
+        for s in data_sources:
+            if s["url"] not in seen_urls:
+                unique_sources.append(s)
+                seen_urls.add(s["url"])
+
         # 4. Insights Mapping (action -> text)
         insights = []
 
@@ -333,6 +424,7 @@ class PresentationAgent(BaseAgent):
             "risks": risks,
             "competitors": competitors,
             "chart": chart_data,
+            "sources": unique_sources,
             "logs": [
                 f"Presentation Agent: Final dashboard structure ready for {self.company_name}"
             ],

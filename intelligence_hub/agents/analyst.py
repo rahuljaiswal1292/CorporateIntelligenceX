@@ -283,7 +283,23 @@ class AnalystAgent(BaseAgent):
         try:
             response_text = self.llm_connector.analyze(prompt)
             clean_text = response_text.replace("```json", "").replace("```", "").strip()
-            return json.loads(clean_text)
+            report = json.loads(clean_text)
+
+            # Defensive check: Ensure it's a dictionary
+            if isinstance(report, list):
+                if len(report) > 0 and isinstance(report[0], dict):
+                    self.log(
+                        "LLM returned a list for final_report, extracting first element",
+                        "WARNING",
+                    )
+                    report = report[0]
+                else:
+                    self.log(
+                        "LLM returned a list, but no valid dict found inside", "ERROR"
+                    )
+                    report = {"error": "Invalid report format", "raw": report}
+
+            return report
         except Exception as e:
             self.log(f"Failed to generate final report: {e}", "ERROR")
             return {"error": "Final report generation failed", "details": str(e)}

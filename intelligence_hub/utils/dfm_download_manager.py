@@ -27,7 +27,6 @@ from intelligence_hub.config.settings import config
 
 logger = logging.getLogger("DFMDownloadManager")
 
-
 class DFMDownloadManager:
     """
     Manages file downloads for DFM with validation, retry logic, and date filtering.

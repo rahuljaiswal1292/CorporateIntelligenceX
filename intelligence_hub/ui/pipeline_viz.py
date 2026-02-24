@@ -93,6 +93,47 @@ def render_agent_pipeline(data: dict = None, show_details: bool = False):
         # If any agents are still pending, the stage is pending (unless it's already active/error)
         if not agents or any(s == "pending" for s in statuses):
             return "pending", "pending"
+    def style_for(status):
+        if status == "success":
+            return {
+                "bg": "#10b981",
+                "bdr": "#059669",
+                "lbl": "#065f46",
+                "txt": "#047857",
+                "ico": "✓",
+                "badge_bg": "#ecfdf5",
+                "badge_bdr": "#a7f3d0",
+            }
+        elif status == "error":
+            return {
+                "bg": "#ef4444",
+                "bdr": "#dc2626",
+                "lbl": "#991b1b",
+                "txt": "#b91c1c",
+                "ico": "✗",
+                "badge_bg": "#fef2f2",
+                "badge_bdr": "#fecaca",
+            }
+        elif status == "running":
+            return {
+                "bg": "#3b82f6",
+                "bdr": "#2563eb",
+                "lbl": "#1e40af",
+                "txt": "#2563eb",
+                "ico": "⟳",
+                "badge_bg": "#eff6ff",
+                "badge_bdr": "#93c5fd",
+            }
+        else:
+            return {
+                "bg": "#cbd5e1",
+                "bdr": "#94a3b8",
+                "lbl": "#64748b",
+                "txt": "#94a3b8",
+                "ico": "○",
+                "badge_bg": "#f8fafc",
+                "badge_bdr": "#e2e8f0",
+            }
 
         # Only if all agents are success
         if all(s == "success" for s in statuses):

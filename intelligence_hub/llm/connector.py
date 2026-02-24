@@ -10,6 +10,10 @@ from intelligence_hub.llm.models import LLMConfig, LLMModel, LLMProvider
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Models known to support Vision (image_url)
+# Models known to support Vision (image_url) - Be conservative here
+VISION_MODELS = {"gpt-4o", "gpt-4o-mini"}
+
 
 class LLMConnector:
     """

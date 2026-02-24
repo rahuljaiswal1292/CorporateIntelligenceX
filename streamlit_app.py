@@ -71,7 +71,7 @@ st.set_page_config(
     page_title="CorporateIntelligenceX",
     page_icon=image_path_ico,
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
 # --- Apply Custom CSS ---
@@ -882,13 +882,15 @@ def run_investigation(
     # Limit indentation changes by using a dummy block, or just unindent.
     # User wants to disable live logs.
 
-    # Stream the Graph execution
-    stream = graph.stream(input_data)
-    final_state = {}
+    # Stream the Graph execution (Use default 'updates' mode to track node progress)
+    # We use a config with thread_id for state persistence/sync
+    config = {"configurable": {"thread_id": st.session_state.thread_id}}
+    stream = graph.stream(input_data, config=config)
+    final_state = input_data.copy()
 
     # Initial Pipeline Update
     update_pipeline_ui()
-    update_resolved_ui()  # Initial Blink
+    update_resolved_ui()
 
     for event in stream:
         # Check if user requested abort
@@ -917,7 +919,6 @@ def run_investigation(
             agent_key = node_to_agent.get(node)
             if agent_key:
                 # Check if this node had an error — only look at NEW logs from this event
-                # (not all accumulated logs, which may contain unrelated 'error'/'failed' words)
                 node_logs = state.get("logs", [])
                 # Only flag error if the LAST log entry (the most recent) indicates failure
                 last_log = node_logs[-1].lower() if node_logs else ""
@@ -1108,44 +1109,28 @@ def run_investigation(
                         add_log("System", log)
 
     # 4. Handle Completion
-    if not resume_mode:
-        # Resolution Complete -> Pause
-        st.session_state.intermediate_state = final_state
-        st.session_state.investigation_paused = True
-        st.session_state.is_resolving = False
-        update_pipeline_ui()
-        st.toast(
-            "Canonical Resolution Complete. Click 'Continue' to proceed.", icon="⏸️"
-        )
-        # status.update removed
     else:
         # Enrichment Complete -> Finish
         st.session_state.investigation_paused = False
         st.session_state.analysis_complete = True
+        st.session_state.progress_stage = 5  # Complete
 
-        # Update Data with Real Intelligence (Using final state)
-        if final_state.get("financial_data"):
+        # Update Data from PresentationAgent (full overwrite)
+        if final_state and "meta" in final_state and "financials" in final_state:
+            # Full replacement to ensure no mock data leaks from initial session state
+            st.session_state.data = final_state
+            st.session_state.agent_status["analyst"] = "success"
+            add_log(
+                "System",
+                f"Intelligence Hub: Analysis complete for {st.session_state.canonical_name}",
+            )
+        elif final_state.get("financial_data"):
+            # Fallback
             real_data = final_state["financial_data"]
-
-            # A. Update Financials
             if "financials" in real_data:
-                real_fin = real_data["financials"]
-                # Map Revenue
-                if "revenue" in real_fin:
-                    val = real_fin["revenue"]
-                    st.session_state.data["financials"]["current"]["rev"] = (
-                        f"AED {val/1_000_000_000:.1f}B"
-                        if val > 1e9
-                        else f"AED {val:,.0f}"
-                    )
-                # Map Profit
-                if "net_income" in real_fin:  # Scrapers might use net_income
-                    val = real_fin["net_income"]
-                    st.session_state.data["financials"]["current"]["profit"] = (
-                        f"AED {val/1_000_000_000:.1f}B"
-                        if val > 1e9
-                        else f"AED {val:,.0f}"
-                    )
+                st.session_state.data["financials"] = real_data["financials"]
+            if "insights" in final_state:
+                st.session_state.data["insights"] = final_state["insights"]
 
             # B. Update Profile (if Wiki scraped)
             if "profile" in real_data:
@@ -1225,6 +1210,7 @@ def run_investigation(
 
         # status.update removed as UI disabled
         update_pipeline_ui()
+        update_resolved_ui()
 
 
 # --- Sidebar ---

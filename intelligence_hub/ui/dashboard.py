@@ -1,4 +1,5 @@
 import streamlit as st
+import plotly.graph_objects as go
 
 
 def get_test_dashboard_data():
@@ -146,7 +147,48 @@ def get_test_dashboard_data():
             "PDF Agent: Analyzing financial statements...",
             "PDF Agent completed",
             "Analyst Agent: Generating insights...",
+            "Analyst Agent: Generating insights...",
             "Analyst Agent completed successfully",
+        ],
+        "sources": [
+            {
+                "title": "Official Website",
+                "url": "https://www.emiratesnbd.com",
+                "type": "official",
+            },
+            {
+                "title": "Wikipedia Profile",
+                "url": "https://en.wikipedia.org/wiki/Emirates_NBD",
+                "type": "reference",
+            },
+            {
+                "title": "Bloomberg: Gulf Banking Funding",
+                "url": "https://www.bloomberg.com/news/articles/2026-02-17/gulf-s-third-biggest-bank-leads-funding-round",
+                "type": "news",
+                "source": "Bloomberg",
+            },
+            {
+                "title": "MSN: RBL Bank Stake",
+                "url": "https://www.msn.com/en-us/money/companies/uae-emirates-nbd-secures",
+                "type": "news",
+                "source": "MSN",
+            },
+            {
+                "title": "ZAWYA: Green Bond",
+                "url": "https://www.zawya.com/en/business/banking/dubai-emirates-nbd-tightens-price",
+                "type": "news",
+                "source": "ZAWYA",
+            },
+            {
+                "title": "DFM Listing Page",
+                "url": "https://www.dfm.ae/en/issuers/listed-securities/securities-details?id=EMIRATESNBD",
+                "type": "exchange",
+            },
+            {
+                "title": "Annual Report 2025 (PDF)",
+                "url": "https://www.emiratesnbd.com/-/media/enbd/files/annual-report-2025.pdf",
+                "type": "pdf",
+            },
         ],
     }
 
@@ -196,7 +238,8 @@ def render_main_dashboard(placeholder=None):
             Comprehensive financial analysis and strategic insights for relationship management
         </div>
     </div>
-    """)
+    """
+    )
 
     # Extract data safely with fallbacks
     meta = data.get("meta", {})
@@ -222,18 +265,26 @@ def render_main_dashboard(placeholder=None):
         <span style="font-size: 24px;">📊</span>
         <span>Key Performance Indicators</span>
     </div>
-    """)
+    """
+    )
 
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
         founded = meta.get("founded", "N/A")
+        founding_year = None
         if founded and founded != "N/A":
-            try:
-                years = 2026 - int(founded) if str(founded).isdigit() else "N/A"
-                st.metric("Years Operating", f"{years}", f"Since {founded}")
-            except:
-                st.metric("Founded", founded)
+            import re
+
+            year_match = re.search(r"\b(1\d{3}|20\d{2})\b", str(founded))
+            if year_match:
+                founding_year = int(year_match.group(1))
+
+        if founding_year:
+            years = 2026 - founding_year
+            st.metric("Years Operating", f"{years}", f"Since {founded}")
+        elif founded and founded != "N/A":
+            st.metric("Founded", founded)
         else:
             st.metric("Founded", "N/A")
 
@@ -263,12 +314,25 @@ def render_main_dashboard(placeholder=None):
 
     st.html("<div style='margin: 40px 0;'></div>")
 
-    # === SECTION 2 & 3: COMPANY PROFILE + FINANCIALS - Two Column Layout ===
-    col_left, col_right = st.columns([1.2, 1])
+    # === SECTION 2: COMPANY PROFILE - Full Width ===
+    if meta:
+        company_name = meta.get("name", "Unknown Company")
+        description = meta.get("description", "No description available")
+        website = meta.get("website", "#")
 
-    with col_left:
+        # Get DED data - handle both single license (dict) and multiple licenses (list)
+        ded_data = enrichments.get("ded", {})
+
+        # Normalize to list format
+        if isinstance(ded_data, dict) and ded_data:
+            licenses = [ded_data]  # Single license
+        elif isinstance(ded_data, list):
+            licenses = ded_data  # Multiple licenses
+        else:
+            licenses = []  # No licenses
+
         st.html(
-            """
+            f"""
         <div style="
             font-family: 'Poppins', sans-serif;
             font-size: 20px;
@@ -285,269 +349,242 @@ def render_main_dashboard(placeholder=None):
             <span style="font-size: 24px;">🏢</span>
             <span>Company Profile</span>
         </div>
-        """)
+        """
+        )
 
-        if meta:
-            company_name = meta.get("name", "Unknown Company")
-            description = meta.get("description", "No description available")
-            website = meta.get("website", "#")
+        st.html(
+            f"""
+        <div style="
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 28px;
+            box-shadow: 0 4px 16px rgba(0, 51, 102, 0.08);
+            margin-bottom: 32px;
+        ">
+            <h3 style="
+                font-family: 'Poppins', sans-serif;
+                color: #003366;
+                margin: 0 0 16px 0;
+                font-size: 24px;
+                font-weight: 700;
+                letter-spacing: -0.3px;
+            ">{company_name}</h3>
+            <p style="
+                font-family: 'Poppins', sans-serif;
+                color: #475569;
+                line-height: 1.7;
+                margin-bottom: 20px;
+                font-size: 14px;
+                font-weight: 400;
+            ">{description}</p>
+            {f'<div style="margin-bottom: 16px;"><a href="{website}" target="_blank" style="font-family: Poppins, sans-serif; color: #0077ff; text-decoration: none; font-weight: 600; font-size: 14px;">🌐 Visit Website →</a></div>' if website != "#" else ''}
+            
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+                <div>
+                    <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px;">Industry</div>
+                    <div style="font-family: 'Poppins', sans-serif; color: #1e293b; font-size: 15px; font-weight: 600;">{meta.get('sector', 'N/A')}</div>
+                </div>
+                <div>
+                    <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px;">Founded</div>
+                    <div style="font-family: 'Poppins', sans-serif; color: #1e293b; font-size: 15px; font-weight: 600;">{meta.get('founded', 'N/A')}</div>
+                </div>
+                <div>
+                    <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px;">Headquarters</div>
+                    <div style="font-family: 'Poppins', sans-serif; color: #1e293b; font-size: 15px; font-weight: 600;">{meta.get('headquarters', 'N/A')}</div>
+                </div>
+                <div>
+                    <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px;">Exchange</div>
+                    <div style="font-family: 'Poppins', sans-serif; color: #1e293b; font-size: 15px; font-weight: 600;">{meta.get('exchange', 'N/A')}: {meta.get('ticker', '')}</div>
+                </div>
+            </div>
+        </div>
+        """
+        )
 
-            # Get DED data - handle both single license (dict) and multiple licenses (list)
-            ded_data = enrichments.get("ded", {})
-
-            # Normalize to list format
-            if isinstance(ded_data, dict) and ded_data:
-                licenses = [ded_data]  # Single license
-            elif isinstance(ded_data, list):
-                licenses = ded_data  # Multiple licenses
-            else:
-                licenses = []  # No licenses
-
+        # DED License Information - Still below profile
+        if licenses:
+            license_count = len(licenses)
             st.html(
                 f"""
             <div style="
-                background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-                border: 1px solid #e2e8f0;
-                border-radius: 12px;
-                padding: 28px;
-                box-shadow: 0 4px 16px rgba(0, 51, 102, 0.08);
+                font-family: 'Poppins', sans-serif;
+                color: #003366;
+                font-size: 15px;
+                font-weight: 700;
+                margin-top: 10px;
+                margin-bottom: 12px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
             ">
-                <h3 style="
-                    font-family: 'Poppins', sans-serif;
-                    color: #003366;
-                    margin: 0 0 16px 0;
-                    font-size: 24px;
-                    font-weight: 700;
-                    letter-spacing: -0.3px;
-                ">{company_name}</h3>
-                <p style="
-                    font-family: 'Poppins', sans-serif;
-                    color: #475569;
-                    line-height: 1.7;
-                    margin-bottom: 20px;
-                    font-size: 14px;
-                    font-weight: 400;
-                ">{description}</p>
-                {f'<div style="margin-bottom: 16px;"><a href="{website}" target="_blank" style="font-family: Poppins, sans-serif; color: #0077ff; text-decoration: none; font-weight: 600; font-size: 14px;">🌐 Visit Website →</a></div>' if website != "#" else ''}
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
-                    <div>
-                        <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px;">Industry</div>
-                        <div style="font-family: 'Poppins', sans-serif; color: #1e293b; font-size: 15px; font-weight: 600;">{meta.get('sector', 'N/A')}</div>
-                    </div>
-                    <div>
-                        <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px;">Founded</div>
-                        <div style="font-family: 'Poppins', sans-serif; color: #1e293b; font-size: 15px; font-weight: 600;">{meta.get('founded', 'N/A')}</div>
-                    </div>
-                    <div>
-                        <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px;">Headquarters</div>
-                        <div style="font-family: 'Poppins', sans-serif; color: #1e293b; font-size: 15px; font-weight: 600;">{meta.get('headquarters', 'N/A')}</div>
-                    </div>
-                    <div>
-                        <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px;">Exchange</div>
-                        <div style="font-family: 'Poppins', sans-serif; color: #1e293b; font-size: 15px; font-weight: 600;">{meta.get('exchange', 'N/A')}: {meta.get('ticker', '')}</div>
-                    </div>
-                </div>
+                <span style="font-size: 18px;">🏛️</span>
+                <span>DED License Information {f'({license_count} Licenses)' if license_count > 1 else ''}</span>
             </div>
-            """)
+            """
+            )
 
-            # DED License Information - Separate section below profile
-            if licenses:
-                license_count = len(licenses)
-                st.html(
-                    f"""
-                <div style="
-                    font-family: 'Poppins', sans-serif;
-                    color: #003366;
-                    font-size: 15px;
-                    font-weight: 700;
-                    margin-top: 20px;
-                    margin-bottom: 12px;
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                ">
-                    <span style="font-size: 18px;">🏛️</span>
-                    <span>DED License Information {f'({license_count} Licenses)' if license_count > 1 else ''}</span>
-                </div>
-                """)
+            # Display licenses in a grid (3 columns for broader layout)
+            lic_cols = st.columns(3)
+            for idx, lic in enumerate(licenses):
+                license_number = lic.get("license_number", "N/A")
+                activity_type = lic.get("activity_type", "N/A")
+                lic_status = lic.get("status", "N/A")
+                expiry_date = lic.get("expiry_date", "N/A")
+                trade_name = lic.get("trade_name", "")
 
-                # Display licenses in a grid (2 columns for multiple licenses, 1 for single)
-                if license_count == 1:
-                    cols = st.columns(1)
-                else:
-                    cols = st.columns(2)
-
-                for idx, lic in enumerate(licenses):
-                    license_number = lic.get("license_number", "N/A")
-                    activity_type = lic.get("activity_type", "N/A")
-                    lic_status = lic.get("status", "N/A")
-                    expiry_date = lic.get("expiry_date", "N/A")
-                    trade_name = lic.get("trade_name", "")
-
-                    with cols[idx % len(cols)]:
-                        st.html(
-                            f"""
-                        <div style="
-                            background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
-                            border: 1px solid #e2e8f0;
-                            border-left: 3px solid #0077ff;
-                            border-radius: 8px;
-                            padding: 16px;
-                            margin-bottom: 12px;
-                            box-shadow: 0 2px 8px rgba(0, 51, 102, 0.06);
-                        ">
-                            {f'<div style="font-family: Poppins, sans-serif; color: #003366; font-size: 13px; font-weight: 700; margin-bottom: 12px;">{trade_name}</div>' if trade_name else ''}
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                                <div>
-                                    <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;">License No.</div>
-                                    <div style="font-family: 'Poppins', sans-serif; color: #1e293b; font-size: 13px; font-weight: 600;">{license_number}</div>
-                                </div>
-                                <div>
-                                    <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;">Status</div>
-                                    <div style="font-family: 'Poppins', sans-serif; color: {'#10b981' if lic_status.lower() == 'active' else '#ef4444' if lic_status.lower() == 'expired' else '#1e293b'}; font-size: 13px; font-weight: 700;">{lic_status}</div>
-                                </div>
-                                <div>
-                                    <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;">Activity Type</div>
-                                    <div style="font-family: 'Poppins', sans-serif; color: #1e293b; font-size: 12px; font-weight: 600;">{activity_type}</div>
-                                </div>
-                                <div>
-                                    <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;">Expiry Date</div>
-                                    <div style="font-family: 'Poppins', sans-serif; color: #1e293b; font-size: 13px; font-weight: 600;">{expiry_date}</div>
-                                </div>
+                with lic_cols[idx % 3]:
+                    st.html(
+                        f"""
+                    <div style="
+                        background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+                        border: 1px solid #e2e8f0;
+                        border-left: 3px solid #0077ff;
+                        border-radius: 8px;
+                        padding: 16px;
+                        margin-bottom: 12px;
+                        box-shadow: 0 2px 8px rgba(0, 51, 102, 0.06);
+                        min-height: 140px;
+                    ">
+                        {f'<div style="font-family: Poppins, sans-serif; color: #003366; font-size: 13px; font-weight: 700; margin-bottom: 12px;">{trade_name}</div>' if trade_name else ''}
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                            <div>
+                                <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;">License No.</div>
+                                <div style="font-family: 'Poppins', sans-serif; color: #1e293b; font-size: 13px; font-weight: 600;">{license_number}</div>
+                            </div>
+                            <div>
+                                <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;">Status</div>
+                                <div style="font-family: 'Poppins', sans-serif; color: {'#10b981' if lic_status.lower() == 'active' else '#ef4444' if lic_status.lower() == 'expired' else '#1e293b'}; font-size: 13px; font-weight: 700;">{lic_status}</div>
+                            </div>
+                            <div>
+                                <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;">Activity Type</div>
+                                <div style="font-family: 'Poppins', sans-serif; color: #1e293b; font-size: 12px; font-weight: 600;">{activity_type}</div>
+                            </div>
+                            <div>
+                                <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;">Expiry Date</div>
+                                <div style="font-family: 'Poppins', sans-serif; color: #1e293b; font-size: 13px; font-weight: 600;">{expiry_date}</div>
                             </div>
                         </div>
-                        """)
-        else:
-            st.info("Company profile data pending...")
+                    </div>
+                    """
+                    )
+    else:
+        st.info("Company profile data pending...")
 
-    with col_right:
+    # === SECTION 3: FINANCIAL SNAPSHOT - Now below Profile ===
+    st.html(
+        """
+    <div style="
+        font-family: 'Poppins', sans-serif;
+        font-size: 20px;
+        font-weight: 700;
+        color: #003366;
+        margin-top: 32px;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #0077ff;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        letter-spacing: -0.3px;
+    ">
+        <span style="font-size: 24px;">💰</span>
+        <span>Financial Snapshot</span>
+    </div>
+    """
+    )
+
+    if financials and "current" in financials:
+        curr = financials.get("current", {})
+
+        # Primary Metrics - Revenue & Profit (Full Width Grid)
         st.html(
-            """
+            f"""
         <div style="
-            font-family: 'Poppins', sans-serif;
-            font-size: 20px;
-            font-weight: 700;
-            color: #003366;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #0077ff;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            letter-spacing: -0.3px;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 16px rgba(30, 58, 138, 0.3);
+            color: white;
         ">
-            <span style="font-size: 24px;">💰</span>
-            <span>Financial Snapshot</span>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+                <div style="border-right: 1px solid rgba(255,255,255,0.2); padding-right: 20px;">
+                    <div style="font-family: 'Poppins', sans-serif; color: rgba(255, 255, 255, 0.8); font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.8px;">Total Revenue</div>
+                    <div style="font-family: 'Poppins', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">{curr.get("rev", "N/A")}</div>
+                    {f'<div style="font-family: Poppins, sans-serif; color: #4ade80; font-size: 12px; font-weight: 600; margin-top: 4px;">↑ {curr.get("trend", "")}</div>' if curr.get("trend") else ''}
+                </div>
+                <div style="border-right: 1px solid rgba(255,255,255,0.2); padding-right: 20px;">
+                    <div style="font-family: 'Poppins', sans-serif; color: rgba(255, 255, 255, 0.8); font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.8px;">Net Profit</div>
+                    <div style="font-family: 'Poppins', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">{curr.get("profit", "N/A")}</div>
+                </div>
+                <div style="border-right: 1px solid rgba(255,255,255,0.2); padding-right: 20px;">
+                    <div style="font-family: 'Poppins', sans-serif; color: rgba(255, 255, 255, 0.8); font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.8px;">Market Cap</div>
+                    <div style="font-family: 'Poppins', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">{financials.get("market_cap", "N/A")}</div>
+                </div>
+                <div>
+                    <div style="font-family: 'Poppins', sans-serif; color: rgba(255, 255, 255, 0.8); font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.8px;">Stock Price</div>
+                    <div style="font-family: 'Poppins', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">{curr.get("price", "N/A")}</div>
+                </div>
+            </div>
         </div>
-        """)
+        """
+        )
 
-        if financials and "current" in financials:
-            curr = financials.get("current", {})
+        # Key Banking Ratios - 6 cards in a grid
+        metrics = [
+            (
+                "ROE",
+                curr.get("roe", "N/A"),
+                "linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)",
+            ),
+            (
+                "ROA",
+                curr.get("roa", "N/A"),
+                "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)",
+            ),
+            (
+                "NPL Ratio",
+                curr.get("npl_ratio", "N/A"),
+                "linear-gradient(135deg, #475569 0%, #64748b 100%)",
+            ),
+            (
+                "Capital Adequacy",
+                curr.get("capital_adequacy", "N/A"),
+                "linear-gradient(135deg, #059669 0%, #10b981 100%)",
+            ),
+            (
+                "Cost-to-Income",
+                curr.get("cost_to_income", "N/A"),
+                "linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%)",
+            ),
+            (
+                "LCR",
+                curr.get("liquidity_coverage_ratio", "N/A"),
+                "linear-gradient(135deg, #ea580c 0%, #f97316 100%)",
+            ),
+        ]
 
-            # Primary Metrics - Revenue & Profit
-            st.html(
-                f"""
+        st.html(
+            f"""
+        <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 16px;">
+            {''.join([f'''
             <div style="
-                background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-                border-radius: 12px;
-                padding: 24px;
-                margin-bottom: 16px;
-                box-shadow: 0 4px 16px rgba(30, 58, 138, 0.3);
-                color: white;
-            ">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                    <div>
-                        <div style="font-family: 'Poppins', sans-serif; color: rgba(255, 255, 255, 0.8); font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.8px;">Total Revenue</div>
-                        <div style="font-family: 'Poppins', sans-serif; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">{curr.get("rev", "N/A")}</div>
-                        {f'<div style="font-family: Poppins, sans-serif; color: #4ade80; font-size: 12px; font-weight: 600; margin-top: 4px;">↑ {curr.get("trend", "")}</div>' if curr.get("trend") else ''}
-                    </div>
-                    <div>
-                        <div style="font-family: 'Poppins', sans-serif; color: rgba(255, 255, 255, 0.8); font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.8px;">Net Profit</div>
-                        <div style="font-family: 'Poppins', sans-serif; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">{curr.get("profit", "N/A")}</div>
-                    </div>
-                </div>
-            </div>
-            """)
-
-            # Key Banking Ratios - 3 cards with professional blue palette
-            roe = curr.get("roe", "N/A")
-            roa = curr.get("roa", "N/A")
-            npl_ratio = curr.get("npl_ratio", "N/A")
-
-            st.html(
-                f"""
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
-                <div style="
-                    background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%);
-                    border-radius: 10px;
-                    padding: 16px;
-                    box-shadow: 0 2px 8px rgba(8, 145, 178, 0.25);
-                    text-align: center;
-                ">
-                    <div style="font-family: 'Poppins', sans-serif; color: rgba(255, 255, 255, 0.9); font-size: 9px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px;">ROE</div>
-                    <div style="font-family: 'Poppins', sans-serif; color: white; font-size: 22px; font-weight: 800;">{roe}</div>
-                </div>
-                <div style="
-                    background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-                    border-radius: 10px;
-                    padding: 16px;
-                    box-shadow: 0 2px 8px rgba(30, 64, 175, 0.25);
-                    text-align: center;
-                ">
-                    <div style="font-family: 'Poppins', sans-serif; color: rgba(255, 255, 255, 0.9); font-size: 9px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px;">ROA</div>
-                    <div style="font-family: 'Poppins', sans-serif; color: white; font-size: 22px; font-weight: 800;">{roa}</div>
-                </div>
-                <div style="
-                    background: linear-gradient(135deg, #475569 0%, #64748b 100%);
-                    border-radius: 10px;
-                    padding: 16px;
-                    box-shadow: 0 2px 8px rgba(71, 85, 105, 0.25);
-                    text-align: center;
-                ">
-                    <div style="font-family: 'Poppins', sans-serif; color: rgba(255, 255, 255, 0.9); font-size: 9px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px;">NPL Ratio</div>
-                    <div style="font-family: 'Poppins', sans-serif; color: white; font-size: 22px; font-weight: 800;">{npl_ratio}</div>
-                </div>
-            </div>
-            """)
-
-            # Additional Metrics - 2x2 Grid
-            capital_adequacy = curr.get("capital_adequacy", "N/A")
-            cost_to_income = curr.get("cost_to_income", "N/A")
-            lcr = curr.get("liquidity_coverage_ratio", "N/A")
-            price = curr.get("price", "N/A")
-
-            st.html(
-                f"""
-            <div style="
-                background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-                border: 1px solid #cbd5e1;
+                background: {bg};
                 border-radius: 10px;
-                padding: 20px;
-                box-shadow: 0 2px 8px rgba(0, 51, 102, 0.06);
+                padding: 16px;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                text-align: center;
             ">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                    <div>
-                        <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 9px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;">Capital Adequacy</div>
-                        <div style="font-family: 'Poppins', sans-serif; color: #1e293b; font-size: 18px; font-weight: 700;">{capital_adequacy}</div>
-                    </div>
-                    <div>
-                        <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 9px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;">Cost-to-Income</div>
-                        <div style="font-family: 'Poppins', sans-serif; color: #1e293b; font-size: 18px; font-weight: 700;">{cost_to_income}</div>
-                    </div>
-                    <div>
-                        <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 9px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;">LCR</div>
-                        <div style="font-family: 'Poppins', sans-serif; color: #1e293b; font-size: 18px; font-weight: 700;">{lcr}</div>
-                    </div>
-                    <div>
-                        <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 9px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;">Stock Price</div>
-                        <div style="font-family: 'Poppins', sans-serif; color: #0077ff; font-size: 18px; font-weight: 700;">{price}</div>
-                    </div>
-                </div>
+                <div style="font-family: 'Poppins', sans-serif; color: rgba(255, 255, 255, 0.9); font-size: 9px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px;">{label}</div>
+                <div style="font-family: 'Poppins', sans-serif; color: white; font-size: 20px; font-weight: 800;">{val}</div>
             </div>
-            """)
-        else:
-            st.info("Financial data pending...")
+            ''' for label, val, bg in metrics])}
+        </div>
+        """
+        )
+    else:
+        st.info("Financial data pending...")
 
     st.html("<div style='margin: 40px 0;'></div>")
 
@@ -570,7 +607,8 @@ def render_main_dashboard(placeholder=None):
         <span style="font-size: 28px;">📰</span>
         <span>Latest News & Market Updates</span>
     </div>
-    """)
+    """
+    )
 
     # Check for news in multiple locations
     news_data = enrichments.get("news", {})
@@ -649,7 +687,8 @@ def render_main_dashboard(placeholder=None):
                             Read Full Article →
                         </a>
                     </div>
-                    """)
+                    """
+                    )
     else:
         st.info("📰 No recent news articles available")
 
@@ -674,39 +713,106 @@ def render_main_dashboard(placeholder=None):
         <span style="font-size: 28px;">📈</span>
         <span>Stock Performance & Market Trends</span>
     </div>
-    """)
+    """
+    )
 
-    # Placeholder for stock chart
-    st.html(
+    # Real stock chart
+    chart_data = data.get("chart", {})
+    if chart_data and "dates" in chart_data:
+        fig = go.Figure(
+            data=[
+                go.Candlestick(
+                    x=chart_data["dates"],
+                    open=chart_data["open"],
+                    high=chart_data["high"],
+                    low=chart_data["low"],
+                    close=chart_data["close"],
+                    increasing_line_color="#10B981",
+                    decreasing_line_color="#EF4444",
+                    name="Price",
+                )
+            ]
+        )
+
+        fig.update_layout(
+            xaxis_rangeslider_visible=False,
+            height=450,
+            margin=dict(l=10, r=10, t=10, b=10),
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            hovermode="x unified",
+            xaxis=dict(
+                showgrid=True,
+                gridcolor="#f1f5f9",
+                tickfont=dict(color="#64748b", size=11),
+                rangeslider=dict(visible=False),
+                type="category",
+            ),
+            yaxis=dict(
+                showgrid=True,
+                gridcolor="#f1f5f9",
+                tickfont=dict(color="#64748b", size=11),
+                side="right",
+            ),
+        )
+
+        # Add volume if available
+        if "volume" in chart_data:
+            fig.add_trace(
+                go.Bar(
+                    x=chart_data["dates"],
+                    y=chart_data["volume"],
+                    name="Volume",
+                    marker_color="rgba(0, 51, 102, 0.1)",
+                    yaxis="y2",
+                )
+            )
+            fig.update_layout(
+                yaxis2=dict(
+                    title="Volume",
+                    overlaying="y",
+                    side="left",
+                    showgrid=False,
+                    tickfont=dict(color="#94a3b8", size=10),
+                )
+            )
+
+        st.plotly_chart(
+            fig, use_container_width=True, key="dashboard_stock_performance"
+        )
+    else:
+        # Fallback to placeholder if no data
+        st.html(
+            """
+        <div style="
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 60px 40px;
+            text-align: center;
+            box-shadow: 0 4px 16px rgba(0, 51, 102, 0.08);
+        ">
+            <div style="
+                font-family: 'Poppins', sans-serif;
+                font-size: 48px;
+                margin-bottom: 16px;
+                opacity: 0.3;
+            ">📊</div>
+            <div style="
+                font-family: 'Poppins', sans-serif;
+                color: #64748b;
+                font-size: 16px;
+                font-weight: 500;
+            ">Stock performance data currently unavailable</div>
+            <div style="
+                font-family: 'Poppins', sans-serif;
+                color: #94a3b8;
+                font-size: 13px;
+                margin-top: 8px;
+            ">Historical price data and terminal stats will appear here shortly</div>
+        </div>
         """
-    <div style="
-        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 60px 40px;
-        text-align: center;
-        box-shadow: 0 4px 16px rgba(0, 51, 102, 0.08);
-    ">
-        <div style="
-            font-family: 'Poppins', sans-serif;
-            font-size: 48px;
-            margin-bottom: 16px;
-            opacity: 0.3;
-        ">📊</div>
-        <div style="
-            font-family: 'Poppins', sans-serif;
-            color: #64748b;
-            font-size: 16px;
-            font-weight: 500;
-        ">Stock performance chart will be displayed here</div>
-        <div style="
-            font-family: 'Poppins', sans-serif;
-            color: #94a3b8;
-            font-size: 13px;
-            margin-top: 8px;
-        ">Historical price data, volume, and technical indicators</div>
-    </div>
-    """)
+        )
 
     st.html("<div style='margin: 40px 0;'></div>")
 
@@ -729,7 +835,8 @@ def render_main_dashboard(placeholder=None):
         <span style="font-size: 28px;">⚔️</span>
         <span>Key Competitors & Market Position</span>
     </div>
-    """)
+    """
+    )
 
     # Get competitors data
     competitors = data.get("competitors", [])
@@ -825,7 +932,8 @@ def render_main_dashboard(placeholder=None):
                             ">{rev_growth}</div>
                         </div>
                     </div>
-                    """)
+                    """
+                    )
     else:
         st.info("⚔️ Competitor analysis data will appear here once available")
 
@@ -850,7 +958,8 @@ def render_main_dashboard(placeholder=None):
         <span style="font-size: 28px;">💡</span>
         <span>Strategic Insights & RM Summary</span>
     </div>
-    """)
+    """
+    )
 
     insights = data.get("insights", [])
     if insights and len(insights) > 0:
@@ -891,7 +1000,8 @@ def render_main_dashboard(placeholder=None):
                             font-weight: 400;
                         ">{text}</div>
                     </div>
-                    """)
+                    """
+                    )
             elif isinstance(insight, str):
                 with insight_cols[idx % 2]:
                     st.markdown(f"• {insight}")
@@ -900,9 +1010,132 @@ def render_main_dashboard(placeholder=None):
 
     st.html("<div style='margin: 40px 0;'></div>")
 
-    # === SECTION 8: DATA SOURCES - Elegant Footer ===
+    # === SECTION 8: KEY RISKS & CONSIDERATIONS - Premium Cards ===
     st.html(
         """
+    <div style="
+        font-family: 'Poppins', sans-serif;
+        font-size: 22px;
+        font-weight: 700;
+        color: #003366;
+        margin-bottom: 24px;
+        padding-bottom: 12px;
+        border-bottom: 3px solid #ef4444;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        letter-spacing: -0.3px;
+    ">
+        <span style="font-size: 28px;">⚠️</span>
+        <span>Key Risks & Considerations</span>
+    </div>
+    """
+    )
+
+    risks = data.get("risks", [])
+    if risks and len(risks) > 0:
+        # Display risks in 2 columns
+        risk_cols = st.columns(2)
+        for idx, item in enumerate(risks[:6]):
+            if isinstance(item, dict):
+                risk_title = item.get("risk", "Risk Factor")
+                consideration = item.get("consideration", "No details available.")
+
+                with risk_cols[idx % 2]:
+                    st.html(
+                        f"""
+                    <div style="
+                        background: linear-gradient(135deg, #fff5f5 0%, #fee2e2 100%);
+                        border-left: 4px solid #ef4444;
+                        border-radius: 12px;
+                        padding: 20px;
+                        margin-bottom: 16px;
+                        box-shadow: 0 2px 8px rgba(239, 68, 68, 0.06);
+                    ">
+                        <div style="
+                            font-family: 'Poppins', sans-serif;
+                            color: #ef4444;
+                            font-weight: 700;
+                            font-size: 11px;
+                            text-transform: uppercase;
+                            margin-bottom: 10px;
+                            letter-spacing: 0.8px;
+                        ">{risk_title}</div>
+                        <div style="
+                            font-family: 'Poppins', sans-serif;
+                            color: #334155;
+                            line-height: 1.6;
+                            font-size: 14px;
+                            font-weight: 400;
+                        ">{consideration}</div>
+                    </div>
+                    """
+                    )
+    else:
+        st.info(
+            "Key risks and considerations will appear here once analysis completes..."
+        )
+
+    st.html("<div style='margin: 40px 0;'></div>")
+
+    # === SECTION 8: DATA SOURCES & REFERENCES - Elegant Footer ===
+    all_sources = data.get("sources", [])
+
+    # Categorize and build the sources HTML first
+    source_items_html = ""
+    if all_sources:
+        type_icons = {
+            "official": "🌐",
+            "reference": "📖",
+            "news": "📰",
+            "pdf": "📄",
+            "disclosure": "📄",
+            "exchange": "🏛️",
+        }
+
+        source_items_html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">'
+        for src in all_sources:
+            icon = type_icons.get(src.get("type", ""), "🔗")
+            title = src.get("title", "Reference Link")
+            url = src.get("url", "#")
+            source_name = src.get("source", "")
+            source_tag = (
+                f'<span style="font-size: 10px; color: #64748b; margin-left: 4px;">({source_name})</span>'
+                if source_name
+                else ""
+            )
+
+            source_items_html += f"""
+            <a href="{url}" target="_blank" style="
+                text-decoration: none;
+                background: white;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 12px;
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                transition: all 0.2s ease;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            ">
+                <span style="font-size: 18px;">{icon}</span>
+                <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    <div style="font-family: 'Poppins', sans-serif; color: #1e293b; font-size: 13px; font-weight: 600;">{title}</div>
+                    <div style="font-family: 'Poppins', sans-serif; color: #0077ff; font-size: 11px;">{url[:40]}{'...' if len(url) > 40 else ''} {source_tag}</div>
+                </div>
+            </a>
+            """
+        source_items_html += "</div>"
+    else:
+        source_items_html = """
+        <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 14px; font-weight: 400;">
+            No specific reference URLs identified for this investigation.
+        </div>
+        """
+
+    # Render everything in one cohesive block
+    st.html(
+        f"""
     <div style="
         background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
         border-radius: 12px;
@@ -915,7 +1148,7 @@ def render_main_dashboard(placeholder=None):
             font-size: 18px;
             font-weight: 700;
             color: #003366;
-            margin-bottom: 16px;
+            margin-bottom: 20px;
             display: flex;
             align-items: center;
             gap: 10px;
@@ -924,42 +1157,7 @@ def render_main_dashboard(placeholder=None):
             <span style="font-size: 22px;">📚</span>
             <span>Data Sources & References</span>
         </div>
-    """)
-
-    sources_count = 0
-    if enrichments:
-        if enrichments.get("wikipedia"):
-            sources_count += 1
-        if enrichments.get("news"):
-            sources_count += 1
-        if enrichments.get("serp"):
-            sources_count += 1
-
-    wiki_status = "✓" if enrichments.get("wikipedia") else "○"
-    wiki_color = "#10b981" if enrichments.get("wikipedia") else "#cbd5e1"
-    news_status = "✓" if enrichments.get("news") else "○"
-    news_color = "#10b981" if enrichments.get("news") else "#cbd5e1"
-    serp_status = "✓" if enrichments.get("serp") else "○"
-    serp_color = "#10b981" if enrichments.get("serp") else "#cbd5e1"
-
-    st.html(
-        f"""
-        <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 14px; margin-bottom: 16px; font-weight: 400;">
-            Analysis based on <strong style="color: #003366; font-weight: 700;">{sources_count} verified data sources</strong>
-        </div>
-        <div style="display: flex; gap: 24px; flex-wrap: wrap;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="color: {wiki_color}; font-size: 18px; font-weight: 700;">{wiki_status}</span>
-                <span style="font-family: 'Poppins', sans-serif; color: #475569; font-size: 14px; font-weight: 600;">Wikipedia</span>
-            </div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="color: {news_color}; font-size: 18px; font-weight: 700;">{news_status}</span>
-                <span style="font-family: 'Poppins', sans-serif; color: #475569; font-size: 14px; font-weight: 600;">News Articles</span>
-            </div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="color: {serp_color}; font-size: 18px; font-weight: 700;">{serp_status}</span>
-                <span style="font-family: 'Poppins', sans-serif; color: #475569; font-size: 14px; font-weight: 600;">Web Search</span>
-            </div>
-        </div>
+        {source_items_html}
     </div>
-    """)
+    """
+    )

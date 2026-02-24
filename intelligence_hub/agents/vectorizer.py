@@ -67,6 +67,7 @@ class VectorizerAgent:
         else:
             logs.append("Vectorizer: No valid text content found to index.")
 
+        # Return merged state to preserve all keys (enrichments, pdf_results, etc.)
         return {
             **state,
             "logs": logs,

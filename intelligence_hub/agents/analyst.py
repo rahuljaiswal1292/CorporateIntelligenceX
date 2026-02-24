@@ -1,8 +1,11 @@
 import json
 from typing import Dict, Optional, Callable
+import pandas as pd
+import os
 from intelligence_hub.graph.state import AgentState
 from intelligence_hub.llm.connector import LLMConnector
 from intelligence_hub.storage.corporate_profile_store import CorporateProfileStore
+from intelligence_hub.config.config import DATA_DIRECTORY
 from .base_agent import BaseAgent
 
 
@@ -119,6 +122,70 @@ class AnalystAgent(BaseAgent):
             },
         }
 
+    def _get_daily_summary(self, exchange: str, company: str) -> Dict:
+        r"""
+        Reads validation summary from D:\University\CorporateIntelligenceX\data\<exchange>\<company>\daily_summary\structured\*.xls
+        """
+        try:
+            # Construct path based on exchange
+            if exchange.lower() == "adx":
+                # ADX path: data/adx/<ticker>/orderbook/structured
+                sub_path = os.path.join("orderbook", "structured")
+            else:
+                # DFM path: data/dfm/<ticker>/daily_summary/structured
+                sub_path = os.path.join("daily_summary", "structured")
+
+            search_pattern = os.path.join(
+                DATA_DIRECTORY,
+                exchange.lower(),
+                company,
+                sub_path,
+            )
+
+            if not os.path.exists(search_pattern):
+                self.log(f"Path does not exist: {search_pattern}", "WARNING")
+                return {}
+
+            files = [
+                f for f in os.listdir(search_pattern) if f.lower().endswith(".csv")
+            ]
+
+            if not files:
+                self.log(f"No daily summary found at {search_pattern}", "WARNING")
+                return {}
+
+            # Read the first file found
+            file_path = search_pattern + "/" + files[0]
+            self.log(f"Reading daily summary from {file_path}")
+
+            try:
+                # Attempt to read as standard Excel (using explicit engine if needed, but auto detection is usually safer unless specific)
+                # If engine="xlrd" is forced for .xls but content is HTML, it fails.
+                df = pd.read_csv(file_path)
+            except Exception as excel_err:
+                # Fallback: Check if it's an HTML file masked as XLS
+                self.log(
+                    f"Standard CSV read failed ({excel_err}), attempting HTML parse...",
+                    "WARNING",
+                )
+                try:
+                    dfs = pd.read_html(file_path)
+                    if dfs:
+                        df = dfs[0]
+                    else:
+                        raise ValueError("No tables found in HTML-masked file")
+                except Exception as html_err:
+                    self.log(f"Failed to read as HTML too: {html_err}", "ERROR")
+                    return {}
+
+            # Convert to dict
+            data = df.to_dict(orient="records")
+            return {"data": data, "source_file": os.path.basename(file_path)}
+
+        except Exception as e:
+            self.log(f"Failed to read daily summary: {e}", "ERROR")
+            return {}
+
     def run(self, state: AgentState) -> AgentState:
         """
         Run analyst workflow
@@ -151,13 +218,27 @@ class AnalystAgent(BaseAgent):
             final_report = self.generate_final_report(state, insights)
             logs.append("Analyst: Generated Final Report.")
 
+            # Update financial_data with daily summary
+            financial_data = state.get("financial_data", {})
+            exchange = state.get("exchange", "Unknown")
+
+            # Assuming 'company_name' in state matches directory structure.
+            # If strictly 'ticker' is used for folders, we might need to change this.
+            # But prompt said "data\<exchange>\<company>", likely company name.
+            # Let's try both company_name and ticker if one fails?
+            # Sticking to company_name as per instruction.
+            daily_summary = self._get_daily_summary(
+                exchange, state.get("ticker", "Unknown")
+            )
+
+            if daily_summary:
+                financial_data["daily_summary"] = daily_summary
+
             return {
                 "insights": insights,
                 "final_report": final_report,
                 "logs": logs,
-                # Pass through other state
-                "ticker": state.get("ticker", "Unknown"),
-                "company_name": state.get("company_name", "Unknown"),
+                "financial_data": financial_data,  # Updated with daily summary
             }
 
         except Exception as e:
@@ -166,11 +247,9 @@ class AnalystAgent(BaseAgent):
             return {
                 "insights": [],
                 "logs": logs,
-                "ticker": state.get("ticker", "Unknown"),
-                "company_name": state.get("company_name", "Unknown"),
             }
 
-    def generate_final_report(self, state: AgentState, insights: list) -> str:
+    def generate_final_report(self, state: AgentState, insights: list) -> Dict:
         """Generates a comprehensive final report."""
         company_name = state.get("company_name", "Unknown")
         ticker = state.get("ticker", "Unknown")
@@ -194,19 +273,36 @@ class AnalystAgent(BaseAgent):
         Strategic Insights & Opportunities:
         {json.dumps(insights, indent=2)}
         
-        Format the report in Markdown being concise and professional.
-        Include sections:
-        1. Executive Summary
-        2. Company Overview
-        3. Strategic Banking Opportunities
-        4. Key Risks & Considerations
+         Return STRICTLY JSON format being concise and professional with the below keys.
+        1. Executive_summary
+        2. Company_overview
+        3. Strategic_banking_opportunities (list of objects with keys: category, finding, source, trigger, action)
+        4. Key_risks_and_considerations (list of objects with keys: risk, consideration)
         """
 
         try:
-            return self.llm_connector.analyze(prompt)
+            response_text = self.llm_connector.analyze(prompt)
+            clean_text = response_text.replace("```json", "").replace("```", "").strip()
+            report = json.loads(clean_text)
+
+            # Defensive check: Ensure it's a dictionary
+            if isinstance(report, list):
+                if len(report) > 0 and isinstance(report[0], dict):
+                    self.log(
+                        "LLM returned a list for final_report, extracting first element",
+                        "WARNING",
+                    )
+                    report = report[0]
+                else:
+                    self.log(
+                        "LLM returned a list, but no valid dict found inside", "ERROR"
+                    )
+                    report = {"error": "Invalid report format", "raw": report}
+
+            return report
         except Exception as e:
             self.log(f"Failed to generate final report: {e}", "ERROR")
-            return "Final report generation failed."
+            return {"error": "Final report generation failed", "details": str(e)}
 
     def summarize_profile(self, text: str) -> str:
         """Summarizes raw text into a company profile."""

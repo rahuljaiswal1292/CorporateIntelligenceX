@@ -1,6 +1,7 @@
 import os
 import chromadb
 from langgraph.graph import StateGraph, END
+from langgraph.checkpoint.memory import MemorySaver
 from intelligence_hub.graph.state import AgentState
 
 # Agent imports
@@ -9,6 +10,7 @@ from intelligence_hub.agents.vectorizer import VectorizerAgent
 from intelligence_hub.agents.analyst import AnalystAgent
 from intelligence_hub.agents.pdf_agent import PdfAgent
 from intelligence_hub.agents.master_agent import MasterAgent
+from intelligence_hub.agents.presentation_agent import PresentationAgent
 from intelligence_hub.agents.wikipedia_agent import WikipediaAgent
 from intelligence_hub.agents.news_agent import NewsAgent
 from intelligence_hub.agents.ded_agent import DEDAgent
@@ -77,11 +79,13 @@ def run_profiling_node(state: AgentState):
         def log_handler(msg):
             logs.append(msg.strip())
 
+        # Initialize Master Agent - disable heavy enrichment for initial resolution
         agent = MasterAgent(
             company_name=company_name,
             llm_connector=llm_connector,
             profile_store=store,
             log_callback=log_handler,
+            enable_enrichment=False,  # Defer heavy enrichment to parallel nodes
         )
 
         # Run Phase 1
@@ -92,7 +96,29 @@ def run_profiling_node(state: AgentState):
         website = full_profile.get("website", state.get("website"))
         confidence = full_profile.get("confidence_score", 0)
 
-        logs.append(f"Profile extraction complete for {company_name}")
+        # Extract resolution info
+        # ticker = metadata.get("ticker", state.get("ticker"))
+        # exchange = metadata.get("exchange", state.get("exchange"))
+        # website = metadata.get("website", state.get("website"))
+        # confidence = metadata.get("confidence", full_profile.get("confidence_score", 0))
+
+        # Flatten 'enrichments' to top level of profile
+        # User requested bringing DED, Competitor Analysis etc one level up.
+        # Currently: state['enrichments'] -> full_profile -> 'enrichments' -> 'DED'
+        # Target: state['enrichments'] -> 'DED'
+        if "enrichments" in full_profile:
+            inner_enrichments = full_profile.pop("enrichments")
+            full_profile.update(inner_enrichments)
+
+        # Flatten 'enrichments' to top level of profile
+        # User requested bringing DED, Competitor Analysis etc one level up.
+        # Currently: state['enrichments'] -> full_profile -> 'enrichments' -> 'DED'
+        # Target: state['enrichments'] -> 'DED'
+        if "enrichments" in full_profile:
+            inner_enrichments = full_profile.pop("enrichments")
+            full_profile.update(inner_enrichments)
+
+        logs.append(f"Enrichment completed. Canonical Name: {canonical_name}")
 
         return {
             "enrichments": full_profile,
@@ -139,6 +165,14 @@ def run_wikipedia_node(state: AgentState):
         result = agent.run(state)
         logs.append(f"Wikipedia Agent: {result.get('status', 'unknown')}")
 
+        return {
+            "logs": logs,
+            "enrichments": (
+                {"wikipedia": result.get("data")}
+                if result.get("status") == "completed"
+                else {}
+            ),
+        }
     except Exception as e:
         logs.append(f"Wikipedia Agent failed: {str(e)}")
 
@@ -176,6 +210,14 @@ def run_news_node(state: AgentState):
         result = agent.run(state)
         logs.append(f"News Agent: {result.get('status', 'unknown')}")
 
+        return {
+            "logs": logs,
+            "enrichments": (
+                {"news": result.get("data")}
+                if result.get("status") == "completed"
+                else {}
+            ),
+        }
     except Exception as e:
         logs.append(f"News Agent failed: {str(e)}")
 
@@ -212,6 +254,14 @@ def run_ded_node(state: AgentState):
         result = agent.run(state)
         logs.append(f"DED Agent: {result.get('status', 'unknown')}")
 
+        return {
+            "logs": logs,
+            "enrichments": (
+                {"uae_ded_license": result.get("data")}
+                if result.get("status") == "completed"
+                else {}
+            ),
+        }
     except Exception as e:
         logs.append(f"DED Agent failed: {str(e)}")
 
@@ -231,6 +281,46 @@ def join_enrichment_node(state: AgentState):
     return {"logs": ["Enrichment agents complete — starting scraper phase."]}
 
 
+def run_competitor_analysis_node(state: AgentState):
+    """Executes Competitor Analysis using MasterAgent's internal method"""
+    company_name = (
+        state.get("canonical_name")
+        or state.get("company_name")
+        or state.get("query", "Unknown")
+    )
+    logs = []
+
+    try:
+        store = CorporateProfileStore()
+        llm_config = state.get("llm_config", {})
+        llm_connector = LLMConnector(config=llm_config)
+
+        def log_handler(msg):
+            logs.append(msg.strip())
+            print(msg.strip())
+
+        # Use MasterAgent just for its competitor analysis capability
+        agent = MasterAgent(
+            company_name=company_name,
+            llm_connector=llm_connector,
+            profile_store=store,
+            log_callback=log_handler,
+            enable_enrichment=True,
+        )
+
+        competitor_results = agent.get_competitor_analysis(company_name)
+
+        return {
+            "logs": logs,
+            "enrichments": {
+                "Competitor Analysis": {"status": "success", "data": competitor_results}
+            },
+        }
+    except Exception as e:
+        logs.append(f"Competitor Analysis failed: {str(e)}")
+        return {"logs": logs}
+
+
 def create_resolution_graph():
     """Graph 1: Canonical Resolution Only"""
     workflow = StateGraph(AgentState)
@@ -240,7 +330,8 @@ def create_resolution_graph():
     workflow.set_entry_point("resolution")
     workflow.add_edge("resolution", "profiling")
     workflow.add_edge("profiling", END)
-    return workflow.compile()
+    checkpointer = MemorySaver()
+    return workflow.compile(checkpointer=checkpointer)
 
 
 def create_enrichment_graph():
@@ -317,6 +408,9 @@ def create_enrichment_graph():
     workflow.add_node("vectorizer", vectorizer.run)
     workflow.add_node("analyst", run_analyst_node)
     workflow.add_node("pdf_agent", run_pdf_agent_node)
+    workflow.add_node("presentation_agent", run_presentation_agent_node)
+
+    # Sequence: (Resolver removed) MasterEnrichment starts
 
     # ── Edges ──────────────────────────────────────────────────────────────
     workflow.set_entry_point("start_enrichment")
@@ -325,19 +419,20 @@ def create_enrichment_graph():
     workflow.add_edge("start_enrichment", "wikipedia")
     workflow.add_edge("start_enrichment", "news")
     workflow.add_edge("start_enrichment", "ded")
-    workflow.add_edge("start_enrichment", "scraper")
-    workflow.add_edge("start_enrichment", "pdf_agent")
+    workflow.add_edge("start_enrichment", "competitors")
 
-    # Fan-in: all parallel nodes → join_enrichment
-    workflow.add_edge("wikipedia", "join_enrichment")
-    workflow.add_edge("news", "join_enrichment")
-    workflow.add_edge("ded", "join_enrichment")
-    workflow.add_edge("scraper", "join_enrichment")
-    workflow.add_edge("pdf_agent", "join_enrichment")
+    # Convergence
+    workflow.add_edge("wikipedia", "scraper")
+    workflow.add_edge("news", "scraper")
+    workflow.add_edge("ded", "scraper")
+    workflow.add_edge("competitors", "scraper")
 
-    # Sequential pipeline after data acquisition
-    workflow.add_edge("join_enrichment", "vectorizer")
+    # Sequential
+    workflow.add_edge("scraper", "pdf_agent")
+    workflow.add_edge("pdf_agent", "vectorizer")
     workflow.add_edge("vectorizer", "analyst")
-    workflow.add_edge("analyst", END)
+    workflow.add_edge("analyst", "presentation_agent")
+    workflow.add_edge("presentation_agent", END)
 
-    return workflow.compile()
+    checkpointer = MemorySaver()
+    return workflow.compile(checkpointer=checkpointer)

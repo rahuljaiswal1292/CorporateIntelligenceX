@@ -1,7 +1,10 @@
 import os
+import re
 import fitz  # PyMuPDF
 import json
-from typing import List, Dict, Optional, Callable
+import hashlib
+import base64
+from typing import List, Dict, Optional, Callable, Set
 from intelligence_hub.graph.state import AgentState
 from intelligence_hub.llm.connector import LLMConnector
 from intelligence_hub.storage.corporate_profile_store import CorporateProfileStore
@@ -12,7 +15,28 @@ from intelligence_hub.config.config import DATA_DIRECTORY
 class PdfAgent(BaseAgent):
     """
     Agent 5: The PDF Processor.
-    Parses PDFs, chunks text, saves to Vector DB, and extracts insights.
+    Optimized for efficiency:
+    1. Skips duplicates via hashing.
+    2. Identifies relevant pages via TOC scan (Smart Index-Aware).
+    3. Extracts targeted insights (Financials, Structure) via LLM.
+    """
+
+    def _clean_text(self, text: str) -> str:
+        """Collapse multiple spaces and newlines to reduce token count."""
+        if not text:
+            return ""
+        # Collapse multiple spaces
+        text = re.sub(r" +", " ", text)
+        # Collapse multiple newlines
+        text = re.sub(r"\n+", "\n", text)
+        return text.strip()
+
+    """
+    Agent 5: The PDF Processor.
+    Optimized for efficiency:
+    1. Skips duplicates via hashing.
+    2. Identifies relevant pages via TOC scan (Smart Index-Aware).
+    3. Extracts targeted insights (Financials, Structure) via LLM.
     """
 
     def __init__(
@@ -30,12 +54,18 @@ class PdfAgent(BaseAgent):
             profile_store=profile_store,
         )
         self.prompts = self._load_prompts()
+        self.processed_hashes: Set[str] = set()
         if not self.prompts:
             self.log("No prompts loaded from pdf_prompts.json", "WARNING")
 
     def _load_prompts(self) -> List[Dict]:
         try:
-            with open("intelligence_hub/prompts/pdf_prompts.json", "r") as f:
+            prompt_path = os.path.join(
+                os.path.dirname(os.path.dirname(__file__)),
+                "prompts",
+                "pdf_prompts.json",
+            )
+            with open(prompt_path, "r") as f:
                 return json.load(f)
         except Exception as e:
             self.log(f"Failed to load PDF prompts: {e}", "ERROR")
@@ -77,118 +107,195 @@ class PdfAgent(BaseAgent):
                 False,
                 f"Directory not found for {safe_company_name} (checked: {', '.join(potential_paths)})",
             )
+    def _get_file_hash(self, file_path: str) -> str:
+        """Calculate MD5 hash of the first 64KB of the file for duplicate detection."""
+        hasher = hashlib.md5()
+        try:
+            with open(file_path, "rb") as f:
+                buf = f.read(65536)
+                hasher.update(buf)
+            return hasher.hexdigest()
+        except Exception:
+            return ""
 
-        pdf_files = [f for f in os.listdir(data_dir) if f.lower().endswith(".pdf")]
-
-        if not pdf_files:
-            return (False, f"No PDFs found in {data_dir}")
-
-        return (True, f"Found {len(pdf_files)} PDFs to process")
-
-    def execute(self, state: AgentState) -> Dict:
+    def _get_data_dir(self, state: AgentState) -> Optional[str]:
         """
-        Execute PDF processing
-
-        Args:
-            state: Shared agent state
-
-        Returns:
-            Result with PDF analysis data
+        Resolve the data directory, strictly using the nested structure:
+        data/Exchange/Company/reports/structured
         """
-        company_name = state.get("company_name") or "Unknown"
-        safe_company_name = str(company_name).strip()
+        company_name = state.get("ticker", "Unknown")
+        exchange = state.get("exchange", "Unknown")
+        safe_company_name = company_name.strip()
 
-        # Try multiple directory variants
-        potential_paths = [
-            os.path.join(DATA_DIRECTORY, safe_company_name),
-            os.path.join(DATA_DIRECTORY, safe_company_name.lower()),
-            os.path.join(DATA_DIRECTORY, safe_company_name.title()),
-        ]
+        # Nested Structure (data/Exchange/Company/reports/structured)
 
-        data_dir = None
-        for path in potential_paths:
-            if os.path.exists(path) and os.path.isdir(path):
-                data_dir = path
-                break
+        if exchange == "DFM":
+            nested_dir = os.path.join(
+                DATA_DIRECTORY, exchange, safe_company_name, "reports", "structured"
+            )
+        elif exchange == "ADX":
+            nested_dir = os.path.join(
+                DATA_DIRECTORY, exchange, safe_company_name, "financials", "structured"
+            )
+
+        if os.path.exists(nested_dir):
+            # Check if likely pdfs exist or if dir just exists (returning dir is safer if we want to log "no files found" later)
+            return nested_dir
+
+        return None
+
+    def _get_report_year(self, pdf_path: str, file_name: str) -> Optional[int]:
+        """
+        Extract the report year deterministically without LLM.
+        Priority:
+        1. 4-digit year in filename (2020-2029)
+        2. Year in PDF metadata
+        3. Regex search for year in first 2 pages
+        """
+        # 1. Filename Year (Regex for 202[0-9])
+        # Using a more flexible regex that doesn't rely strictly on \b (which fails with underscores)
+        year_match = re.search(r"(?:^|[^0-9])(202[0-9])(?:[^0-9]|$)", file_name)
+        if year_match:
+            return int(year_match.group(1))
+
+        try:
+            doc = fitz.open(pdf_path)
+
+            # 2. Metadata Check
+            metadata = doc.metadata or {}
+            creation_date = metadata.get("creationDate", "")
+            if (
+                creation_date
+                and len(creation_date) > 5
+                and creation_date.startswith("D:")
+            ):
+                # Format is usually D:YYYYMMDD...
+                meta_year_str = creation_date[2:6]
+                if meta_year_str.isdigit():
+                    return int(meta_year_str)
+
+            # 3. First 2 pages regex
+            for i in range(min(2, len(doc))):
+                text = doc[i].get_text().strip()
+                # Look for "202x" surrounded by word boundaries or specific labels
+                # e.g. "Annual Report 2025", "FY 2026"
+                page_year_match = re.search(r"\b(202[4-9])\b", text)
+                if page_year_match:
+                    doc.close()
+                    return int(page_year_match.group(1))
+
+            doc.close()
+        except Exception:
+            pass
+
+        return None
+
+    def should_execute(self, state: AgentState) -> tuple[bool, str]:
+        """Decide if PDF processing should run"""
+        data_dir = self._get_data_dir(state)
 
         if not data_dir:
-            self.log(f"No directory found for {safe_company_name}", "ERROR")
+            return (False, "No PDF directory found with files for this company.")
+
+        pdf_files = [f for f in os.listdir(data_dir) if f.lower().endswith(".pdf")]
+        return (True, f"Found {len(pdf_files)} PDFs in {data_dir}")
+
+    def execute(self, state: AgentState) -> Dict:
+        """Execute Optimized PDF processing"""
+        company_name = state.get("ticker", "Unknown")
+
+        data_dir = self._get_data_dir(state)
+        if not data_dir:
+            self.log(f"No data directory found for {company_name}", "WARNING")
             return {
                 "data": [],
                 "document_type": "pdf_analysis",
-                "metadata": {"error": "Directory not found"},
+                "metadata": {"pdf_count": 0},
             }
 
-        self.log(f"Processing PDFs in: {data_dir}")
+        self.log(f"Processing PDFs for: {company_name} in {data_dir}")
         pdf_results = []
 
-        # Find PDFs
+        # 1. Deduplication & Processing: Process all unique PDFs
         pdf_files = [f for f in os.listdir(data_dir) if f.lower().endswith(".pdf")]
-        self.log(f"Found {len(pdf_files)} PDFs. Processing...")
+
+        if not pdf_files:
+            return {
+                "data": [],
+                "document_type": "pdf_analysis",
+                "metadata": {"pdf_count": 0},
+            }
+
+        # Sort by modification time (newest first)
+        pdf_files.sort(
+            key=lambda f: os.path.getmtime(os.path.join(data_dir, f)), reverse=True
+        )
+
+        # Get existing hashes from ChromaDB to avoid re-processing across runs
+        existing_hashes = set()
+        if self.profile_store:
+            try:
+                existing_data = self.profile_store.get_enrichment_data(
+                    company_name, "pdf_insights"
+                )
+                for insights in existing_data.get("pdf_insights", []):
+                    h = insights.get("meta", {}).get("file_hash") or insights.get(
+                        "file_hash"
+                    )
+                    if h:
+                        existing_hashes.add(h)
+            except Exception as e:
+                self.log(f"Error checking existing hashes: {e}", "WARNING")
+
+        self.log(f"Found {len(pdf_files)} PDFs. Filtering for unique content...")
 
         for pdf_file in pdf_files:
             pdf_path = os.path.join(data_dir, pdf_file)
-            try:
-                # 1. Parse & Chunk
-                text_chunks = self.process_pdf(pdf_path)
-                self.log(f"Extracted {len(text_chunks)} chunks from {pdf_file}")
 
-                # 2. Store to ChromaDB via profile_store
-                if self.profile_store:
-                    # Store chunks as enrichment data
-                    for i, chunk in enumerate(text_chunks):
-                        chunk_data = {
-                            "source": pdf_file,
-                            "company": company_name,
-                            "chunk_index": i,
-                            "text": chunk,
-                        }
+            # --- OPTIMIZATION: Year Filtering ---
+            # As per user request: only process 1 year old documents (2025, 2026)
+            report_year = self._get_report_year(pdf_path, pdf_file)
+            if report_year and report_year < 2025:
+                self.log(f"Skipping old PDF (Year: {report_year}): {pdf_file}")
+                continue
+
+            # If no year found, we process it anyway to be safe?
+            # Or skip if strictly "last 1 year"?
+            # Sticking to "process if unknown" to prevent missing data unless user says "if unknown, skip".
+
+            # Content-based hash check
+            file_hash = self._get_file_hash(pdf_path)
+            if not file_hash:
+                continue
+
+            if file_hash in self.processed_hashes or file_hash in existing_hashes:
+                self.log(f"Skipping duplicate or already-processed PDF: {pdf_file}")
+                continue
+
+            self.processed_hashes.add(file_hash)
+
+            try:
+                self.log(f"Analyzing unique PDF: {pdf_file}")
+                # 2. Smart Extraction
+                analysis_result = self.analyze_pdf_smart(pdf_path, pdf_file)
+
+                if analysis_result:
+                    # Tag with hash for persistent deduplication
+                    if isinstance(analysis_result, dict):
+                        if "meta" not in analysis_result:
+                            analysis_result["meta"] = {}
+                        analysis_result["meta"]["file_hash"] = file_hash
+
+                    pdf_results.append(analysis_result)
+
+                    # 3. Store Insights to Profile Store
+                    if self.profile_store:
                         self.profile_store.store_enrichment_data(
                             canonical_name=company_name,
-                            enrichment_data=chunk_data,
-                            document_type="pdf_chunk",
+                            enrichment_data=analysis_result,
+                            document_type="pdf_insights",
                         )
-                    self.log(f"Stored {len(text_chunks)} chunks to ChromaDB")
-
-                # 3. Dynamic Extraction using prompts
-                extracted_info = {}
-                for prompt_cfg in self.prompts:
-                    # Get relevant chunks from ChromaDB
-                    if self.profile_store:
-                        enrichment_data = self.profile_store.get_enrichment_data(
-                            canonical_name=company_name,
-                            document_type="pdf_chunk",
-                        )
-                        pdf_chunks = enrichment_data.get("pdf_chunk", [])
-
-                        # Filter chunks from this specific PDF
-                        relevant_chunks = [
-                            c.get("text", "")
-                            for c in pdf_chunks
-                            if c.get("source") == pdf_file
-                        ][
-                            :3
-                        ]  # Top 3 chunks
-
-                        context_str = "\n".join(relevant_chunks)
-                    else:
-                        # Fallback: use first few chunks
-                        context_str = "\n".join(text_chunks[:3])
-
-                    # LLM Extraction
-                    full_prompt = f"""
-                    Context from {pdf_file}:
-                    {context_str}
-                    
-                    Task: {prompt_cfg['prompt']}
-                    
-                    Return a concise summary or answer.
-                    """
-                    response = self.llm_connector.analyze(full_prompt)
-                    extracted_info[prompt_cfg["category"]] = response
-
-                pdf_results.append({"file": pdf_file, "analysis": extracted_info})
-                self.log(f"Completed analysis of {pdf_file}")
+                    self.log(f"Completed analysis of {pdf_file}")
 
             except Exception as e:
                 self.log(f"Error processing {pdf_file}: {e}", "ERROR")
@@ -199,28 +306,239 @@ class PdfAgent(BaseAgent):
             "metadata": {
                 "pdf_count": len(pdf_files),
                 "processed_count": len(pdf_results),
+                "unique_processed": len(pdf_results),
             },
         }
 
+    def analyze_pdf_smart(self, pdf_path: str, file_name: str) -> Dict:
+        """
+        Smart Analysis:
+        1. If small file (<10 pages), read all (Text first, then Vision fallback).
+        2. Else, Read TOC to find target pages.
+        3. Extract text from target pages.
+        4. Use LLM to extract JSON data.
+        """
+        doc = fitz.open(pdf_path)
+        total_pages = len(doc)
+
+        extracted_data = {
+            "source": file_name,
+            "meta": {},
+            "financials": {},
+            "structure": {},
+        }
+
+        relevant_text = ""
+        is_image_pdf = False
+        page_images = []
+
+        # Strategy A: Small Document -> Read All
+        if total_pages <= 10:
+            self.log(f"Small document ({total_pages} pages). Reading full text.")
+            for page in doc:
+                text = page.get_text()
+                if text.strip():
+                    relevant_text += text + "\n"
+
+            # Fallback to Vision if text is empty
+            if not relevant_text.strip():
+                is_image_pdf = True
+                self.log(
+                    f"No text extracted from {file_name}. Attempting Vision Analysis."
+                )
+                for page in doc:
+                    pix = page.get_pixmap()
+                    img_data = pix.tobytes("jpeg")
+                    base64_img = base64.b64encode(img_data).decode("utf-8")
+                    page_images.append(base64_img)
+
+        # Strategy B: Large Document -> Smart TOC Scan
+        else:
+            # A. TOC Scan (First 10 pages)
+            toc_limit = min(10, total_pages)
+            toc_text = ""
+            for i in range(toc_limit):
+                toc_text += doc[i].get_text() + "\n"
+
+            # Identify Targets via LLM
+            targets = self._find_relevant_pages(toc_text)
+            self.log(f"Identified targets for {file_name}: {targets}")
+
+            # Use targets if found, else fallback
+            if targets:
+                # B. Define Page Sets to Read
+                pages_to_read = set()
+
+                # Always read first 3 pages for Meta/Intro
+                for i in range(min(3, total_pages)):
+                    pages_to_read.add(i)
+
+                # Add Financials Pages
+                fin_page = targets.get("financials_page")
+                if (
+                    fin_page
+                    and isinstance(fin_page, int)
+                    and 0 <= fin_page < total_pages
+                ):
+                    # Read target + next 4 pages (buffer)
+                    for i in range(fin_page, min(fin_page + 5, total_pages)):
+                        pages_to_read.add(i)
+
+                # Add Structure/Subsidiaries Pages
+                struct_page = targets.get("structure_page")
+                if (
+                    struct_page
+                    and isinstance(struct_page, int)
+                    and 0 <= struct_page < total_pages
+                ):
+                    # Read target + next 2 pages
+                    for i in range(struct_page, min(struct_page + 3, total_pages)):
+                        pages_to_read.add(i)
+
+                # C. Extract Text from Targeted Pages
+                sorted_pages = sorted(list(pages_to_read))
+                self.log(f"Reading {len(sorted_pages)} specific pages from {file_name}")
+
+                for pg_num in sorted_pages:
+                    relevant_text += (
+                        f"--- Page {pg_num} ---\n{doc[pg_num].get_text()}\n"
+                    )
+
+            else:
+                # Fallback: No targets found from TOC
+                if total_pages <= 20:
+                    self.log(
+                        f"No TOC targets found, but doc is small ({total_pages} pgs). Reading full."
+                    )
+                    for page in doc:
+                        relevant_text += page.get_text() + "\n"
+                else:
+                    self.log(
+                        "No TOC targets found in large doc. Reading first 10 and last 5 pages."
+                    )
+                    # Read first 10
+                    for i in range(
+                        min(10, total_pages)
+                    ):  # Ensure not to go out of bounds for very small docs
+                        relevant_text += doc[i].get_text() + "\n"
+                    # Read last 5 (often financials are at the end)
+                    for i in range(
+                        max(0, total_pages - 5), total_pages
+                    ):  # Ensure not to go out of bounds
+                        relevant_text += doc[i].get_text() + "\n"
+
+        # D. LLM Extraction on Focused Text (OPTIMIZED: Consolidated Prompt)
+        # Clean text to reduce token count
+        clean_context = self._clean_text(relevant_text)[
+            :30000
+        ]  # Limit to ~10k tokens for safety
+
+        prompts = self._load_prompts()
+        extraction_tasks = []
+        for p in prompts:
+            cat = p.get("category")
+            if cat != "toc_analysis":
+                extraction_tasks.append(f"- {cat.upper()}: {p.get('prompt')}")
+
+        combined_tasks_str = "\n".join(extraction_tasks)
+
+        if is_image_pdf:
+            self.log(f"Analyzing {file_name} via Vision (Consolidated)...")
+            full_prompt = f"""
+            Analyze these document images from {file_name}.
+            Perform the following extraction tasks and return a single JSON object where keys are the task categories in lowercase (meta, financials, structure).
+            
+            Tasks:
+            {combined_tasks_str}
+            
+            Return strictly valid JSON.
+            """
+            response = self.llm_connector.analyze_with_images(full_prompt, page_images)
+        else:
+            self.log(f"Analyzing {file_name} via Text (Consolidated)...")
+            full_prompt = f"""
+            Analyze the following text extracted from a corporate report ({file_name}).
+            
+            Text:
+            {clean_context}
+            
+            Perform the following extraction tasks and return a single JSON object where keys are the task categories in lowercase (meta, financials, structure).
+            
+            Tasks:
+            {combined_tasks_str}
+            
+            Return strictly valid JSON.
+            """
+            response = self.llm_connector.analyze(full_prompt)
+
+        # Parse Consolidated JSON result
+        try:
+            # Clean markdown code blocks if present
+            clean_resp = response.replace("```json", "").replace("```", "").strip()
+            data_json = json.loads(clean_resp)
+
+            # Map back to extracted_data
+            for key, val in data_json.items():
+                k_lower = key.lower()
+                if k_lower in extracted_data:
+                    extracted_data[k_lower] = val
+                else:
+                    # In case LLM used a slightly different key but it's one of our categories
+                    for cat in ["meta", "financials", "structure"]:
+                        if cat in k_lower:
+                            extracted_data[cat] = val
+        except Exception as e:
+            self.log(f"Failed to parse consolidated JSON: {e}.", "WARNING")
+            # Fallback to per-category extraction if consolidated fails (Safety)
+            self.log("Falling back to legacy per-category extraction.")
+            for prompt_cfg in prompts:
+                cat = prompt_cfg.get("category")
+                if cat == "toc_analysis":
+                    continue
+
+                single_prompt = f"Text:\n{clean_context}\n\nTask: {prompt_cfg.get('prompt')}\nReturn JSON."
+                try:
+                    single_resp = self.llm_connector.analyze(single_prompt)
+                    clean_s = (
+                        single_resp.replace("```json", "").replace("```", "").strip()
+                    )
+                    extracted_data[cat] = json.loads(clean_s)
+                except:
+                    extracted_data[cat] = single_resp
+
+        return extracted_data
+
+    def _find_relevant_pages(self, toc_text: str) -> Dict[str, int]:
+        """Ask LLM to find page numbers from TOC text."""
+        toc_prompt_cfg = next(
+            (p for p in self.prompts if p["category"] == "toc_analysis"), None
+        )
+        if not toc_prompt_cfg:
+            return {}
+
+        prompt = f"""
+        {toc_prompt_cfg['prompt']}
+        
+        TOC Text:
+        {toc_text[:5000]}
+        """
+
+        response = self.llm_connector.analyze(prompt)
+        try:
+            clean_resp = response.replace("```json", "").replace("```", "").strip()
+            return json.loads(clean_resp)
+        except:
+            return {}
+
     def run(self, state: AgentState) -> AgentState:
-        """
-        Run PDF agent workflow
-
-        Args:
-            state: Current agent state
-
-        Returns:
-            Updated agent state
-        """
-        logs = []
-
-        # Check if should execute
+        """Run PDF agent workflow"""
+        logs = state.get("logs", [])
         should_run, reasoning = self.should_execute(state)
 
         if not should_run:
             self.log(f"Skipping PDF processing: {reasoning}")
             logs.append(f"PdfAgent: Skipped - {reasoning}")
-            return {**state, "logs": logs, "pdf_results": []}
+            return {"logs": logs, "pdf_results": []}
 
         # Execute PDF processing
         try:

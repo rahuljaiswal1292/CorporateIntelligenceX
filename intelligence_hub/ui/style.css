@@ -15,6 +15,10 @@ section[data-testid="stSidebar"] {
     color: #FFFFFF;
 }
 
+[data-testid="stSidebarHeader"] {
+    height: 20px !important;
+}
+
 section[data-testid="stSidebar"] div,
 section[data-testid="stSidebar"] label,
 section[data-testid="stSidebar"] span {

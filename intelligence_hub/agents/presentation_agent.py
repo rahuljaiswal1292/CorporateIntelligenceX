@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from typing import Dict, Any, List, Optional, Callable
 from intelligence_hub.agents.base_agent import BaseAgent
 from intelligence_hub.graph.state import AgentState
@@ -155,6 +156,25 @@ class PresentationAgent(BaseAgent):
         # Fallback to daily_summary or scraped data
         daily_block = financial_data.get("daily_summary") or {}
         daily = daily_block.get("data", [])
+
+        chart_data = {}
+        if daily:
+            try:
+                # Sort by date ascending for the chart (Format: DD-MM-YYYY)
+                sorted_daily = sorted(
+                    daily, key=lambda x: datetime.strptime(x["Date"], "%d-%m-%Y")
+                )
+                chart_data = {
+                    "dates": [d["Date"] for d in sorted_daily],
+                    "open": [d["Open"] for d in sorted_daily],
+                    "high": [d["High"] for d in sorted_daily],
+                    "low": [d["Low"] for d in sorted_daily],
+                    "close": [d["Last"] for d in sorted_daily],
+                    "volume": [d["Volume"] for d in sorted_daily],
+                }
+            except Exception as e:
+                self.log(f"Failed to format chart data: {e}", "WARNING")
+
         if daily and not current_metrics.get("price"):
             latest_day = daily[0]
             current_metrics["price"] = f"AED {latest_day.get('Last', 'N/A')}"
@@ -261,13 +281,32 @@ class PresentationAgent(BaseAgent):
                     }
                 )
 
-        # 6. Final Updates
+        # 6. Risks Mapping
+        risks = []
+        raw_risks = final_report.get("Key_risks_and_considerations", [])
+        if isinstance(raw_risks, list):
+            for r in raw_risks:
+                if isinstance(r, dict):
+                    risks.append(
+                        {
+                            "risk": r.get("risk")
+                            or r.get("category")
+                            or "Unknown Risk",
+                            "consideration": r.get("consideration")
+                            or r.get("finding")
+                            or "No details available.",
+                        }
+                    )
+
+        # 7. Final Updates
         updates = {
             "meta": meta,
             "financials": financials,
             "enrichments": enrichments_block,
             "insights": insights,
+            "risks": risks,
             "competitors": competitors,
+            "chart": chart_data,
             "logs": [
                 f"Presentation Agent: Final dashboard structure ready for {self.company_name}"
             ],

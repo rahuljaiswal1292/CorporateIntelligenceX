@@ -226,7 +226,7 @@ def render_main_dashboard(placeholder=None):
             letter-spacing: 0.02em;
             text-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
         ">
-            Corporate Intelligence Dashboard
+            Profiling Dashboard
         </div>
         <div style="
             font-family: 'Poppins', sans-serif;
@@ -777,9 +777,7 @@ def render_main_dashboard(placeholder=None):
                 )
             )
 
-        st.plotly_chart(
-            fig, use_container_width=True, key="dashboard_stock_performance"
-        )
+        st.plotly_chart(fig, width="stretch", key="dashboard_stock_performance")
     else:
         # Fallback to placeholder if no data
         st.html(

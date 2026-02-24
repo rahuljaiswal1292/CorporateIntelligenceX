@@ -64,6 +64,14 @@ class Settings:
     MAX_DOCUMENT_AGE_YEARS = int(os.getenv("MAX_DOCUMENT_AGE_YEARS", "3"))
     ENABLE_DATE_FILTERING = os.getenv("ENABLE_DATE_FILTERING", "true").lower() == "true"
 
+    # --- Scraping Controls ---
+    # How many years back to scrape reports/disclosures (e.g., 2 = current year and 1 year prior)
+    SCRAPE_MAX_AGE_YEARS = int(os.getenv("SCRAPE_MAX_AGE_YEARS", "2"))
+
+    # If the last full scrape was within this many days, skip full scraping
+    # and only run the stock extractor for latest prices.
+    SCRAPE_FRESHNESS_DAYS = int(os.getenv("SCRAPE_FRESHNESS_DAYS", "2"))
+
     # Known Ticker Map for Faster Resolution
     KNOWN_TICKER_MAP = {
         "emaar": {

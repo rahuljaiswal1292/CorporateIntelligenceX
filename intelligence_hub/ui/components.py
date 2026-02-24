@@ -682,7 +682,7 @@ def render_company_summary_card(
                             <span class="canonical-icon">🏢</span>
                             <span class="canonical-title">RESOLVED COMPANY NAME</span>
                         </div>
-                        <div class="canonical-value resolving">
+                        <div class="canonical-value">
                             <span class="canonical-text">Resolving...</span>
                         </div>
                     </div>
@@ -697,7 +697,7 @@ def render_company_summary_card(
                 st.html(
                     textwrap.dedent(
                         f"""
-                    <div class="canonical-container">
+                    <div class="canonical-container {status_class}">
                         <div class="canonical-label">
                             <span class="canonical-icon">🏢</span>
                             <span class="canonical-title">RESOLVED COMPANY NAME</span>
@@ -1142,18 +1142,24 @@ def render_company_summary_card(
             st.html(card_html)
 
             # Continue/Abort Controls
-            if (
-                st.session_state.get("investigation_paused")
-                and not st.session_state.get("analysis_complete")
+            show_controls = (
+                st.session_state.get("canonical_name")
+                and not st.session_state.get("is_profiling")
                 and show_button
-            ):
+            )
+            if show_controls:
                 st.html('<div style="height:20px;"></div>')
                 col_continue, col_abort = st.columns([2.5, 1])
 
                 with col_continue:
                     btn_disabled = not st.session_state.get("canonical_name")
+                    btn_label = (
+                        "🚀 REGENERATE PROFILE"
+                        if st.session_state.get("analysis_complete")
+                        else "🚀 GENERATE PROFILE"
+                    )
                     if st.button(
-                        "🚀 GENERATE PROFILE",
+                        btn_label,
                         key=key,
                         disabled=btn_disabled,
                         type="primary",

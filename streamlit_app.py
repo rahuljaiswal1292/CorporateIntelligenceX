@@ -121,11 +121,10 @@ if "reset_counter" not in st.session_state:
 if "show_chatbot" not in st.session_state:
     st.session_state.show_chatbot = False
 
+if "is_profiling" not in st.session_state:
+    st.session_state.is_profiling = False
 
-# Removed local helpers (moved to intelligence_hub.ui.utils and components.py)
 
-
-# Cache the Agent Graph to avoid re-initialization overhead (DB connections etc)
 # Cache the Agent Graphs
 @st.cache_resource(show_spinner=False)
 def get_cached_resolution_graph_v6():
@@ -149,6 +148,7 @@ def run_investigation(
     # Check if this is a new search or resume
     if query_or_resume is None or st.session_state.investigation_paused:
         resume_mode = True
+        st.session_state.is_profiling = True
         query = (
             st.session_state.data.get("query", "Unknown")
             if st.session_state.data
@@ -164,6 +164,7 @@ def run_investigation(
         st.session_state.confidence_score = None
         st.session_state.abort_investigation = False
         st.session_state.is_resolving = True  # Resolving starts now
+        st.session_state.is_profiling = False
         st.session_state.investigation_paused = False
         st.session_state.company_profile = None  # Clear old profile
         st.session_state.intermediate_state = None
@@ -239,11 +240,16 @@ def run_investigation(
         # Update LLM config in case user changed settings before continuing
         input_data["llm_config"] = llm_config
         processed_logs = set(input_data.get("logs", []))
-        # Mark master as done, set parallel agents to running
+        # Mark master as done, reset others for profiling (handles regeneration)
         st.session_state.agent_status["master_agent"] = "success"
         st.session_state.agent_status["wikipedia_agent"] = "running"
         st.session_state.agent_status["news_agent"] = "running"
         st.session_state.agent_status["ded_agent"] = "running"
+        st.session_state.agent_status["scraper"] = "pending"
+        st.session_state.agent_status["vectorizer"] = "pending"
+        st.session_state.agent_status["pdf_agent"] = "pending"
+        st.session_state.agent_status["analyst"] = "pending"
+        st.session_state.analysis_complete = False
 
     # 3. Setup Stream
     label = (
@@ -388,7 +394,9 @@ def run_investigation(
                 st.session_state.agent_status["pdf_agent"] = "running"
 
                 # Smart Skip Handling: If Exchange is known, mark the other as "completed" immediately
-                exchange_val = str(state.get("exchange", "")).upper()
+                exchange_val = str(
+                    st.session_state.company_profile.get("exchange", "")
+                ).upper()
                 if exchange_val == "DFM":
                     st.session_state.agent_status["scraper"] = "success"
                 elif exchange_val == "ADX":
@@ -476,6 +484,7 @@ def run_investigation(
     # 4. Handle Completion
     if not resume_mode:
         # Resolution Phase complete -> Pause and wait for user to 'Generate Profile'
+        st.session_state.is_resolving = False
         st.session_state.investigation_paused = True
         st.session_state.intermediate_state = final_state
         add_log(
@@ -487,6 +496,7 @@ def run_investigation(
         update_resolved_ui()
     else:
         # Enrichment & Synthesis Complete -> Final Dashboard
+        st.session_state.is_profiling = False
         st.session_state.investigation_paused = False
         st.session_state.analysis_complete = True
         st.session_state.progress_stage = 5  # Complete
@@ -842,11 +852,15 @@ elif not st.session_state.analysis_complete and st.session_state.progress_stage 
 
 
 # ── IntelX Assistant (Right-side Popover) ──
-_ix_ticker = st.session_state.get("ticker", "") or ""
-if not _ix_ticker:
-    _ix_data = st.session_state.get("data") or {}
-    _ix_ticker = (_ix_data.get("company_profile") or {}).get("ticker", "") or ""
+_ix_data = st.session_state.get("data") or {}
+_ix_ticker = (
+    st.session_state.get("ticker")
+    or (st.session_state.get("company_profile") or {}).get("ticker")
+    or _ix_data.get("meta", {}).get("ticker")
+    or _ix_data.get("company_profile", {}).get("ticker")
+    or ""
+)
 _ix_company = st.session_state.get("canonical_name", "") or ""
 
-with st.popover("\U0001f4ac IntelX Assistant", width="content"):
+with st.popover("💬 IntelX Assistant"):
     render_chatbot_panel(_ix_ticker, _ix_company)

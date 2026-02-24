@@ -103,16 +103,16 @@ def render_agent_pipeline(data: dict = None, show_details: bool = False):
     # Define stages
     stages = [
         {"id": "intent", "label": "Search Input", "icon": "🔍"},
-        {"id": "resolution", "label": "Entity Resolution", "icon": "🎯"},
+        {"id": "resolution", "label": "Entity Resolution Agent", "icon": "🎯"},
         {
             "id": "enrichment",
-            "label": "Data Enrichment",
+            "label": "Data Enrichment Agent",
             "icon": "🌐",
             "is_parallel": True,
         },
-        {"id": "vectorizing_stocks", "label": "Stocks & Financials", "icon": "💹"},
-        {"id": "vectorizing_neural", "label": "Neural Vectorization", "icon": "🧠"},
-        {"id": "synthesis", "label": "Strategic Insights", "icon": "📊"},
+        {"id": "vectorizing_stocks", "label": "Stocks & Financials Agent", "icon": "💹"},
+        {"id": "vectorizing_neural", "label": "Vectorization Agent", "icon": "🧠"},
+        {"id": "synthesis", "label": "Strategic Insights Agent", "icon": "📊"},
     ]
 
     # Map stock/financials to vectorizing stage ID for logic

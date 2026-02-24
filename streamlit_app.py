@@ -46,7 +46,7 @@ from intelligence_hub.ui.components import (
     render_pdf_analysis,
     render_references,
 )
-from intelligence_hub.ui.chat_ui import render_chatbot
+from intelligence_hub.ui.chat_ui import render_chatbot_panel
 
 
 image_path = os.path.join(
@@ -71,7 +71,7 @@ st.set_page_config(
     page_title="CorporateIntelligenceX",
     page_icon=image_path_ico,
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 # --- Apply Custom CSS ---
@@ -119,6 +119,8 @@ if "agent_status" not in st.session_state:
     st.session_state.agent_status = get_default_agent_status()
 if "reset_counter" not in st.session_state:
     st.session_state.reset_counter = 0
+if "show_chatbot" not in st.session_state:
+    st.session_state.show_chatbot = False
 
 
 # --- Formatting Helpers ---
@@ -1349,13 +1351,7 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-    # ── IntelX Assistant panel (appended within same sidebar context) ──
-    _ix_ticker = st.session_state.get("ticker", "") or ""
-    if not _ix_ticker:
-        _ix_data = st.session_state.get("data") or {}
-        _ix_ticker = (_ix_data.get("company_profile") or {}).get("ticker", "") or ""
-    _ix_company = st.session_state.get("canonical_name", "") or ""
-    render_chatbot(_ix_ticker, _ix_company)
+    # Chatbot moved to right-side popover panel
 
 
 # Banner with styled heading and tagline (matching reference)
@@ -1429,10 +1425,14 @@ with cols[3]:
     )
 
 with cols[1]:
-    search_clicked = st.button("� SEARCH", type="primary", use_container_width=True)
+    search_clicked = st.button(
+        "SEARCH", type="primary", use_container_width=True, icon=":material/search:"
+    )
 
 with cols[2]:
-    reset_clicked = st.button("� RESET", type="secondary", use_container_width=True)
+    reset_clicked = st.button(
+        "RESET", type="secondary", use_container_width=True, icon=":material/refresh:"
+    )
 
 
 # Canonical Name Section - professional styling
@@ -1554,3 +1554,14 @@ if st.session_state.analysis_complete and st.session_state.data:
 elif not st.session_state.analysis_complete and st.session_state.progress_stage == 0:
     # Empty State - Show nothing or a welcome message
     pass
+
+
+# ── IntelX Assistant (Right-side Popover) ──
+_ix_ticker = st.session_state.get("ticker", "") or ""
+if not _ix_ticker:
+    _ix_data = st.session_state.get("data") or {}
+    _ix_ticker = (_ix_data.get("company_profile") or {}).get("ticker", "") or ""
+_ix_company = st.session_state.get("canonical_name", "") or ""
+
+with st.popover("\U0001f4ac IntelX Assistant", use_container_width=False):
+    render_chatbot_panel(_ix_ticker, _ix_company)

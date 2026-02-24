@@ -72,6 +72,18 @@ class PresentationAgent(BaseAgent):
         enrichments = state.get("enrichments", {}) or {}
         financial_data = state.get("financial_data", {}) or {}
         final_report = state.get("final_report", {}) or {}
+
+        # Defensive check for final_report (handled list case from legacy/LLM errors)
+        if isinstance(final_report, list):
+            self.log(
+                "Presentation Agent: final_report is a list, attempting to resolve to dict",
+                "WARNING",
+            )
+            if len(final_report) > 0 and isinstance(final_report[0], dict):
+                final_report = final_report[0]
+            else:
+                final_report = {}
+
         pdf_results = state.get("pdf_results", []) or []
 
         # 1. Meta Mapping

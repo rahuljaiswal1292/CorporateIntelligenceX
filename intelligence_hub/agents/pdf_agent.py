@@ -92,13 +92,65 @@ class PdfAgent(BaseAgent):
         safe_company_name = company_name.strip()
 
         # Nested Structure (data/Exchange/Company/reports/structured)
-        nested_dir = os.path.join(
-            DATA_DIRECTORY, exchange, safe_company_name, "reports", "structured"
-        )
+
+        if exchange == "DFM":
+            nested_dir = os.path.join(
+                DATA_DIRECTORY, exchange, safe_company_name, "reports", "structured"
+            )
+        elif exchange == "ADX":
+            nested_dir = os.path.join(
+                DATA_DIRECTORY, exchange, safe_company_name, "financials", "structured"
+            )
 
         if os.path.exists(nested_dir):
             # Check if likely pdfs exist or if dir just exists (returning dir is safer if we want to log "no files found" later)
             return nested_dir
+
+        return None
+
+    def _get_report_year(self, pdf_path: str, file_name: str) -> Optional[int]:
+        """
+        Extract the report year deterministically without LLM.
+        Priority:
+        1. 4-digit year in filename (2020-2029)
+        2. Year in PDF metadata
+        3. Regex search for year in first 2 pages
+        """
+        # 1. Filename Year (Regex for 202[0-9])
+        # Using a more flexible regex that doesn't rely strictly on \b (which fails with underscores)
+        year_match = re.search(r"(?:^|[^0-9])(202[0-9])(?:[^0-9]|$)", file_name)
+        if year_match:
+            return int(year_match.group(1))
+
+        try:
+            doc = fitz.open(pdf_path)
+
+            # 2. Metadata Check
+            metadata = doc.metadata or {}
+            creation_date = metadata.get("creationDate", "")
+            if (
+                creation_date
+                and len(creation_date) > 5
+                and creation_date.startswith("D:")
+            ):
+                # Format is usually D:YYYYMMDD...
+                meta_year_str = creation_date[2:6]
+                if meta_year_str.isdigit():
+                    return int(meta_year_str)
+
+            # 3. First 2 pages regex
+            for i in range(min(2, len(doc))):
+                text = doc[i].get_text().strip()
+                # Look for "202x" surrounded by word boundaries or specific labels
+                # e.g. "Annual Report 2025", "FY 2026"
+                page_year_match = re.search(r"\b(202[4-9])\b", text)
+                if page_year_match:
+                    doc.close()
+                    return int(page_year_match.group(1))
+
+            doc.close()
+        except Exception:
+            pass
 
         return None
 
@@ -163,6 +215,17 @@ class PdfAgent(BaseAgent):
 
         for pdf_file in pdf_files:
             pdf_path = os.path.join(data_dir, pdf_file)
+
+            # --- OPTIMIZATION: Year Filtering ---
+            # As per user request: only process 1 year old documents (2025, 2026)
+            report_year = self._get_report_year(pdf_path, pdf_file)
+            if report_year and report_year < 2025:
+                self.log(f"Skipping old PDF (Year: {report_year}): {pdf_file}")
+                continue
+
+            # If no year found, we process it anyway to be safe?
+            # Or skip if strictly "last 1 year"?
+            # Sticking to "process if unknown" to prevent missing data unless user says "if unknown, skip".
 
             # Content-based hash check
             file_hash = self._get_file_hash(pdf_path)

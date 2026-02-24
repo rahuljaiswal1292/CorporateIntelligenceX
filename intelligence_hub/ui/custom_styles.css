@@ -43,7 +43,7 @@ button[data-testid="stSidebarCollapseButton"] {
     padding: 15px 30px 18px 30px;
     border-radius: 12px;
     box-shadow: 0 10px 20px #00306359;
-    margin-bottom: 24px;
+    margin-bottom: 12px;
 }
 
 .main-heading {
@@ -84,8 +84,8 @@ button[data-testid="stSidebarCollapseButton"] {
     color: #003366;
     text-transform: none;
     letter-spacing: 0.05em;
-    margin-top: 48px;
-    margin-bottom: 20px;
+    margin-top: 24px;
+    margin-bottom: 10px;
     display: flex;
     align-items: center;
     gap: 8px;

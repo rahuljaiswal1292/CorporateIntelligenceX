@@ -12,6 +12,10 @@ section[data-testid="stSidebar"] {
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15) !important;
 }
 
+div[data-testid="stSidebarContent"] {
+    margin-top: -2rem;
+}
+
 [data-testid="stSidebarHeader"] {
     height: 60px !important;
     padding: 1rem !important;
@@ -461,7 +465,7 @@ div[data-testid="stDecoration"] {
 
 /* Make the log text look more like a terminal */
 [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
-    font-family: 'Courier New', monospace;
+    /* font-family: 'Courier New', monospace; */
     font-size: 0.85rem !important;
     line-height: 1.2 !important;
     margin-bottom: 5px !important;

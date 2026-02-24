@@ -498,20 +498,27 @@ def render_references(data):
 
         with col1:
             st.markdown("**🏛️ DED (Department of Economic Development)**")
-            if ded_data:
-                license_no = ded_data.get("license_number", "")
-                trade_name = ded_data.get("trade_name", "")
-                status = ded_data.get("status", "")
+            if isinstance(ded_data, dict) and ded_data.get("companies"):
+                summary = ded_data.get("summary", {})
+                companies = ded_data.get("companies", [])
+                confidence = summary.get("match_confidence", "unknown")
+                overview = summary.get("overview", "")
+                total_lic = summary.get("total_licenses", 0)
 
-                if license_no:
-                    st.markdown(f"**License Number:** {license_no}")
-                if trade_name:
-                    st.markdown(f"**Trade Name:** {trade_name}")
-                if status:
-                    st.markdown(f"**Status:** {status}")
+                st.markdown(f"**Match Confidence:** `{confidence.upper()}`")
+                st.markdown(f"**Total Licenses Found:** {total_lic}")
+                if overview:
+                    st.caption(overview)
 
-                ded_url = ded_data.get("url", "https://www.ded.ae")
-                st.markdown(f"[View on DED Portal]({ded_url})")
+                if companies:
+                    st.markdown("**Top Matches:**")
+                    for i, co in enumerate(companies[:3], 1):
+                        name = co.get("trade_name_en", "—")
+                        score = int(co.get("similarity_score", 0) * 100)
+                        acts  = ", ".join(co.get("activities", [])[:2])
+                        st.markdown(f"{i}. **{name}** — {score}% match{f', {acts}' if acts else ''}")
+
+                st.markdown("[View on DED Portal](https://www.ded.ae)")
             else:
                 st.info("No DED data available")
 

@@ -225,7 +225,11 @@ class PresentationAgent(BaseAgent):
                 self.log(f"Failed to extract latest metrics: {e}", "WARNING")
 
         competitor_analysis = enrichments.get("Competitor Analysis") or {}
+        if isinstance(competitor_analysis, list):
+            competitor_analysis = competitor_analysis[0] if competitor_analysis and isinstance(competitor_analysis[0], dict) else {}
         comp_data_block = competitor_analysis.get("data") or {}
+        if isinstance(comp_data_block, list):
+            comp_data_block = comp_data_block[0] if comp_data_block and isinstance(comp_data_block[0], dict) else {}
 
         financials = {
             "current": current_metrics,

@@ -127,14 +127,25 @@ class AnalystAgent(BaseAgent):
         Reads validation summary from D:\University\CorporateIntelligenceX\data\<exchange>\<company>\daily_summary\structured\*.xls
         """
         try:
-            # Construct path
+            # Construct path based on exchange
+            if exchange.lower() == "adx":
+                # ADX path: data/adx/<ticker>/orderbook/structured
+                sub_path = os.path.join("orderbook", "structured")
+            else:
+                # DFM path: data/dfm/<ticker>/daily_summary/structured
+                sub_path = os.path.join("daily_summary", "structured")
+
             search_pattern = os.path.join(
                 DATA_DIRECTORY,
-                exchange,
+                exchange.lower(),
                 company,
-                "daily_summary",
-                "structured",
+                sub_path,
             )
+
+            if not os.path.exists(search_pattern):
+                self.log(f"Path does not exist: {search_pattern}", "WARNING")
+                return {}
+
             files = [
                 f for f in os.listdir(search_pattern) if f.lower().endswith(".csv")
             ]

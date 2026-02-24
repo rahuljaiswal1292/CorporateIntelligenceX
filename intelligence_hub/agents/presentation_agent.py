@@ -130,10 +130,32 @@ class PresentationAgent(BaseAgent):
         last_year_metrics = {}
 
         if pdf_results:
-            # pdf_results is sorted newest first by PdfAgent
-            latest_pdf = pdf_results[0]
-            fin = latest_pdf.get("financials", {})
-            meta_pdf = latest_pdf.get("meta", {})
+            # pdf_results is now optimized by PdfAgent to contain the best candidate(s)
+            # We still prefer an explicit 'annual' flag if multiple were somehow provided
+            annual_reports = [
+                pdf
+                for pdf in pdf_results
+                if "annual" in str(pdf.get("meta", {}).get("period", "")).lower()
+            ]
+
+            target_pdf = annual_reports[0] if annual_reports else pdf_results[0]
+
+            fin_full = target_pdf.get("financials", {})
+            # Handle user requested nested format or legacy flat format
+            fin = fin_full.get("current_period") or fin_full
+            meta_pdf = target_pdf.get("meta", {})
+
+            # Helper to get float value
+            def to_f(obj):
+                if not obj or not isinstance(obj, dict):
+                    return None
+                val = obj.get("current")
+                if val is None:
+                    return None
+                try:
+                    return float(str(val).replace(",", ""))
+                except:
+                    return None
 
             rev_block = fin.get("revenue") or {}
             unit = rev_block.get("unit")
@@ -145,18 +167,47 @@ class PresentationAgent(BaseAgent):
                 "profit": self._format_currency(
                     (fin.get("net_income") or {}).get("current"), unit
                 ),
+                "assets": self._format_currency(
+                    (fin.get("total_assets") or {}).get("current"), unit
+                ),
+                "liabilities": self._format_currency(
+                    (fin.get("total_liabilities") or {}).get("current"), unit
+                ),
+                "equity": self._format_currency(
+                    (fin.get("equity") or {}).get("current"), unit
+                ),
             }
-            # Add ratios if available in PDF (newly implemented or parsed)
-            for ratio in [
-                "roe",
-                "roa",
-                "npl_ratio",
-                "capital_adequacy",
-                "cost_to_income",
-                "liquidity_coverage_ratio",
-            ]:
-                if ratio in fin:
-                    current_metrics[ratio] = fin[ratio]
+
+            # --- Deterministic Ratio Calculations ---
+            rev = to_f(fin.get("revenue"))
+            net_income = to_f(fin.get("net_income"))
+            equity = to_f(fin.get("equity"))
+            assets = to_f(fin.get("total_assets"))
+            opex = to_f(fin.get("operating_expenses"))
+            int_inc = to_f(fin.get("interest_income"))
+            int_exp = to_f(fin.get("interest_expense"))
+            npl = to_f(fin.get("impaired_loans"))
+
+            if net_income is not None and equity and equity != 0:
+                current_metrics["roe"] = f"{(net_income / equity) * 100:.2f}%"
+
+            if net_income is not None and rev and rev != 0:
+                current_metrics["npm"] = f"{(net_income / rev) * 100:.2f}%"
+
+            if opex is not None and rev and rev != 0:
+                current_metrics["cost_to_income"] = f"{(opex / rev) * 100:.2f}%"
+
+            if int_inc is not None and int_exp is not None and assets and assets != 0:
+                # Simplified NIM calculation
+                current_metrics["nim"] = f"{((int_inc - int_exp) / assets) * 100:.2f}%"
+
+            if npl is not None and assets and assets != 0:
+                current_metrics["npl_ratio"] = f"{(npl / assets) * 100:.2f}%"
+
+            # Fallback for predefined ratios if they exist in raw PDF output
+            for ratio_key in ["roa", "capital_adequacy", "liquidity_coverage_ratio"]:
+                if ratio_key in fin and ratio_key not in current_metrics:
+                    current_metrics[ratio_key] = fin[ratio_key]
 
             ni_block = fin.get("net_income") or {}
             last_year_metrics = {

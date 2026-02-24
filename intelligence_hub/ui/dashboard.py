@@ -471,9 +471,12 @@ def render_main_dashboard(placeholder=None):
     else:
         st.info("Company profile data pending...")
 
-    # === SECTION 3: FINANCIAL SNAPSHOT - Now below Profile ===
+    # === SECTION 3: FINANCIAL SNAPSHOT ===
+    curr = financials.get("current", {})
+    period_label = curr.get("period", "")
+
     st.html(
-        """
+        f"""
     <div style="
         font-family: 'Poppins', sans-serif;
         font-size: 20px;
@@ -490,6 +493,7 @@ def render_main_dashboard(placeholder=None):
     ">
         <span style="font-size: 24px;">💰</span>
         <span>Financial Snapshot</span>
+        {f'<span style="padding:5px; background: #e2e8f0; color: #475569; font-size: 11px; padding: 4px 12px; border-radius: 20px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; border: 2px solid black;">{period_label}</span>' if period_label else ''}
     </div>
     """
     )
@@ -497,7 +501,7 @@ def render_main_dashboard(placeholder=None):
     if financials and "current" in financials:
         curr = financials.get("current", {})
 
-        # Primary Metrics - Revenue & Profit (Full Width Grid)
+        # Primary Metrics - 5 Big Cards in a Grid
         st.html(
             f"""
         <div style="
@@ -508,23 +512,26 @@ def render_main_dashboard(placeholder=None):
             box-shadow: 0 4px 16px rgba(30, 58, 138, 0.3);
             color: white;
         ">
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
-                <div style="border-right: 1px solid rgba(255,255,255,0.2); padding-right: 20px;">
+            <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px;">
+                <div style="border-right: 1px solid rgba(255,255,255,0.2); padding-right: 15px;">
                     <div style="font-family: 'Poppins', sans-serif; color: rgba(255, 255, 255, 0.8); font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.8px;">Total Revenue</div>
-                    <div style="font-family: 'Poppins', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">{curr.get("rev", "N/A")}</div>
-                    {f'<div style="font-family: Poppins, sans-serif; color: #4ade80; font-size: 12px; font-weight: 600; margin-top: 4px;">↑ {curr.get("trend", "")}</div>' if curr.get("trend") else ''}
+                    <div style="font-family: 'Poppins', sans-serif; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">{curr.get("rev", "N/A")}</div>
                 </div>
-                <div style="border-right: 1px solid rgba(255,255,255,0.2); padding-right: 20px;">
+                <div style="border-right: 1px solid rgba(255,255,255,0.2); padding-right: 15px;">
                     <div style="font-family: 'Poppins', sans-serif; color: rgba(255, 255, 255, 0.8); font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.8px;">Net Profit</div>
-                    <div style="font-family: 'Poppins', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">{curr.get("profit", "N/A")}</div>
+                    <div style="font-family: 'Poppins', sans-serif; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">{curr.get("profit", "N/A")}</div>
                 </div>
-                <div style="border-right: 1px solid rgba(255,255,255,0.2); padding-right: 20px;">
-                    <div style="font-family: 'Poppins', sans-serif; color: rgba(255, 255, 255, 0.8); font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.8px;">Market Cap</div>
-                    <div style="font-family: 'Poppins', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">{financials.get("market_cap", "N/A")}</div>
+                <div style="border-right: 1px solid rgba(255,255,255,0.2); padding-right: 15px;">
+                    <div style="font-family: 'Poppins', sans-serif; color: rgba(255, 255, 255, 0.8); font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.8px;">Total Assets</div>
+                    <div style="font-family: 'Poppins', sans-serif; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">{curr.get("assets", "N/A")}</div>
+                </div>
+                <div style="border-right: 1px solid rgba(255,255,255,0.2); padding-right: 15px;">
+                    <div style="font-family: 'Poppins', sans-serif; color: rgba(255, 255, 255, 0.8); font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.8px;">Total Liabilities</div>
+                    <div style="font-family: 'Poppins', sans-serif; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">{curr.get("liabilities", "N/A")}</div>
                 </div>
                 <div>
-                    <div style="font-family: 'Poppins', sans-serif; color: rgba(255, 255, 255, 0.8); font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.8px;">Stock Price</div>
-                    <div style="font-family: 'Poppins', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">{curr.get("price", "N/A")}</div>
+                    <div style="font-family: 'Poppins', sans-serif; color: rgba(255, 255, 255, 0.8); font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.8px;">Total Equity</div>
+                    <div style="font-family: 'Poppins', sans-serif; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">{curr.get("equity", "N/A")}</div>
                 </div>
             </div>
         </div>
@@ -777,9 +784,7 @@ def render_main_dashboard(placeholder=None):
                 )
             )
 
-        st.plotly_chart(
-            fig, use_container_width=True, key="dashboard_stock_performance"
-        )
+        st.plotly_chart(fig, width="stretch", key="dashboard_stock_performance")
     else:
         # Fallback to placeholder if no data
         st.html(

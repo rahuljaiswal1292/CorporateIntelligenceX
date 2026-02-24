@@ -152,7 +152,28 @@ class PdfAgent(BaseAgent):
         except Exception:
             pass
 
-        return None
+    def _is_annual_report(self, pdf_path: str, file_name: str) -> bool:
+        """
+        Deterministically check if a report is likely an Annual Report.
+        """
+        # 1. Filename Check
+        if "annual" in file_name.lower():
+            return True
+
+        # 2. Content Check (First 5 pages)
+        try:
+            doc = fitz.open(pdf_path)
+            # Scan first 5 pages for keywords
+            for i in range(min(5, len(doc))):
+                text = doc[i].get_text().lower()
+                if "annual report" in text or "year ended" in text:
+                    doc.close()
+                    return True
+            doc.close()
+        except:
+            pass
+
+        return False
 
     def should_execute(self, state: AgentState) -> tuple[bool, str]:
         """Decide if PDF processing should run"""
@@ -165,7 +186,7 @@ class PdfAgent(BaseAgent):
         return (True, f"Found {len(pdf_files)} PDFs in {data_dir}")
 
     def execute(self, state: AgentState) -> Dict:
-        """Execute Optimized PDF processing"""
+        """Execute Optimized PDF processing - now selecting only the single latest annual report."""
         company_name = state.get("ticker", "Unknown")
 
         data_dir = self._get_data_dir(state)
@@ -180,7 +201,7 @@ class PdfAgent(BaseAgent):
         self.log(f"Processing PDFs for: {company_name} in {data_dir}")
         pdf_results = []
 
-        # 1. Deduplication & Processing: Process all unique PDFs
+        # 1. Identify all PDFs and collect metadata
         pdf_files = [f for f in os.listdir(data_dir) if f.lower().endswith(".pdf")]
 
         if not pdf_files:
@@ -190,12 +211,60 @@ class PdfAgent(BaseAgent):
                 "metadata": {"pdf_count": 0},
             }
 
-        # Sort by modification time (newest first)
-        pdf_files.sort(
-            key=lambda f: os.path.getmtime(os.path.join(data_dir, f)), reverse=True
+        file_metas = []
+        for f in pdf_files:
+            path = os.path.join(data_dir, f)
+            year = self._get_report_year(path, f) or 0
+            is_annual = self._is_annual_report(path, f)
+            mtime = os.path.getmtime(path)
+            file_metas.append(
+                {
+                    "file": f,
+                    "path": path,
+                    "year": year,
+                    "is_annual": is_annual,
+                    "mtime": mtime,
+                }
+            )
+
+        # 2. Selection Strategy: Prioritize Year > Is Annual > MTime
+        # User requested: Only process latest ANNUAL
+        sorted_metas = sorted(
+            file_metas,
+            key=lambda x: (x["year"], x["is_annual"], x["mtime"]),
+            reverse=True,
         )
 
-        # Get existing hashes from ChromaDB to avoid re-processing across runs
+        if not sorted_metas:
+            return {
+                "data": [],
+                "document_type": "pdf_analysis",
+                "metadata": {"pdf_count": 0},
+            }
+
+        # Select target file
+        best_candidate = sorted_metas[0]
+
+        # Log skipped files
+        for meta in sorted_metas[1:]:
+            self.log(
+                f"Skipping PDF (Not latest/annual): {meta['file']} (Year: {meta['year']}, Annual: {meta['is_annual']})"
+            )
+
+        # 3. Process the single Best Candidate
+        pdf_file = best_candidate["file"]
+        pdf_path = best_candidate["path"]
+
+        # Content-based hash check
+        file_hash = self._get_file_hash(pdf_path)
+        if not file_hash:
+            return {
+                "data": [],
+                "document_type": "pdf_analysis",
+                "metadata": {"pdf_count": 1},
+            }
+
+        # Check existing hashes
         existing_hashes = set()
         if self.profile_store:
             try:
@@ -208,61 +277,46 @@ class PdfAgent(BaseAgent):
                     )
                     if h:
                         existing_hashes.add(h)
-            except Exception as e:
-                self.log(f"Error checking existing hashes: {e}", "WARNING")
 
-        self.log(f"Found {len(pdf_files)} PDFs. Filtering for unique content...")
+                if file_hash in existing_hashes:
+                    self.log(
+                        f"Already processed this specific PDF: {pdf_file}. Returning cached data."
+                    )
+            except:
+                pass
 
-        for pdf_file in pdf_files:
-            pdf_path = os.path.join(data_dir, pdf_file)
+        try:
+            self.log(
+                f"Analyzing Target PDF: {pdf_file} (Year: {best_candidate['year']}, Annual: {best_candidate['is_annual']})"
+            )
+            analysis_result = self.analyze_pdf_smart(pdf_path, pdf_file)
 
-            # --- OPTIMIZATION: Year Filtering ---
-            # As per user request: only process 1 year old documents (2025, 2026)
-            report_year = self._get_report_year(pdf_path, pdf_file)
-            if report_year and report_year < 2025:
-                self.log(f"Skipping old PDF (Year: {report_year}): {pdf_file}")
-                continue
+            if analysis_result:
+                if isinstance(analysis_result, dict):
+                    if "meta" not in analysis_result:
+                        analysis_result["meta"] = {}
+                    analysis_result["meta"]["file_hash"] = file_hash
+                    # Explicitly tag as annual if we determined it
+                    if best_candidate["is_annual"] and not analysis_result["meta"].get(
+                        "period"
+                    ):
+                        analysis_result["meta"][
+                            "period"
+                        ] = f"Annual {best_candidate['year']}"
 
-            # If no year found, we process it anyway to be safe?
-            # Or skip if strictly "last 1 year"?
-            # Sticking to "process if unknown" to prevent missing data unless user says "if unknown, skip".
+                pdf_results.append(analysis_result)
 
-            # Content-based hash check
-            file_hash = self._get_file_hash(pdf_path)
-            if not file_hash:
-                continue
+                # Store to Profile Store
+                if self.profile_store:
+                    self.profile_store.store_enrichment_data(
+                        canonical_name=company_name,
+                        enrichment_data=analysis_result,
+                        document_type="pdf_insights",
+                    )
+                self.log(f"Completed analysis of {pdf_file}")
 
-            if file_hash in self.processed_hashes or file_hash in existing_hashes:
-                self.log(f"Skipping duplicate or already-processed PDF: {pdf_file}")
-                continue
-
-            self.processed_hashes.add(file_hash)
-
-            try:
-                self.log(f"Analyzing unique PDF: {pdf_file}")
-                # 2. Smart Extraction
-                analysis_result = self.analyze_pdf_smart(pdf_path, pdf_file)
-
-                if analysis_result:
-                    # Tag with hash for persistent deduplication
-                    if isinstance(analysis_result, dict):
-                        if "meta" not in analysis_result:
-                            analysis_result["meta"] = {}
-                        analysis_result["meta"]["file_hash"] = file_hash
-
-                    pdf_results.append(analysis_result)
-
-                    # 3. Store Insights to Profile Store
-                    if self.profile_store:
-                        self.profile_store.store_enrichment_data(
-                            canonical_name=company_name,
-                            enrichment_data=analysis_result,
-                            document_type="pdf_insights",
-                        )
-                    self.log(f"Completed analysis of {pdf_file}")
-
-            except Exception as e:
-                self.log(f"Error processing {pdf_file}: {e}", "ERROR")
+        except Exception as e:
+            self.log(f"Error processing {pdf_file}: {e}", "ERROR")
 
         return {
             "data": pdf_results,
@@ -270,7 +324,7 @@ class PdfAgent(BaseAgent):
             "metadata": {
                 "pdf_count": len(pdf_files),
                 "processed_count": len(pdf_results),
-                "unique_processed": len(pdf_results),
+                "target_file": pdf_file,
             },
         }
 
@@ -359,14 +413,24 @@ class PdfAgent(BaseAgent):
                     for i in range(struct_page, min(struct_page + 3, total_pages)):
                         pages_to_read.add(i)
 
-                # C. Extract Text from Targeted Pages
+                # C. Extract Text & Images (Hybrid) from Targeted Pages
                 sorted_pages = sorted(list(pages_to_read))
                 self.log(f"Reading {len(sorted_pages)} specific pages from {file_name}")
 
                 for pg_num in sorted_pages:
-                    relevant_text += (
-                        f"--- Page {pg_num} ---\n{doc[pg_num].get_text()}\n"
-                    )
+                    page = doc[pg_num]
+                    text = page.get_text()
+                    relevant_text += f"--- Page {pg_num} ---\n{text}\n"
+
+                    # Hybrid Detection: If page has very little text, capture as image
+                    if len(text.strip()) < 200:
+                        self.log(
+                            f"Page {pg_num} appears image-based (text len: {len(text.strip())}). Capturing image."
+                        )
+                        pix = page.get_pixmap()
+                        img_data = pix.tobytes("jpeg")
+                        base64_img = base64.b64encode(img_data).decode("utf-8")
+                        page_images.append(base64_img)
 
             else:
                 # Fallback: No targets found from TOC
@@ -375,27 +439,43 @@ class PdfAgent(BaseAgent):
                         f"No TOC targets found, but doc is small ({total_pages} pgs). Reading full."
                     )
                     for page in doc:
-                        relevant_text += page.get_text() + "\n"
+                        text = page.get_text()
+                        relevant_text += text + "\n"
+                        # Also check for images in full read fallback
+                        if not text.strip():
+                            pix = page.get_pixmap()
+                            img_data = pix.tobytes("jpeg")
+                            page_images.append(
+                                base64.b64encode(img_data).decode("utf-8")
+                            )
                 else:
                     self.log(
                         "No TOC targets found in large doc. Reading first 10 and last 5 pages."
                     )
                     # Read first 10
-                    for i in range(
-                        min(10, total_pages)
-                    ):  # Ensure not to go out of bounds for very small docs
-                        relevant_text += doc[i].get_text() + "\n"
-                    # Read last 5 (often financials are at the end)
-                    for i in range(
-                        max(0, total_pages - 5), total_pages
-                    ):  # Ensure not to go out of bounds
-                        relevant_text += doc[i].get_text() + "\n"
+                    for i in range(min(10, total_pages)):
+                        text = doc[i].get_text()
+                        relevant_text += text + "\n"
+                        if not text.strip():
+                            pix = doc[i].get_pixmap()
+                            img_data = pix.tobytes("jpeg")
+                            page_images.append(
+                                base64.b64encode(img_data).decode("utf-8")
+                            )
+                    # Read last 5
+                    for i in range(max(0, total_pages - 5), total_pages):
+                        text = doc[i].get_text()
+                        relevant_text += text + "\n"
+                        if not text.strip():
+                            pix = doc[i].get_pixmap()
+                            img_data = pix.tobytes("jpeg")
+                            page_images.append(
+                                base64.b64encode(img_data).decode("utf-8")
+                            )
 
-        # D. LLM Extraction on Focused Text (OPTIMIZED: Consolidated Prompt)
+        # D. LLM Extraction on Focused Text/Images
         # Clean text to reduce token count
-        clean_context = self._clean_text(relevant_text)[
-            :30000
-        ]  # Limit to ~10k tokens for safety
+        clean_context = self._clean_text(relevant_text)[:30000]
 
         prompts = self._load_prompts()
         extraction_tasks = []
@@ -406,32 +486,33 @@ class PdfAgent(BaseAgent):
 
         combined_tasks_str = "\n".join(extraction_tasks)
 
-        if is_image_pdf:
-            self.log(f"Analyzing {file_name} via Vision (Consolidated)...")
+        # Decide between Text only or Hybrid/Vision analysis
+        if page_images:
+            self.log(f"Analyzing {file_name} via Hybrid Vision+Text (Consolidated)...")
             full_prompt = f"""
-            Analyze these document images from {file_name}.
-            Perform the following extraction tasks and return a single JSON object where keys are the task categories in lowercase (meta, financials, structure).
+            Analyze these document images and text from {file_name}.
             
-            Tasks:
+            EXTRACTED TEXT CONTEXT:
+            {clean_context}
+            
+            TASKS:
             {combined_tasks_str}
             
-            Return strictly valid JSON.
+            Return strictly valid JSON where keys are the task categories (meta, financials, structure).
             """
             response = self.llm_connector.analyze_with_images(full_prompt, page_images)
         else:
-            self.log(f"Analyzing {file_name} via Text (Consolidated)...")
+            self.log(f"Analyzing {file_name} via Text-only (Consolidated)...")
             full_prompt = f"""
             Analyze the following text extracted from a corporate report ({file_name}).
             
-            Text:
+            TEXT:
             {clean_context}
             
-            Perform the following extraction tasks and return a single JSON object where keys are the task categories in lowercase (meta, financials, structure).
-            
-            Tasks:
+            TASKS:
             {combined_tasks_str}
             
-            Return strictly valid JSON.
+            Return strictly valid JSON where keys are the task categories (meta, financials, structure).
             """
             response = self.llm_connector.analyze(full_prompt)
 

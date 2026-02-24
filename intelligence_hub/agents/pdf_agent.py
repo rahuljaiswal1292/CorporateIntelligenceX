@@ -97,7 +97,7 @@ class PdfAgent(BaseAgent):
             nested_dir = os.path.join(
                 DATA_DIRECTORY, exchange, safe_company_name, "reports", "structured"
             )
-        elif exchange == "ADX":
+        else:
             nested_dir = os.path.join(
                 DATA_DIRECTORY, exchange, safe_company_name, "financials", "structured"
             )

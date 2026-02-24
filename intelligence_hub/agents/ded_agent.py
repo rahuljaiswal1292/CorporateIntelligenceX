@@ -58,56 +58,10 @@ class DEDAgent(BaseAgent):
 
     def should_execute(self, state: AgentState) -> tuple[bool, str]:
         """
-        Decide if DED lookup should run
-
-        Args:
-            state: Shared agent state
-
-        Returns:
-            (should_run, reasoning)
+        DED license lookup always runs — no LLM gate.
+        Every company operating in UAE should be checked against DED.
         """
-        basic_profile = state.get("enrichments", {})
-
-        # Load decision prompt
-        decision_prompt = load_prompt("agent_ded_decision.txt")
-
-        prompt = ChatPromptTemplate.from_messages(
-            [
-                ("system", decision_prompt),
-                (
-                    "user",
-                    "Analyze this company profile and decide if UAE DED license lookup should be performed:\n\n{profile_json}",
-                ),
-            ]
-        )
-
-        # Invoke LLM for decision
-        chain = prompt | self.llm_connector.llm
-        response = chain.invoke({"profile_json": json.dumps(basic_profile, indent=2)})
-
-        # Parse decision
-        try:
-            content = response.content
-            if "```json" in content:
-                content = content.split("```json")[1].split("```")[0]
-            elif "```" in content:
-                content = content.split("```")[1].split("```")[0]
-
-            decision = json.loads(content.strip())
-            should_run = decision.get("should_execute", False)
-            reasoning = decision.get(
-                "reasoning",
-                "No reasoning provided",
-            )
-
-            return (should_run, reasoning)
-
-        except Exception as e:
-            self.log(
-                f"Decision parsing failed: {e}, defaulting to SKIP",
-                "WARNING",
-            )
-            return (False, f"Decision error: {e}")
+        return (True, "DED lookup is always performed for all companies.")
 
     def _get_serp_profile_from_chromadb(self, company_name: str) -> Optional[Dict]:
         """

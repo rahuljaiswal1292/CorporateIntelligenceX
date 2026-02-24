@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import textwrap
+import uuid
+from intelligence_hub.ui.pipeline_viz import get_default_agent_status
 
 logo_url = "https://www.emiratesnbd.com/-/media/enbd/images/logos/favicon.png"
 
@@ -275,7 +277,7 @@ def render_chart(data):
             tickfont=dict(color="#0F172A", size=12), title_font=dict(color="#0F172A")
         ),
     )
-    st.plotly_chart(fig, use_container_width=True, key="stock_performance_chart")
+    st.plotly_chart(fig, width="stretch", key="stock_performance_chart")
 
 
 def render_competitors(data):
@@ -649,3 +651,543 @@ def render_top_news(data):
             """
                 )
             )
+
+
+def render_company_summary_card(
+    placeholder=None, key="btn_continue_investigation", show_button=True
+):
+    """
+    Renders the premium summary card for the resolved company.
+    This includes company description, key facts, stakeholders, and social links.
+    """
+    # Use placeholder if provided, else main flow
+    context = placeholder.container() if placeholder else st.container()
+
+    # Check if we should return early (user clicked Abort)
+    if st.session_state.get("abort_investigation", False):
+        return False
+
+    with context:
+        # Layout: Name Display (Full Width)
+        col_display = st.container()
+
+        with col_display:
+            if st.session_state.get("is_resolving"):
+                # Resolving state (Stay here until profiling finishes)
+                st.html(
+                    textwrap.dedent(
+                        """
+                    <div class="canonical-container" style="margin: 0;">
+                        <div class="canonical-label">
+                            <span class="canonical-icon">🏢</span>
+                            <span class="canonical-title">RESOLVED COMPANY NAME</span>
+                        </div>
+                        <div class="canonical-value resolving">
+                            <span class="canonical-text">Resolving...</span>
+                        </div>
+                    </div>
+                    """
+                    )
+                )
+            elif st.session_state.get("canonical_name"):
+                # Resolved state
+                check = '<span class="canonical-check">✓</span>'
+                status_class = "resolved"
+
+                st.html(
+                    textwrap.dedent(
+                        f"""
+                    <div class="canonical-container">
+                        <div class="canonical-label">
+                            <span class="canonical-icon">🏢</span>
+                            <span class="canonical-title">RESOLVED COMPANY NAME</span>
+                        </div>
+                        <div class="canonical-value {status_class}">
+                            <span class="canonical-text">{st.session_state.canonical_name}</span>
+                            {check}
+                        </div>
+                    </div>
+                    """
+                    )
+                )
+            else:
+                # Default state
+                st.markdown(
+                    textwrap.dedent(
+                        """
+                    <div class="canonical-container">
+                        <div class="canonical-label">
+                            <span class="canonical-icon">🏢</span>
+                            <span class="canonical-title">RESOLVED COMPANY NAME</span>
+                        </div>
+                        <div class="canonical-value">
+                            <span class="canonical-text">Ready to search</span>
+                        </div>
+                    </div>
+                    """
+                    ),
+                    unsafe_allow_html=True,
+                )
+
+        # Prepare Profile Data (Default: Not Available)
+        desc = "No company profile data available yet. Start a search to generate insights."
+        ticker = "N/A"
+        exchange = ""
+        ticker_display = ""
+        reason_text = "No data available"
+        stakeholders_html = ""
+        insights_html = '<div class="insight-item" style="color:#888;">No insights generated yet</div>'
+        social_html = '<span style="color:#888; font-size:0.9rem;">Not Available</span>'
+        badge_html = ""  # Hide badge by default
+        kg_html = ""  # Hide KG by default
+        show_stakeholders = False
+        website_html = ""  # Hide website by default
+        qa_html = ""  # Hide Q&A by default
+        ref_html = ""  # Default empty
+        ticker = ""
+        exchange = ""
+
+        # Override with real data if profile exists AND we aren't still resolving Phase 1
+        if st.session_state.get("canonical_name") and not st.session_state.get(
+            "is_resolving"
+        ):
+            profile = st.session_state.get("company_profile", {})
+
+            # Override with real data
+            desc = profile.get("description") or desc
+            ticker = profile.get("ticker") or ticker
+            exchange = profile.get("exchange") or exchange
+            ticker_display = (
+                f"{exchange}:{ticker}"
+                if exchange
+                else (ticker if ticker and ticker != "N/A" else "")
+            )
+
+            # Confidence Logic
+            confidence = profile.get("confidence_score", 0)
+            badge_html = ""
+            if confidence > 0:
+                conf_class = "medium"
+                if confidence >= 90:
+                    conf_class = ""  # default green
+                elif confidence < 50:
+                    conf_class = "low"
+
+                badge_html = f"""
+                <div class="confidence-badge {conf_class}">
+                    <span>{confidence}% Confidence</span>
+                </div>
+                """
+
+            # Construct reasoning based on available data signals
+            signals = profile.get("data_quality_signals", {})
+            reasons = []
+            if signals.get("knowledge_panel"):
+                reasons.append("Knowledge Panel Verified")
+            if signals.get("official_website"):
+                reasons.append("Official Website")
+            if signals.get("wikipedia_presence"):
+                reasons.append("Wikipedia")
+            reason_text = " • ".join(reasons) if reasons else "Based on search results"
+
+            # Website extraction
+            raw_url = (
+                profile.get("website")
+                or profile.get("official_website")
+                or profile.get("url")
+            )
+
+            # Validate URL
+            website_url = None
+            if isinstance(raw_url, str) and raw_url.strip().startswith("http"):
+                website_url = raw_url.strip()
+
+            # Fallback to KG
+            if not website_url:
+                kg_tmp = profile.get("knowledge_graph", {})
+                if isinstance(kg_tmp, dict):
+                    val = kg_tmp.get("website")
+                    if isinstance(val, str) and val.startswith("http"):
+                        website_url = val
+
+            # Fallback to First Organic Result
+            if not website_url:
+                organic = profile.get("organic_results", [])
+                if organic and isinstance(organic, list) and len(organic) > 0:
+                    val = organic[0].get("link")
+                    if isinstance(val, str) and val.startswith("http"):
+                        website_url = val
+
+            website_html = ""
+            if website_url:
+                display_url = (
+                    website_url.replace("https://", "")
+                    .replace("http://", "")
+                    .rstrip("/")
+                )
+                website_html = f"""
+                <div style="margin-bottom: 20px; font-size: 0.9rem;">
+                    <a href="{website_url}" target="_blank" style="text-decoration: none; color: #0066cc; font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+                        🔗 {display_url}
+                    </a>
+                </div>
+                """
+
+            # Knowledge Graph Extraction (Google Style)
+            kg_source = profile.get("knowledge_graph", {})
+            if not isinstance(kg_source, dict):
+                kg_source = {}
+
+            kg_data = {}
+
+            if kg_source.get("customer_service"):
+                kg_data["Customer service"] = kg_source.get("customer_service")
+
+            ceo = kg_source.get("ceo")
+            founder = kg_source.get("founder")
+
+            leadership_data = profile.get("leadership", [])
+
+            if not ceo:
+                if isinstance(leadership_data, dict):
+                    for k, v in leadership_data.items():
+                        if "ceo" in k.lower() or "chief executive" in k.lower():
+                            ceo = v
+                            break
+                        if "ceo" in str(v).lower():
+                            ceo = v
+                            break
+                elif isinstance(leadership_data, list):
+                    for person in leadership_data:
+                        p_name = (
+                            person
+                            if isinstance(person, str)
+                            else person.get("name", "")
+                        )
+                        if (
+                            "ceo" in p_name.lower()
+                            or "chief executive" in p_name.lower()
+                        ):
+                            ceo = p_name
+                            break
+
+            if not founder:
+                if isinstance(leadership_data, dict):
+                    for k, v in leadership_data.items():
+                        if "founder" in k.lower():
+                            founder = v
+                            break
+                elif isinstance(leadership_data, list):
+                    for person in leadership_data:
+                        p_name = (
+                            person
+                            if isinstance(person, str)
+                            else person.get("name", "")
+                        )
+                        if "founder" in p_name.lower():
+                            founder = p_name
+                            break
+
+            if ceo:
+                kg_data["CEO"] = ceo
+            if founder:
+                kg_data["Founder"] = founder
+
+            if kg_source.get("founded"):
+                kg_data["Founded"] = kg_source.get("founded")
+            if kg_source.get("headquarters"):
+                kg_data["Headquarters"] = kg_source.get("headquarters")
+            if kg_source.get("hubs"):
+                kg_data["Hubs"] = kg_source.get("hubs")
+            if kg_source.get("parent_organization"):
+                kg_data["Parent Org"] = kg_source.get("parent_organization")
+
+            if "Founded" not in kg_data and profile.get("founded"):
+                kg_data["Founded"] = profile.get("founded")
+            if "Headquarters" not in kg_data and profile.get("headquarters"):
+                kg_data["Headquarters"] = profile.get("headquarters")
+            if "Type" not in kg_data and (kg_source.get("type") or profile.get("type")):
+                kg_data["Type"] = kg_source.get("type") or profile.get("type")
+
+            industry = profile.get("industry") or profile.get("sector")
+            if industry:
+                kg_data["Industry"] = industry
+
+            ticker = profile.get("ticker")
+            exchange = profile.get("exchange")
+            if ticker and ticker != "N/A":
+                kg_data["Stock"] = f"{exchange}:{ticker}" if exchange else ticker
+
+            subs = kg_source.get("subsidiaries") or profile.get("subsidiaries")
+            if subs:
+                if isinstance(subs, list):
+                    kg_data["Subsidiaries"] = ", ".join([str(s) for s in subs[:3]]) + (
+                        "..." if len(subs) > 3 else ""
+                    )
+                else:
+                    kg_data["Subsidiaries"] = str(subs)
+
+            other_facts = kg_source.get("other_facts", {})
+            if isinstance(other_facts, dict):
+                for k, v in other_facts.items():
+                    if k not in kg_data and v:
+                        display_k = k.replace("_", " ").title()
+                        if isinstance(v, list):
+                            v = ", ".join([str(i) for i in v[:3]])
+                        kg_data[display_k] = v
+
+            if kg_data:
+                rows = []
+                for k, v in kg_data.items():
+                    rows.append(
+                        f"""
+                     <div style="margin-bottom: 5px; font-size: 0.9rem; line-height: 1.5; color: #202124;">
+                        <span style="font-weight: 700; color: #202124;">{k}:</span>
+                        <span style="color: #4d5156;">{v}</span>
+                     </div>
+                     """
+                    )
+                kg_html = f'<div style="margin-top: 15px; margin-bottom: 20px;">{"".join(rows)}</div>'
+
+            # Stakeholders & Shareholders
+            leadership_names = []
+            shareholders_names = []
+            shareholders = profile.get("major_shareholders") or profile.get(
+                "ownership_structure", {}
+            ).get("major_shareholders", [])
+
+            if isinstance(leadership_data, list):
+                leadership_names.extend(
+                    [
+                        p if isinstance(p, str) else p.get("name", str(p))
+                        for p in leadership_data[:4]
+                    ]
+                )
+            elif isinstance(leadership_data, dict):
+                l_keys = list(leadership_data.keys())
+                for k in l_keys[:4]:
+                    v = leadership_data[k]
+                    if k.lower() in ["ceo", "founder", "chairman", "president"]:
+                        leadership_names.append(v)
+                    else:
+                        leadership_names.append(f"{v}")
+
+            if isinstance(shareholders, list):
+                shareholders_names.extend(
+                    [
+                        s if isinstance(s, str) else s.get("name", str(s))
+                        for s in shareholders[:4]
+                    ]
+                )
+            elif isinstance(shareholders, dict):
+                s_keys = list(shareholders.keys())
+                for k in s_keys[:4]:
+                    v = shareholders[k]
+                    if len(k) > len(str(v)):
+                        shareholders_names.append(f"{k} ({v})")
+                    else:
+                        shareholders_names.append(f"{v} ({k})")
+
+            parts = []
+            if leadership_names:
+                parts.append(
+                    '<div style="margin-bottom:8px;"><strong style="color:#555;">Leadership:</strong></div>'
+                )
+                for name in leadership_names:
+                    parts.append(
+                        f'<div style="margin-bottom:4px; padding-left:10px; border-left:2px solid #ddd;">👤 {name}</div>'
+                    )
+
+            if shareholders_names:
+                parts.append(
+                    '<div style="margin-top:12px; margin-bottom:8px;"><strong style="color:#555;">Major Shareholders:</strong></div>'
+                )
+                for name in shareholders_names:
+                    parts.append(
+                        f'<div style="margin-bottom:4px; padding-left:10px; border-left:2px solid #ddd;">🏢 {name}</div>'
+                    )
+
+            if parts:
+                stakeholders_html = "".join(parts)
+
+            qa_list = profile.get("common_questions", [])
+            if qa_list and isinstance(qa_list, list):
+                qa_items = []
+                for item in qa_list[:3]:
+                    q = item.get("question", "")
+                    a = item.get("answer", "") or item.get("snippet", "")
+                    if q and a:
+                        qa_items.append(
+                            f'<div style="margin-bottom:8px;"><strong style="color:#555;">Q: {q}</strong><br><span style="color:#666; font-size:0.9rem;">{a}</span></div>'
+                        )
+
+                if qa_items:
+                    qa_html = f"""
+                    <div class="summary-section" style="margin-top:20px; border-top:1px solid #eee; padding-top:10px;">
+                        <h4>Common Questions</h4>
+                        <div>{"".join(qa_items)}</div>
+                    </div>
+                    """
+
+            social_html = ""
+            socials = profile.get("social_media", {})
+            if not isinstance(socials, dict):
+                socials = {}
+            socials = socials.copy()
+
+            wiki_url = profile.get("wikipedia") or profile.get("wikipedia_url")
+            if not wiki_url:
+                kg_tmp = profile.get("knowledge_graph", {})
+                if isinstance(kg_tmp, dict):
+                    src = kg_tmp.get("source", {})
+                    if src.get("name") and "wikipedia" in str(src.get("name")).lower():
+                        wiki_url = src.get("link")
+
+            if wiki_url:
+                socials["Wikipedia"] = wiki_url
+
+            if socials:
+                icon_assets = {
+                    "linkedin": "https://img.icons8.com/color/48/linkedin.png",
+                    "twitter": "https://img.icons8.com/color/48/twitterx--v1.png",
+                    "x.com": "https://img.icons8.com/color/48/twitterx--v1.png",
+                    "facebook": "https://img.icons8.com/color/48/facebook-new.png",
+                    "instagram": "https://img.icons8.com/color/48/instagram-new.png",
+                    "youtube": "https://img.icons8.com/color/48/youtube-play.png",
+                    "wikipedia": "https://img.icons8.com/color/48/wikipedia.png",
+                }
+
+                social_html = ""
+                for platform, url in socials.items():
+                    if not url:
+                        continue
+                    p_lower = platform.lower()
+                    img_src = "https://img.icons8.com/color/48/globe--v1.png"
+                    for skey, asset_url in icon_assets.items():
+                        if skey in p_lower:
+                            img_src = asset_url
+                            break
+
+                    social_html += f"""
+                    <a href="{url}" target="_blank" class="social-icon" title="{platform}" 
+                       style="margin-right:12px; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; 
+                               width:36px; height:36px; border-radius:50%; background:white; border:1px solid #f0f0f0; 
+                               box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition:transform 0.2s ease;">
+                        <img src="{img_src}" style="width:20px; height:20px;" />
+                    </a>
+                    """
+
+            refs = list(profile.get("references", []))
+            organic = profile.get("organic_results", [])
+            seen_urls = {r.get("url") or r.get("link") for r in refs}
+
+            if organic and isinstance(organic, list):
+                for res in organic[:5]:
+                    link = res.get("link")
+                    if link and link not in seen_urls:
+                        raw_source = res.get("source") or res.get("title", "Link")
+                        source_name = raw_source
+                        if " - " in source_name:
+                            source_name = source_name.split(" - ")[-1]
+
+                        refs.append({"source": source_name[:20], "url": link})
+                        seen_urls.add(link)
+
+            if refs:
+                ref_html = f"""
+                <div class="summary-section" style="margin-top:20px; border-top:1px solid #eee; padding-top:10px;">
+                    <h4 style="margin-bottom:12px; font-size:1rem; color:#202124;">References</h4>
+                    <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                        {"".join([f'<a href="{r["url"]}" target="_blank" class="ref-tag" style="padding:4px 12px; background:#f1f3f4; border-radius:16px; color:#1a73e8; text-decoration:none; font-size:0.85rem; border:1px solid #dadce0;">{r["source"]}</a>' for r in refs[:4]])}
+                    </div>
+                </div>
+                """
+
+        # --- Render the Card ---
+        if st.session_state.get("canonical_name"):
+            card_html = f"""
+            <div class="summary-card">
+                <div class="summary-header">
+                    <div style="flex:1; display:flex; align-items:center; gap:20px;">
+                        <div>
+                            <h2 style="margin:0; font-size:1.5rem; color:#202124;">{st.session_state.canonical_name}</h2>
+                            <div style="color:#70757a; font-size:0.9rem; margin-top:4px;">{reason_text}</div>
+                        </div>
+                        {badge_html}
+                    </div>
+                </div>
+                
+                <div style="display:grid; grid-template-columns: 2fr 1fr; gap:30px; margin-top:15px;">
+                    <div>
+                        {website_html}
+                        <div style="color:#4d5156; font-size:1rem; line-height:1.6; margin-bottom:15px;">
+                            {desc}
+                        </div>
+                        {qa_html}
+                        {ref_html}
+                    </div>
+                    <div style="border-left:1px solid #eee; padding-left:20px;">
+                        {kg_html}
+                        {stakeholders_html}
+                        <div style="margin-top:20px;">
+                            <div style="margin-bottom:12px;"><strong style="color:#555;">CONNECT</strong></div>
+                            <div class="social-links" style="margin-top:0;">
+                                {social_html}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            """
+            st.html(card_html)
+
+            # Continue/Abort Controls
+            if (
+                st.session_state.get("investigation_paused")
+                and not st.session_state.get("analysis_complete")
+                and show_button
+            ):
+                st.html('<div style="height:20px;"></div>')
+                col_continue, col_abort = st.columns([2.5, 1])
+
+                with col_continue:
+                    btn_disabled = not st.session_state.get("canonical_name")
+                    if st.button(
+                        "🚀 GENERATE PROFILE",
+                        key=key,
+                        disabled=btn_disabled,
+                        type="primary",
+                        use_container_width=True,
+                    ):
+                        return True
+
+                with col_abort:
+                    if st.button(
+                        "✖ CANCEL", key=f"{key}_abort", use_container_width=True
+                    ):
+                        st.session_state.abort_investigation = True
+                        st.session_state.data = None
+                        st.session_state.logs = []
+                        st.session_state.progress_stage = 0
+                        st.session_state.analysis_complete = False
+                        st.session_state.canonical_name = None
+                        st.session_state.confidence_score = None
+                        st.session_state.is_resolving = False
+                        st.session_state.investigation_paused = False
+                        st.session_state.agent_status = get_default_agent_status()
+                        st.rerun()
+        elif st.session_state.get("is_resolving"):
+            st.html(
+                """
+            <div class="summary-card" style="opacity: 0.7;">
+                <div class="shimmer" style="height: 30px; width: 60%; margin-bottom: 20px;"></div>
+                <div class="shimmer" style="height: 100px; width: 100%; margin-bottom: 20px;"></div>
+                <div style="display: flex; gap: 20px;">
+                    <div class="shimmer" style="height: 200px; flex: 2;"></div>
+                    <div class="shimmer" style="height: 200px; flex: 1;"></div>
+                </div>
+            </div>
+            """
+            )
+
+    return False

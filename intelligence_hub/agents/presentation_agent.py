@@ -58,7 +58,7 @@ class PresentationAgent(BaseAgent):
         except:
             return str(value)
 
-    def run(self, state: AgentState) -> Dict:
+    def run(self, state: AgentState):
         """
         Consolidates state into the final UI-ready structure matching final_demo.json.
         """

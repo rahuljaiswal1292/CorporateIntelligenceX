@@ -1,9 +1,10 @@
 """
 Agent Pipeline Visualization Component
-Horizontal stepper with real-time status from session state.
+Futuristic "INTELLIGENCE DISCOVERY SEQUENCE" with brand-aligned glassmorphism.
 """
 
 import streamlit as st
+import textwrap
 
 
 # Default agent status structure
@@ -23,61 +24,83 @@ def get_default_agent_status():
 
 def render_agent_pipeline(data: dict = None, show_details: bool = False):
     """
-    Renders a horizontal stepper pipeline.
-    Reads agent_status from st.session_state for real-time updates.
+    Renders a premium, brand-aligned "Intelligence Discovery Sequence".
     """
-
     if data is None:
         data = {}
 
-    # Read statuses from session state (set by workflow callbacks)
+    # Read statuses from session state
     agent_status = st.session_state.get("agent_status", get_default_agent_status())
 
-    # Pipeline stages mapped to agent keys
-    stages = [
-        {
-            "label": "Name Resolution",
-            "agents": [("master_agent", "Master")],
-            "parallel": False,
-        },
-        {
-            "label": "Profile Enrichment",
-            "agents": [
-                ("wikipedia_agent", "Wikipedia"),
-                ("news_agent", "News"),
-                ("ded_agent", "DED"),
-            ],
-            "parallel": True,
-        },
-        {
-            "label": "Stocks & Filings",
-            "agents": [("scraper", "Scraper")],
-            "parallel": False,
-        },
-        {
-            "label": "Financial Statements",
-            "agents": [("vectorizer", "Vectorizer"), ("pdf_agent", "PDF")],
-            "parallel": False,
-        },
-        {
-            "label": "Insights Generation",
-            "agents": [("analyst", "Analyst")],
-            "parallel": False,
-        },
-    ]
-
+    # Helper to get status of an agent
     def get_status(agent_key):
         return agent_status.get(agent_key, "pending")
 
-    def get_stage_status(agents):
-        statuses = [get_status(a[0]) for a in agents]
+    # Helper to get stage status based on its agents
+    def get_stage_info(stage_id):
+        if stage_id == "intent":
+            search_exists = any(
+                k.startswith("company_search_input_") and st.session_state.get(k)
+                for k in st.session_state.keys()
+            )
+            if (
+                search_exists
+                or data.get("query")
+                or st.session_state.get("is_resolving")
+            ):
+                # Return 'completed' without 'animate' once input is confirmed
+                return "success", "completed"
+            return "running", "active"
+
+        if stage_id == "resolution":
+            s = get_status("master_agent")
+            is_paused = st.session_state.get("investigation_paused", False)
+            is_complete = st.session_state.get("analysis_complete", False)
+            has_name = bool(st.session_state.get("canonical_name"))
+
+            # definitively stop animation if card is printed (paused) or name is already found
+            is_done_with_res = is_paused or is_complete or (s == "success" and has_name)
+
+            if s == "running":
+                return "running", "active"
+            if s == "success" or is_done_with_res:
+                if is_done_with_res:
+                    return "success", "completed"
+                return "running", "active"
+            return "pending", "pending"
+
+        mapping = {
+            "enrichment": [
+                "wikipedia_agent",
+                "news_agent",
+                "ded_agent",
+                "scraper",
+                "yahoo_agent",
+                "pdf_agent",
+            ],
+            "vectorizing": ["vectorizer"],
+            "synthesis": ["analyst"],
+        }
+
+        agents = mapping.get(stage_id, [])
+        statuses = [get_status(a) for a in agents]
+
         if any(s == "error" for s in statuses):
-            return "error"
-        if all(s == "success" for s in statuses):
-            return "success"
+            return "error", "error"
         if any(s == "running" for s in statuses):
-            return "running"
-        return "pending"
+            return "running", "active"
+
+        if not agents:
+            return "pending", "pending"
+
+        if any(s == "pending" for s in statuses):
+            return "pending", "pending"
+
+        # Only if all agents are success
+        if all(s == "success" for s in statuses):
+            return "success", "completed"
+
+        return "pending", "pending"
 
     def style_for(status):
         if status == "success":
@@ -121,121 +144,307 @@ def render_agent_pipeline(data: dict = None, show_details: bool = False):
                 "badge_bdr": "#e2e8f0",
             }
 
-    # CSS animation for running state
-    pulse_css = """
-    @keyframes pulse-dot {
-        0%, 100% { transform: scale(1); box-shadow: 0 2px 6px rgba(59,130,246,0.3); }
-        50% { transform: scale(1.15); box-shadow: 0 2px 12px rgba(59,130,246,0.5); }
+    # Define stages
+    stages = [
+        {"id": "intent", "label": "Search Input", "icon": "🔍"},
+        {"id": "resolution", "label": "Entity Resolution Agent", "icon": "🎯"},
+        {
+            "id": "enrichment",
+            "label": "Data Enrichment Agent",
+            "icon": "🌐",
+            "is_parallel": True,
+        },
+        {
+            "id": "vectorizing_stocks",
+            "label": "Stocks & Financials Agent",
+            "icon": "💹",
+        },
+        {"id": "vectorizing_neural", "label": "Vectorization Agent", "icon": "🧠"},
+        {"id": "synthesis", "label": "Strategic Insights Agent", "icon": "📊"},
+    ]
+
+    # Map stock/financials to vectorizing stage ID for logic
+    logic_stage_map = {
+        "vectorizing_stocks": "vectorizing",
+        "vectorizing_neural": "vectorizing",
     }
-    """
 
-    # Build step HTML
-    step_htmls = []
-    for idx, stage in enumerate(stages):
-        ss = get_stage_status(stage["agents"])
-        s = style_for(ss)
-        is_parallel = stage["parallel"]
+    # Calculate overall progress for the connector line
+    completed_stages = 0
+    active_idx = -1
+    for i, s in enumerate(stages):
+        logic_id = logic_stage_map.get(s["id"], s["id"])
+        _, cls = get_stage_info(logic_id)
+        if "completed" in cls:
+            completed_stages += 1
+        elif "active" in cls and active_idx == -1:
+            active_idx = i
 
-        # Pulse animation for running dots
-        anim = (
-            "animation:pulse-dot 1.2s ease-in-out infinite;" if ss == "running" else ""
-        )
+    progress_percent = (completed_stages / len(stages)) * 100
+    if active_idx != -1:
+        progress_percent = ((active_idx + 0.5) / len(stages)) * 100
 
-        # Build agent display
-        if is_parallel:
-            agent_badges = ""
-            for key, name in stage["agents"]:
-                a_s = style_for(get_status(key))
-                a_anim = (
-                    "animation:pulse-dot 1.2s ease-in-out infinite;"
-                    if get_status(key) == "running"
-                    else ""
-                )
-                agent_badges += f"""
-                    <div style="
-                        display:flex;align-items:center;gap:4px;
-                        background:{a_s['badge_bg']};
-                        border:1px solid {a_s['badge_bdr']};
-                        border-radius:4px;padding:2px 6px;{a_anim}
-                    ">
-                        <span style="font-size:9px;color:{a_s['txt']};font-weight:700;">{a_s['ico']}</span>
-                        <span style="font-size:9px;color:{a_s['lbl']};font-weight:600;white-space:nowrap;">{name}</span>
-                    </div>
-                """
+    # Brand Colors
+    navy = "#002D62"
+    gold = "#FFB600"
+    success_green = "#10b981"
+    border_color = "rgba(0, 45, 98, 0.15)"
 
-            agents_html = f"""
-                <div style="
-                    border:1px dashed {s['bdr']};
-                    border-radius:6px;
-                    padding:6px;margin-top:6px;
-                    background:rgba(0,0,0,0.01);
-                    display:flex;flex-direction:column;gap:3px;
-                    align-items:center;
-                ">
-                    {agent_badges}
-                    <div style="font-size:7px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;margin-top:1px;font-weight:700;">parallel</div>
-                </div>
-            """
-        else:
-            agent_names = " → ".join(name for _, name in stage["agents"])
-            agents_html = f'<div style="font-size:10px;color:{s["txt"]};line-height:1.4;margin-top:4px;">{agent_names}</div>'
-
-        step_htmls.append(
-            f"""
-            <div style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:0;">
-                <div style="
-                    width:34px;height:34px;border-radius:50%;
-                    background:{s['bg']};border:3px solid {s['bdr']};
-                    display:flex;align-items:center;justify-content:center;
-                    font-size:13px;color:white;font-weight:700;
-                    box-shadow:0 2px 6px rgba(0,0,0,0.12);
-                    z-index:2;position:relative;{anim}
-                ">{s['ico']}</div>
-                <div style="margin-top:6px;text-align:center;font-family:'Poppins',sans-serif;">
-                    <div style="font-size:11px;font-weight:700;color:{s['lbl']};margin-bottom:1px;">{stage['label']}</div>
-                    {agents_html}
-                </div>
-            </div>
-        """
-        )
-
-    # Connectors
-    items = []
-    for i, step_html in enumerate(step_htmls):
-        items.append(step_html)
-        if i < len(stages) - 1:
-            curr = get_stage_status(stages[i]["agents"])
-            nxt = get_stage_status(stages[i + 1]["agents"])
-            if curr == "success" and nxt in ("success", "running"):
-                lc = "#10b981"
-            elif curr == "success":
-                lc = "#93c5fd"
-            else:
-                lc = "#e2e8f0"
-            items.append(
-                f"""
-                <div style="flex:0.4;display:flex;align-items:flex-start;padding-top:16px;">
-                    <div style="height:2px;width:100%;background:{lc};border-radius:2px;"></div>
-                </div>
-            """
-            )
-
-    full_html = "".join(items)
-
-    st.html(
+    # CSS for the premium look
+    css = textwrap.dedent(
         f"""
-    <style>{pulse_css}</style>
-    <div style="
-        background:linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%);
-        border:1px solid #e2e8f0;
-        border-radius:12px;
-        padding:20px 24px 16px 24px;
-        margin-bottom:20px;
-        box-shadow:0 2px 8px rgba(0,0,0,0.04);
-    ">
-        <div style="display:flex;align-items:flex-start;gap:0;">
-            {full_html}
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+        
+        .pipeline-tracker {{
+            font-family: 'Poppins', sans-serif;
+            background: white;
+            border: 1px solid {border_color};
+            border-radius: 20px;
+            padding: 40px 30px;
+            margin: 20px 0;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0, 45, 98, 0.05);
+        }}
+        
+        .nodes-container {{
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            position: relative;
+            z-index: 5;
+            min-width: 1000px;
+        }}
+
+        .connector-line-bg {{
+            position: absolute;
+            top: 40px;
+            left: 50px;
+            right: 50px;
+            height: 3px;
+            background: #EDF2F7;
+            z-index: 1;
+        }}
+
+        .connector-line-progress {{
+            position: absolute;
+            top: 40px;
+            left: 50px;
+            width: calc({progress_percent}% - 100px);
+            height: 3px;
+            background: linear-gradient(90deg, {success_green}, {navy});
+            z-index: 2;
+            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }}
+
+        .node {{
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            position: relative;
+            z-index: 10;
+        }}
+
+        .node-icon-shell {{
+            width: 80px;
+            height: 80px;
+            background: white;
+            border: 2px solid #E2E8F0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+            transition: all 0.4s ease;
+            position: relative;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            z-index: 5;
+        }}
+
+        /* Animations */
+        .node.active .node-icon-shell,
+        .node.animate .node-icon-shell {{
+            animation: breathing-zoom 2.5s ease-in-out infinite;
+        }}
+
+        @keyframes breathing-zoom {{
+            0%, 100% {{ transform: scale(1); }}
+            50% {{ transform: scale(1.1); }}
+        }}
+
+        .node.active .node-icon-shell {{
+            border-color: {navy};
+            background: #F0F7FF;
+            box-shadow: 0 0 25px rgba(0, 45, 98, 0.2);
+        }}
+
+        .node.completed .node-icon-shell {{
+            border-color: {success_green};
+            background: #F0FDF4;
+            color: {success_green};
+        }}
+        
+        .node.completed.animate .node-icon-shell {{
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.4);
+        }}
+
+        .active-ring {{
+            position: absolute;
+            inset: -12px;
+            border: 3px dotted #10b981;
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            animation: rotate-ring 6s linear infinite;
+        }}
+        
+        .node.active .active-ring,
+        .node.animate .active-ring {{
+            opacity: 1;
+        }}
+        
+        @keyframes rotate-ring {{
+            from {{ transform: rotate(0deg); }}
+            to {{ transform: rotate(360deg); }}
+        }}
+
+        .node-icon {{
+            font-size: 32px;
+        }}
+
+        .node-label {{
+            font-size: 13px;
+            font-weight: 700;
+            color: #64748B;
+            text-align: center;
+            max-width: 120px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+
+        .node.active .node-label {{ color: {navy}; }}
+        .node.completed .node-label {{ color: {success_green}; }}
+
+        /* Parallel Cluster */
+        .parallel-cluster {{
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 15px;
+            width: 320px;
+        }}
+
+        .track-node {{
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 6px 12px;
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            color: #64748B;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }}
+
+        .track-node.active {{
+            border-color: {navy};
+            color: {navy};
+            background: #F0F7FF;
+            animation: breathing-zoom 2s ease-in-out infinite;
+        }}
+
+        .track-node.completed {{
+            border-color: {success_green};
+            color: {success_green};
+            background: #F0FDF4;
+        }}
+
+        .status-dot {{
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #CBD5E1;
+        }}
+
+        .track-node.active .status-dot {{
+            background: {navy};
+            animation: pulse-dot 1.5s infinite;
+        }}
+
+        .track-node.completed .status-dot {{
+            background: {success_green};
+        }}
+
+        @keyframes pulse-dot {{
+            0% {{ box-shadow: 0 0 0 0 rgba(0, 45, 98, 0.4); }}
+            70% {{ box-shadow: 0 0 0 6px rgba(0, 45, 98, 0); }}
+            100% {{ box-shadow: 0 0 0 0 rgba(0, 45, 98, 0); }}
+        }}
+    </style>
+    """
+    )
+
+    # Build Stage HTML
+    nodes_html = ""
+
+    for i, stage in enumerate(stages):
+        logic_id = logic_stage_map.get(stage["id"], stage["id"])
+        status, css_class = get_stage_info(logic_id)
+
+        # Build Parallel Cluster for Enrichment
+        sub_content = ""
+        if stage.get("is_parallel"):
+            tracks = [
+                ("wikipedia_agent", "WIKIPEDIA"),
+                ("news_agent", "LATEST NEWS"),
+                ("ded_agent", "DFM SCRAPER"),
+                ("scraper", "ADX SCRAPER"),
+                ("yahoo_agent", "YAHOO FINANCE"),
+                ("pdf_agent", "DED FILINGS"),
+            ]
+            sub_content = '<div class="parallel-cluster">'
+            for key, label in tracks:
+                s = get_status(key)
+                c = (
+                    "active"
+                    if s == "running"
+                    else ("completed" if s == "success" else "pending")
+                )
+                sub_content += f'<div class="track-node {c}"><div class="status-dot"></div>{label}</div>'
+            sub_content += "</div>"
+
+        nodes_html += f"""
+        <div class="node {css_class}">
+            <div class="node-icon-shell">
+                <div class="active-ring"></div>
+                <span class="node-icon">{stage['icon']}</span>
+            </div>
+            <span class="node-label">{stage['label']}</span>
+            {sub_content}
+        </div>
+        """
+
+    # Header label replacement in HTML to unify naming
+    sequence_label = "PROGRESS MONITOR"
+
+    # Render with st.html
+    full_html = f"""
+    {css}
+    <div style="font-family:'Poppins',sans-serif; font-size:18px; font-weight:700; color:{navy}; margin-bottom:18px; display:flex; align-items:center; gap:10px;">
+        <span style="font-size:22px;">⚡</span> {sequence_label}
+    </div>
+    <div class="pipeline-tracker">
+        <div class="pipeline-scroll-wrapper">
+            <div class="nodes-container">
+                <div class="connector-line-bg"></div>
+                <div class="connector-line-progress"></div>
+                {nodes_html}
+            </div>
         </div>
     </div>
     """
-    )
+
+    st.container().html(full_html)

@@ -73,7 +73,7 @@ class ADXScraper:
         self.playwright = None
 
         # Initialize download manager and bot handler
-        max_age_years = 2
+        max_age_years = 5
         self.download_manager = DownloadManager(max_age_years=max_age_years)
         self.bot_handler = BotHandler()
 

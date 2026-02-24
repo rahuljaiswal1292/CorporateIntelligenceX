@@ -35,6 +35,7 @@ from intelligence_hub.graph.workflow import (
     create_resolution_graph,
     create_enrichment_graph,
 )  # Split Graphs
+from intelligence_hub.ui.utils import get_image_base64, format_val, add_log
 from intelligence_hub.ui.components import (
     render_header,
     render_company_profile,
@@ -45,17 +46,17 @@ from intelligence_hub.ui.components import (
     render_sources,
     render_pdf_analysis,
     render_references,
+    render_company_summary_card,
 )
+from intelligence_hub.ui.chat_ui import render_chatbot_panel
+
 
 image_path = os.path.join(
     os.path.dirname(__file__), "intelligence_hub", "ui", "favicon.jpg"
 )
 
 
-# --- Helper for Local Images (Base64) ---
-def get_image_base64(path):
-    with open(path, "rb") as image_file:
-        return base64.b64encode(image_file.read()).decode()
+# --- Deleted local get_image_base64 (now imported from utils) ---
 
 
 logo_base64 = get_image_base64(
@@ -69,7 +70,7 @@ st.set_page_config(
     page_title="CorporateIntelligenceX",
     page_icon=image_path_ico,
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 # --- Apply Custom CSS ---
@@ -115,620 +116,24 @@ if "intermediate_state" not in st.session_state:
     st.session_state.intermediate_state = None
 if "agent_status" not in st.session_state:
     st.session_state.agent_status = get_default_agent_status()
+if "reset_counter" not in st.session_state:
+    st.session_state.reset_counter = 0
+if "show_chatbot" not in st.session_state:
+    st.session_state.show_chatbot = False
 
 
-# --- Helper to append logs ---
-def add_log(agent_name, action):
-    timestamp = datetime.now().strftime("%H:%M:%S")
-    log_entry = f"[{timestamp}] **{agent_name}**: {action}"
-    st.session_state.logs.append(log_entry)
-
-
-# Helper to render the resolved name section
-def render_resolved_ui(
-    placeholder=None, key="btn_continue_investigation", show_button=True
-):
-    # Use placeholder if provided, else main flow
-    context = placeholder.container() if placeholder else st.container()
-
-    # Check if we should return early (user clicked Abort)
-    if st.session_state.get("abort_investigation", False):
-        return False
-
-    with context:
-        # Layout: Name Display | Continue Button
-        # Use simple columns to keep Button aligned with Name at the top
-        # Layout: Name Display (Full Width)
-        # Use container for cleaner layout
-        col_display = st.container()
-
-        with col_display:
-            if st.session_state.is_resolving and not st.session_state.canonical_name:
-                # Resolving state
-                st.html(
-                    textwrap.dedent(
-                        """
-                    <div class="canonical-container" style="margin: 0;">
-                        <div class="canonical-label">
-                            <span class="canonical-icon">🏢</span>
-                            <span class="canonical-title">RESOLVED COMPANY NAME</span>
-                        </div>
-                        <div class="canonical-value resolving">
-                            <span class="canonical-text">Resolving...</span>
-                        </div>
-                    </div>
-                    """
-                    )
-                )
-            elif st.session_state.canonical_name:
-                # Resolved state
-                check = (
-                    '<span class="canonical-check">✓</span>'
-                    if st.session_state.canonical_name
-                    else ""
-                )
-                status_class = "resolved"
-
-                st.html(
-                    textwrap.dedent(
-                        f"""
-                    <div class="canonical-container" style="margin: 0;">
-                        <div class="canonical-label">
-                            <span class="canonical-icon">🏢</span>
-                            <span class="canonical-title">RESOLVED COMPANY NAME</span>
-                        </div>
-                        <div class="canonical-value {status_class}">
-                            <span class="canonical-text">{st.session_state.canonical_name}</span>
-                            {check}
-                        </div>
-                    </div>
-                    """
-                    )
-                )
-            else:
-                # Default state
-                st.markdown(
-                    textwrap.dedent(
-                        """
-                    <div class="canonical-container" style="margin: 0;">
-                        <div class="canonical-label">
-                            <span class="canonical-icon">🏢</span>
-                            <span class="canonical-title">RESOLVED COMPANY NAME</span>
-                        </div>
-                        <div class="canonical-value">
-                            <span class="canonical-text">Ready to search</span>
-                        </div>
-                    </div>
-                    """
-                    ),
-                    unsafe_allow_html=True,
-                )
-
-        # (Button moved to bottom)
-
-        # Prepare Profile Data (Default: Not Available)
-        desc = "No company profile data available yet. Start a search to generate insights."
-        ticker_display = ""
-        reason_text = "No data available"
-        stakeholders_html = ""
-        insights_html = '<div class="insight-item" style="color:#888;">No insights generated yet</div>'
-        social_html = '<span style="color:#888; font-size:0.9rem;">Not Available</span>'
-        badge_html = ""  # Hide badge by default
-        kg_html = ""  # Hide KG by default
-        show_stakeholders = False
-        website_html = ""  # Hide website by default
-        qa_html = ""  # Hide Q&A by default
-        ref_html = ""  # Default empty
-
-        # Override with real data if profile exists
-        if st.session_state.canonical_name and st.session_state.company_profile:
-            profile = st.session_state.company_profile
-
-            # Safe extraction with defaults
-            desc = profile.get("description", "No description available.")
-            ticker = profile.get("ticker", "N/A")
-            exchange = profile.get("exchange", "")
-            ticker_display = (
-                f"{exchange}:{ticker}" if exchange else (ticker if ticker else "")
-            )
-
-            # Confidence Logic
-            confidence = profile.get("confidence_score", 0)
-            conf_class = "medium"
-            if confidence >= 90:
-                conf_class = ""  # default green
-            elif confidence < 50:
-                conf_class = "low"
-
-            badge_html = f"""
-            <div class="confidence-badge {conf_class}">
-                <span>{confidence}% Confidence</span>
-            </div>
-            """
-
-            # Construct reasoning based on available data signals
-            signals = profile.get("data_quality_signals", {})
-            reasons = []
-            if signals.get("knowledge_panel"):
-                reasons.append("Knowledge Panel Verified")
-            if signals.get("official_website"):
-                reasons.append("Official Website")
-            if signals.get("wikipedia_presence"):
-                reasons.append("Wikipedia")
-            reason_text = " • ".join(reasons) if reasons else "Based on search results"
-
-            # Website extraction
-            raw_url = (
-                profile.get("website")
-                or profile.get("official_website")
-                or profile.get("url")
-            )
-
-            # Validate URL
-            website_url = None
-            if isinstance(raw_url, str) and raw_url.strip().startswith("http"):
-                website_url = raw_url.strip()
-
-            # Fallback to KG
-            if not website_url:
-                kg_tmp = profile.get("knowledge_graph", {})
-                if isinstance(kg_tmp, dict):
-                    val = kg_tmp.get("website")
-                    if isinstance(val, str) and val.startswith("http"):
-                        website_url = val
-
-            # Fallback to First Organic Result
-            if not website_url:
-                organic = profile.get("organic_results", [])
-                if organic and isinstance(organic, list) and len(organic) > 0:
-                    val = organic[0].get("link")
-                    if isinstance(val, str) and val.startswith("http"):
-                        website_url = val
-
-            website_html = ""
-            if website_url:
-                display_url = (
-                    website_url.replace("https://", "")
-                    .replace("http://", "")
-                    .rstrip("/")
-                )
-                website_html = f"""
-                <div style="margin-bottom: 20px; font-size: 0.9rem;">
-                    <a href="{website_url}" target="_blank" style="text-decoration: none; color: #0066cc; font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
-                        🔗 {display_url}
-                    </a>
-                </div>
-                """
-
-            # Knowledge Graph Extraction (Google Style)
-            # Check nested object first (per new prompt), then fallback to specific fields
-            kg_source = profile.get("knowledge_graph", {})
-            if not isinstance(kg_source, dict):
-                kg_source = {}
-
-            kg_data = {}
-
-            # 1. Customer Service (High priority in Google Panel)
-            if kg_source.get("customer_service"):
-                kg_data["Customer service"] = kg_source.get("customer_service")
-
-            # 2. Leadership (CEO, Founder) - Try KG first, then generic profile
-            ceo = kg_source.get("ceo")
-            founder = kg_source.get("founder")
-
-            # Fallback to leadership list/dict if not in KG dict
-            leadership_data = profile.get("leadership", [])
-
-            # Helper to check leadership fields in list or dict
-            if not ceo:
-                if isinstance(leadership_data, dict):
-                    # Try keys like "CEO", "Chief Executive Officer"
-                    for k, v in leadership_data.items():
-                        if "ceo" in k.lower() or "chief executive" in k.lower():
-                            ceo = v
-                            break
-                        if "ceo" in str(v).lower():
-                            ceo = v  # In case value is "CEO: Name"
-                            break
-                elif isinstance(leadership_data, list):
-                    for person in leadership_data:
-                        p_name = (
-                            person
-                            if isinstance(person, str)
-                            else person.get("name", "")
-                        )
-                        if (
-                            "ceo" in p_name.lower()
-                            or "chief executive" in p_name.lower()
-                        ):
-                            ceo = p_name
-                            break
-
-            if not founder:
-                if isinstance(leadership_data, dict):
-                    # Try keys like "Founder", "Co-Founder"
-                    for k, v in leadership_data.items():
-                        if "founder" in k.lower():
-                            founder = v
-                            break
-                elif isinstance(leadership_data, list):
-                    for person in leadership_data:
-                        p_name = (
-                            person
-                            if isinstance(person, str)
-                            else person.get("name", "")
-                        )
-                        if "founder" in p_name.lower():
-                            founder = p_name
-                            break
-
-            if ceo:
-                kg_data["CEO"] = ceo
-            if founder:
-                kg_data["Founder"] = founder
-
-            # 3. Other Core Fields
-            if kg_source.get("founded"):
-                kg_data["Founded"] = kg_source.get("founded")
-            if kg_source.get("headquarters"):
-                kg_data["Headquarters"] = kg_source.get("headquarters")
-            if kg_source.get("hubs"):
-                kg_data["Hubs"] = kg_source.get("hubs")
-            if kg_source.get("parent_organization"):
-                kg_data["Parent Org"] = kg_source.get("parent_organization")
-
-            # Check for fallbacks
-            if "Founded" not in kg_data and profile.get("founded"):
-                kg_data["Founded"] = profile.get("founded")
-            if "Headquarters" not in kg_data and profile.get("headquarters"):
-                kg_data["Headquarters"] = profile.get("headquarters")
-            if "Type" not in kg_data and (kg_source.get("type") or profile.get("type")):
-                kg_data["Type"] = kg_source.get("type") or profile.get("type")
-
-            # 4. Industry/Sector & Stock
-            industry = profile.get("industry") or profile.get("sector")
-            if industry:
-                kg_data["Industry"] = industry
-
-            ticker = profile.get("ticker")
-            exchange = profile.get("exchange")
-            if ticker and ticker != "N/A":
-                kg_data["Stock"] = f"{exchange}:{ticker}" if exchange else ticker
-
-            # Subsidiaries
-            subs = kg_source.get("subsidiaries") or profile.get("subsidiaries")
-            if subs:
-                if isinstance(subs, list):
-                    kg_data["Subsidiaries"] = ", ".join([str(s) for s in subs[:3]]) + (
-                        "..." if len(subs) > 3 else ""
-                    )
-                else:
-                    kg_data["Subsidiaries"] = str(subs)
-
-            # Dynamic Facts from LLM 'other_facts' or raw keys
-            other_facts = kg_source.get("other_facts", {})
-            if isinstance(other_facts, dict):
-                for k, v in other_facts.items():
-                    if k not in kg_data and v:
-                        # Clean key (e.g. "net_income" -> "Net Income")
-                        display_k = k.replace("_", " ").title()
-                        # Clean value (if list)
-                        if isinstance(v, list):
-                            v = ", ".join([str(i) for i in v[:3]])
-                        kg_data[display_k] = v
-
-            # Fallback: Check top-level keys in kg_source we missed
-            ignore_keys = {
-                "title",
-                "description",
-                "source",
-                "links",
-                "kgmid",
-                "type",
-                "founded",
-                "headquarters",
-                "subsidiaries",
-                "hubs",
-                "parent_organization",
-                "other_facts",
-                "founders",
-                "ceo",
-                "stock_price",
-            }
-            for k, v in kg_source.items():
-                key_lower = k.lower()
-                if key_lower not in ignore_keys and k not in kg_data and v:
-                    if isinstance(v, (str, int, float)):
-                        display_k = k.replace("_", " ").title()
-                        kg_data[display_k] = v
-
-            if kg_data:
-                rows = []
-                for k, v in kg_data.items():
-                    # Google Style: Bold Key + Value (Inline)
-                    rows.append(
-                        f"""
-                     <div style="margin-bottom: 5px; font-size: 0.9rem; line-height: 1.5; color: #202124;">
-                        <span style="font-weight: 700; color: #202124;">{k}:</span>
-                        <span style="color: #4d5156;">{v}</span>
-                     </div>
-                     """
-                    )
-                kg_html = f'<div style="margin-top: 15px; margin-bottom: 20px;">{"".join(rows)}</div>'
-
-            # Stakeholders & Shareholders Logic
-            leadership_names = []
-            shareholders_names = []
-            shareholders = profile.get("major_shareholders") or profile.get(
-                "ownership_structure", {}
-            ).get("major_shareholders", [])
-
-            # Parse Leadership (List or Dict)
-            if isinstance(leadership_data, list):
-                leadership_names.extend(
-                    [
-                        p if isinstance(p, str) else p.get("name", str(p))
-                        for p in leadership_data[:4]
-                    ]
-                )
-            elif isinstance(leadership_data, dict):
-                # Convert to list of keys to slice safely
-                l_keys = list(leadership_data.keys())
-                for k in l_keys[:4]:
-                    v = leadership_data[k]
-                    # If key is Role (CEO) and value is Name (Amit Jain), show Name
-                    if k.lower() in ["ceo", "founder", "chairman", "president"]:
-                        leadership_names.append(v)
-                    else:
-                        leadership_names.append(f"{v}")
-
-            # Parse Shareholders (List or Dict)
-            if isinstance(shareholders, list):
-                shareholders_names.extend(
-                    [
-                        s if isinstance(s, str) else s.get("name", str(s))
-                        for s in shareholders[:4]
-                    ]
-                )
-            elif isinstance(shareholders, dict):
-                s_keys = list(shareholders.keys())
-                for k in s_keys[:4]:
-                    v = shareholders[k]
-                    # If key is Name (longer) and value is Role (shorter description)
-                    if len(k) > len(str(v)):
-                        shareholders_names.append(f"{k} ({v})")
-                    else:
-                        shareholders_names.append(f"{v} ({k})")
-
-            # Build HTML
-            parts = []
-            if leadership_names:
-                parts.append(
-                    '<div style="margin-bottom:8px;"><strong style="color:#555;">Leadership:</strong></div>'
-                )
-                for name in leadership_names:
-                    parts.append(
-                        f'<div style="margin-bottom:4px; padding-left:10px; border-left:2px solid #ddd;">👤 {name}</div>'
-                    )
-
-            if shareholders_names:
-                parts.append(
-                    '<div style="margin-top:12px; margin-bottom:8px;"><strong style="color:#555;">Major Shareholders:</strong></div>'
-                )
-                for name in shareholders_names:
-                    parts.append(
-                        f'<div style="margin-bottom:4px; padding-left:10px; border-left:2px solid #ddd;">🏢 {name}</div>'
-                    )
-
-            if parts:
-                show_stakeholders = True
-                stakeholders_html = "".join(parts)
-
-            # Common Questions (SERP Q&A)
-            qa_list = profile.get("common_questions", [])
-            if qa_list and isinstance(qa_list, list):
-                qa_items = []
-                for item in qa_list[:3]:
-                    q = item.get("question", "")
-                    a = item.get("answer", "") or item.get("snippet", "")
-                    if q and a:
-                        qa_items.append(
-                            f'<div style="margin-bottom:8px;"><strong style="color:#555;">Q: {q}</strong><br><span style="color:#666; font-size:0.9rem;">{a}</span></div>'
-                        )
-
-                if qa_items:
-                    qa_html = f"""
-                    <div class="summary-section" style="margin-top:20px; border-top:1px solid #eee; padding-top:10px;">
-                        <h4>Common Questions</h4>
-                        <div>{"".join(qa_items)}</div>
-                    </div>
-                    """
-
-            # Social Links
-            social_html = ""
-            socials = profile.get("social_media", {})
-            if not isinstance(socials, dict):
-                socials = {}
-            socials = socials.copy()
-
-            # Add Wikipedia to Socials
-            wiki_url = profile.get("wikipedia") or profile.get("wikipedia_url")
-            if not wiki_url:
-                # Check KG source
-                kg_tmp = profile.get("knowledge_graph", {})
-                if isinstance(kg_tmp, dict):
-                    src = kg_tmp.get("source", {})
-                    if src.get("name") and "wikipedia" in str(src.get("name")).lower():
-                        wiki_url = src.get("link")
-
-            if wiki_url:
-                socials["Wikipedia"] = wiki_url
-
-            if socials:
-                for platform, url in socials.items():
-                    if not url:
-                        continue
-                    icon = "🌐"
-                    p_lower = platform.lower()
-                    if "linkedin" in p_lower:
-                        icon = "in"
-                    elif "twitter" in p_lower or "x.com" in p_lower:
-                        icon = "𝕏"
-                    elif "facebook" in p_lower:
-                        icon = "f"
-                    elif "instagram" in p_lower:
-                        icon = "📸"
-                    elif "youtube" in p_lower:
-                        icon = "▶️"
-                    elif "wikipedia" in p_lower:
-                        icon = "W"
-
-                    social_html += f'<a href="{url}" target="_blank" class="social-icon" title="{platform}" style="margin-right:12px; text-decoration:none; font-size:1.1rem; color:#555;">{icon}</a>'
-
-            # References Logic
-            refs = list(profile.get("references", []))
-
-            # Incorporate Organic Results (SERP Links)
-            organic = profile.get("organic_results", [])
-            seen_urls = {r.get("url") or r.get("link") for r in refs}
-
-            if organic and isinstance(organic, list):
-                for res in organic[:5]:
-                    link = res.get("link")
-                    if link and link not in seen_urls:
-                        # Attempt to extract a short source name
-                        raw_source = res.get("source") or res.get("title", "Link")
-                        # Simple heuristic: often "Title - Source" or just "Source"
-                        source_name = raw_source
-                        if " - " in source_name:
-                            source_name = source_name.split(" - ")[-1]
-
-                        refs.append({"source": source_name[:20], "url": link})
-                        seen_urls.add(link)
-
-            if not refs:
-                # Fallback to KG Source
-                kg = profile.get("knowledge_graph", {})
-                src = kg.get("source", {})
-                if isinstance(src, dict) and src.get("link"):
-                    refs.append(
-                        {
-                            "source": src.get("name", "Source")[:20],
-                            "url": src.get("link"),
-                        }
-                    )
-
-            if refs:
-                ref_html = f"""
-                <div class="summary-section" style="margin-top:20px; border-top:1px solid #eee; padding-top:10px;">
-                    <h4 style="margin-bottom:12px; font-size:1rem; color:#202124;">References</h4>
-                    <div style="display:flex; flex-wrap:wrap; gap:10px;">
-                        {"".join([f'<a href="{r["url"]}" target="_blank" class="ref-tag" style="padding:4px 12px; background:#f1f3f4; border-radius:16px; color:#1a73e8; text-decoration:none; font-size:0.85rem; border:1px solid #dadce0;">{r["source"]}</a>' for r in refs[:4]])}
-                    </div>
-                </div>
-                """
-
-        # --- Render the Card ---
-        # We always render the card shell if we have a canonical name
-        if st.session_state.canonical_name:
-            card_html = f"""
-            <div class="summary-card">
-                <div class="summary-header">
-                    <div style="flex:1; display:flex; align-items:center; gap:20px;">
-                        <div>
-                            <h2 style="margin:0; font-size:1.5rem; color:#202124;">{st.session_state.canonical_name}</h2>
-                            <div style="color:#70757a; font-size:0.9rem; margin-top:4px;">{reason_text}</div>
-                        </div>
-                        {badge_html}
-                    </div>
-                </div>
-                
-                <div style="display:grid; grid-template-columns: 2fr 1fr; gap:30px; margin-top:15px;">
-                    <div>
-                        {website_html}
-                        <div style="color:#4d5156; font-size:1rem; line-height:1.6; margin-bottom:15px;">
-                            {desc}
-                        </div>
-                        {qa_html}
-                        {ref_html}
-                    </div>
-                    <div style="border-left:1px solid #eee; padding-left:20px;">
-                        {kg_html}
-                        {stakeholders_html}
-                        <div style="margin-top:20px;">
-                            <div style="margin-bottom:12px;"><strong style="color:#555;">CONNECT</strong></div>
-                            <div class="social-links" style="margin-top:0;">
-                                {social_html}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            """
-            st.html(card_html)
-
-            # Continue/Abort Controls (Only show if paused)
-            if (
-                st.session_state.investigation_paused
-                and not st.session_state.analysis_complete
-                and show_button
-            ):
-                st.html('<div style="height:20px;"></div>')
-                col_abort, col_continue = st.columns([1, 2.5])
-
-                with col_abort:
-                    if st.button(
-                        "🛑 ABORT", key=f"{key}_abort", use_container_width=True
-                    ):
-                        st.session_state.abort_investigation = True
-                        st.session_state.data = None
-                        st.session_state.logs = []
-                        st.session_state.progress_stage = 0
-                        st.session_state.analysis_complete = False
-                        st.session_state.canonical_name = None
-                        st.session_state.confidence_score = None
-                        st.session_state.is_resolving = False
-                        st.session_state.investigation_paused = False
-                        st.session_state.agent_status = get_default_agent_status()
-                        st.rerun()
-
-                with col_continue:
-                    btn_disabled = not st.session_state.canonical_name
-                    if st.button(
-                        "CONTINUE PROFILING →",
-                        key=key,
-                        disabled=btn_disabled,
-                        type="primary",
-                        use_container_width=True,
-                    ):
-                        return True
-        elif st.session_state.is_resolving:
-            # Show a beautiful shimmer loading placeholder
-            st.html(
-                """
-            <div class="summary-card" style="opacity: 0.7;">
-                <div class="shimmer" style="height: 30px; width: 60%; margin-bottom: 20px;"></div>
-                <div class="shimmer" style="height: 100px; width: 100%; margin-bottom: 20px;"></div>
-                <div style="display: flex; gap: 20px;">
-                    <div class="shimmer" style="height: 200px; flex: 2;"></div>
-                    <div class="shimmer" style="height: 200px; flex: 1;"></div>
-                </div>
-            </div>
-            """
-            )
-
-    return False
+# Removed local helpers (moved to intelligence_hub.ui.utils and components.py)
 
 
 # Cache the Agent Graph to avoid re-initialization overhead (DB connections etc)
 # Cache the Agent Graphs
-@st.cache_resource
-def get_cached_resolution_graph_v5():
+@st.cache_resource(show_spinner=False)
+def get_cached_resolution_graph_v6():
     return create_resolution_graph()
 
 
-@st.cache_resource
-def get_cached_enrichment_graph_v5():
+@st.cache_resource(show_spinner=False)
+def get_cached_enrichment_graph_v6():
     return create_enrichment_graph()
 
 
@@ -780,7 +185,7 @@ def run_investigation(
     def update_resolved_ui():
         # Hide button during investigation to avoid duplicate key errors
         # Button will appear after st.rerun() in main app flow
-        render_resolved_ui(
+        render_company_summary_card(
             resolved_placeholder,
             key="btn_continue_investigation_internal",
             show_button=False,
@@ -825,11 +230,11 @@ def run_investigation(
     }
 
     if not resume_mode:
-        graph = get_cached_resolution_graph_v5()
+        graph = get_cached_resolution_graph_v6()
         input_data = {"query": query, "logs": [], "llm_config": llm_config}
         processed_logs = set()
     else:
-        graph = get_cached_enrichment_graph_v5()
+        graph = get_cached_enrichment_graph_v6()
         input_data = st.session_state.intermediate_state
         # Update LLM config in case user changed settings before continuing
         input_data["llm_config"] = llm_config
@@ -850,15 +255,14 @@ def run_investigation(
     # Limit indentation changes by using a dummy block, or just unindent.
     # User wants to disable live logs.
 
-    # Stream the Graph execution (Use default 'updates' mode to track node progress)
-    # We use a config with thread_id for state persistence/sync
+    # Stream the Graph execution (Use thread_id for state persistence/checkpointing)
     config = {"configurable": {"thread_id": st.session_state.thread_id}}
     stream = graph.stream(input_data, config=config)
-    final_state = input_data.copy()
+    final_state = input_data.copy() if not resume_mode else {}
 
     # Initial Pipeline Update
     update_pipeline_ui()
-    update_resolved_ui()
+    update_resolved_ui()  # Initial Blink
 
     for event in stream:
         # Check if user requested abort
@@ -867,12 +271,70 @@ def run_investigation(
             # status.update removed
             return
 
-        # Event corresponds to a node finishing (in 'updates' mode)
-        for node, state_update in event.items():
-            # Update Agent Status based on finished node
+        # Event corresponds to a node finishing
+        for node, state in event.items():
+            final_state = state  # Keep updating final state
+
+            # --- 1. DATA EXTRACTION FIRST ---
+            # Capture canonical name from state if available
+            state_canonical = state.get("canonical_name") or state.get("company_name")
+
+            # Ensure profile container exists
+            if st.session_state.company_profile is None:
+                st.session_state.company_profile = {}
+
+            # Capture structured profile data (merging, not replacing)
+            new_profile_data = state.get("enrichments") or state.get("data")
+            if isinstance(new_profile_data, dict):
+                st.session_state.company_profile.update(new_profile_data)
+
+            # Capture top-level fields that contribute to the summary card
+            for field in [
+                "ticker",
+                "exchange",
+                "website",
+                "description",
+                "sector",
+                "industry",
+                "confidence",
+                "confidence_score",
+            ]:
+                if field in state and state[field] is not None:
+                    # Map 'confidence' to 'confidence_score' for card consistency
+                    target_field = (
+                        "confidence_score" if field == "confidence" else field
+                    )
+                    st.session_state.company_profile[target_field] = state[field]
+
+            # A. CAPTURE CANONICAL NAME & CONFIDENCE (If available in this event)
+            if state_canonical and not st.session_state.canonical_name:
+                import re as _re
+
+                # Strip any HTML tags (e.g. </div> from profiler output)
+                clean_name = _re.sub(r"<[^>]+>", "", str(state_canonical)).strip()
+                if clean_name:
+                    st.session_state.canonical_name = clean_name
+
+            # Sync Confidence Score if provided in this node's state
+            if state.get("confidence") or state.get("confidence_score"):
+                confidence = state.get("confidence") or state.get("confidence_score")
+                st.session_state.confidence_score = (
+                    round(confidence) if isinstance(confidence, (int, float)) else None
+                )
+
+            # B. SIGNAL COMPLETION OF PHASE 1 (Resolution + Profiling)
+            # Only mark resolution phase as complete AFTER 'profiling' finishes
+            if node == "profiling" or node == "resolution":
+                # Wait for profiling specifically for the most complete card data
+                if node == "profiling":
+                    st.session_state.is_resolving = False
+                    st.session_state.progress_stage = 2
+
+            # --- 2. STATUS UPDATES SECOND ---
+            # ---- Map LangGraph node to agent_status key ----
             node_to_agent = {
-                "resolution": "master_agent",
-                "profiling": "master_agent",
+                "resolution": None,  # Keep master_agent 'running' during resolution
+                "profiling": "master_agent",  # Only mark success after profiling completes
                 "wikipedia": "wikipedia_agent",
                 "news": "news_agent",
                 "ded": "ded_agent",
@@ -880,92 +342,158 @@ def run_investigation(
                 "vectorizer": "vectorizer",
                 "pdf_agent": "pdf_agent",
                 "analyst": "analyst",
-                "presentation_agent": "analyst",  # Presentation marks analyst stage complete
+                "start_enrichment": None,  # passthrough node
             }
             agent_key = node_to_agent.get(node)
             if agent_key:
-                st.session_state.agent_status[agent_key] = "success"
+                # Check if this node had an error
+                node_logs = state.get("logs", [])
+                last_log = node_logs[-1].lower() if node_logs else ""
+                has_error = ("failed" in last_log and "error" in last_log) or (
+                    "exception" in last_log
+                )
+                st.session_state.agent_status[agent_key] = (
+                    "error" if has_error else "success"
+                )
 
-                # Progression sequence (set running for next)
-                if node in ("wikipedia", "news", "ded"):
-                    # Check if all parallel agents finished
-                    parallel_done = all(
-                        st.session_state.agent_status.get(k) in ("success", "error")
-                        for k in ["wikipedia_agent", "news_agent", "ded_agent"]
-                    )
-                    if parallel_done:
-                        st.session_state.agent_status["scraper"] = "running"
-                elif node == "scraper":
-                    st.session_state.agent_status["pdf_agent"] = "running"
-                    st.session_state.progress_stage = 3  # Move to Financials
-                elif node == "pdf_agent":
-                    st.session_state.agent_status["vectorizer"] = "running"
+                # Set next sequential agents to "running" if master finished
+                if node in ("wikipedia", "news", "ded", "scraper", "pdf_agent"):
+                    # Mark the specific agent that finished as success
+                    agent_map = {
+                        "wikipedia": "wikipedia_agent",
+                        "news": "news_agent",
+                        "ded": "ded_agent",
+                        "scraper": "scraper",
+                        "pdf_agent": "pdf_agent",
+                    }
+                    if node in agent_map:
+                        st.session_state.agent_status[agent_map[node]] = "success"
+                        if node == "scraper":
+                            st.session_state.agent_status["yahoo_agent"] = "success"
+
                 elif node == "vectorizer":
-                    st.session_state.agent_status["analyst"] = "running"
-                    st.session_state.progress_stage = 4  # Move to Analyst
+                    st.session_state.agent_status["vectorizer"] = "success"
                 elif node == "analyst":
-                    pass  # presentation_agent will finish it
+                    st.session_state.agent_status["analyst"] = "success"
+                    st.session_state.analysis_complete = True
 
-            # Capture canonical name from update if present
-            state_canonical = state_update.get("canonical_name") or state_update.get(
-                "company_name"
-            )
-            if state_canonical and not st.session_state.canonical_name:
-                st.session_state.canonical_name = state_canonical
-                st.session_state.is_resolving = False
-                st.session_state.progress_stage = 2
-                update_resolved_ui()
+            # Start Enrichment Phase (outside if agent_key because start_enrichment has None)
+            if node == "start_enrichment":
+                # Parallel Enrichment Phase: Start all tracks simultaneously (Visual)
+                st.session_state.agent_status["wikipedia_agent"] = "running"
+                st.session_state.agent_status["news_agent"] = "running"
+                st.session_state.agent_status["ded_agent"] = "running"
+                st.session_state.agent_status["scraper"] = "running"
+                st.session_state.agent_status["yahoo_agent"] = "running"
+                st.session_state.agent_status["pdf_agent"] = "running"
 
-            # Capture profile data for Summary Card (Phase 1)
-            if node == "master_enrichment" and "enrichments" in state_update:
-                st.session_state.company_profile = state_update["enrichments"]
-                update_resolved_ui()
+                # Smart Skip Handling: If Exchange is known, mark the other as "completed" immediately
+                exchange_val = str(state.get("exchange", "")).upper()
+                if exchange_val == "DFM":
+                    st.session_state.agent_status["scraper"] = "success"
+                elif exchange_val == "ADX":
+                    st.session_state.agent_status["ded_agent"] = "success"
 
-            # Check for logs
-            current_logs = state_update.get("logs", [])
+            # Check for new logs
+            current_logs = state.get("logs", [])
             for log in current_logs:
                 if log not in processed_logs:
                     processed_logs.add(log)
-                    add_log("System", log)
 
-        # Periodic UI update for live feedback
-        update_pipeline_ui()
+                    # UI Logic for Logs and Progress
+                    if "Resolved" in log or "Canonical Name" in log:
+                        add_log("Resolver", log)
+                        st.session_state.progress_stage = 1  # Canonical Resolution
 
-    # After stream ends, get the ABSOLUTE FINAL state for consistency
-    final_full_state = graph.get_state(config).values
-    final_state = final_full_state
+                        # Extract canonical name from log if not already set
+                        if (
+                            "Canonical Name: " in log
+                            and not st.session_state.canonical_name
+                        ):
+                            parts = log.split("Canonical Name: ")
+                            if len(parts) > 1:
+                                import re as _re
 
-    # 4. Handle Completion
+                                raw_name = parts[1].strip()
+                                clean_name = _re.sub(r"<[^>]+>", "", raw_name).strip()
+                                if clean_name:
+                                    st.session_state.canonical_name = clean_name
+                                st.session_state.is_resolving = False
+
+                                # Mark Stage 1 as Complete (Green) immediately
+                                st.session_state.progress_stage = 2
+                        elif " to " in log and not st.session_state.canonical_name:
+                            parts = log.split(" to ")
+                            if len(parts) > 1:
+                                import re as _re
+
+                                # Strip any HTML tags in case log contains markup
+                                raw_name = parts[1].strip()
+                                clean_name = _re.sub(r"<[^>]+>", "", raw_name).strip()
+                                if clean_name:
+                                    st.session_state.canonical_name = clean_name
+                                st.session_state.is_resolving = False
+
+                                # Mark Stage 1 as Complete (Green) immediately
+                                st.session_state.progress_stage = 2
+                    elif "SERP" in log or "Profiling" in log:
+                        add_log("SERP Agent", log)
+                        # Only set to 1 if we haven't advanced to later stages (Resolution Done = 2)
+                        if st.session_state.progress_stage < 2:
+                            st.session_state.progress_stage = 1  # Merged with Canonical
+                    elif "Enrichment" in log or "Scraping" in log:
+                        add_log("Harvester", log)
+                        st.session_state.progress_stage = (
+                            2  # Parallel Enrichment & Scraping
+                        )
+                    elif "Vectorizer" in log:
+                        add_log("Vectorizer", log)
+                        st.session_state.progress_stage = 3  # Vectorize
+                    elif "Analyst" in log:
+                        add_log("Analyst", log)
+                        st.session_state.progress_stage = 4  # Analyze
+                        st.session_state.agent_status["analyst"] = "running"
+                        if "complete" in log.lower() or "finished" in log.lower():
+                            st.session_state.agent_status["analyst"] = "success"
+                    elif "Scraper" in log or "Scraping" in log:
+                        add_log("Harvester", log)
+                        # Specific matches for parallel UI tracks
+                        if "Wikipedia" in log:
+                            st.session_state.agent_status["wikipedia_agent"] = "success"
+                        if "Yahoo" in log:
+                            st.session_state.agent_status["yahoo_agent"] = "success"
+                        if "ADX" in log:
+                            st.session_state.agent_status["scraper"] = "success"
+                        if "DFM" in log:
+                            st.session_state.agent_status["ded_agent"] = "success"
+                    else:
+                        add_log("System", log)
+
+            # --- Synchronized UI Update ---
+            update_pipeline_ui()
+            update_resolved_ui()
+
     # 4. Handle Completion
     if not resume_mode:
-        # Resolution Complete -> Pause
-        st.session_state.intermediate_state = final_state
+        # Resolution Phase complete -> Pause and wait for user to 'Generate Profile'
         st.session_state.investigation_paused = True
-        st.session_state.is_resolving = False
-
-        # Name resolution check
-        if final_state.get("canonical_name"):
-            st.session_state.canonical_name = final_state["canonical_name"]
-            st.session_state.agent_status["master_agent"] = "success"
-
-        # Ensure profile is captured for Phase 1 Summary Card
-        if final_state.get("enrichments"):
-            st.session_state.company_profile = final_state["enrichments"]
-
+        st.session_state.intermediate_state = final_state
+        add_log(
+            "System",
+            f"Company Resolved: {st.session_state.canonical_name}. Ready for deep profiling.",
+        )
+        # FINAL SYNC FOR RESOLUTION
         update_pipeline_ui()
         update_resolved_ui()
-        st.toast(
-            "Canonical Resolution Complete. Click 'Continue' to proceed.", icon="⏸️"
-        )
     else:
-        # Enrichment Complete -> Finish
+        # Enrichment & Synthesis Complete -> Final Dashboard
         st.session_state.investigation_paused = False
         st.session_state.analysis_complete = True
         st.session_state.progress_stage = 5  # Complete
 
         # Update Data from PresentationAgent (full overwrite)
+        # This is the "develop" logic for financial summary segment
         if final_state and "meta" in final_state and "financials" in final_state:
-            # Full replacement to ensure no mock data leaks from initial session state
             st.session_state.data = final_state
             st.session_state.agent_status["analyst"] = "success"
             add_log(
@@ -973,15 +501,15 @@ def run_investigation(
                 f"Intelligence Hub: Analysis complete for {st.session_state.canonical_name}",
             )
         elif final_state.get("financial_data"):
-            # Fallback
+            # Fallback for raw scraper outputs
             real_data = final_state["financial_data"]
             if "financials" in real_data:
                 st.session_state.data["financials"] = real_data["financials"]
             if "insights" in final_state:
                 st.session_state.data["insights"] = final_state["insights"]
 
+        # status.update removed as UI disabled
         update_pipeline_ui()
-        update_resolved_ui()
 
 
 # --- Sidebar ---
@@ -1108,6 +636,8 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
+    # Chatbot moved to right-side popover panel
+
 
 # Banner with styled heading and tagline (matching reference)
 st.markdown(
@@ -1150,6 +680,13 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# Render Progress Chain (Always visible)
+pipeline_placeholder = st.empty()
+with pipeline_placeholder.container():
+    # Use new pipeline visualization
+    data = st.session_state.get("data", {})
+    render_agent_pipeline(data, show_details=False)
+
 # Search Company Label - professional styling
 st.markdown(
     '<div class="ui-section-label"><span class="emoji">🔍</span><span>Search Company</span></div>',
@@ -1164,22 +701,27 @@ with cols[0]:
         "company_input",
         placeholder="Enter company name (e.g., Tesla, Emirates NBD, ADNOC)",
         label_visibility="collapsed",
-        key="company_search_input",
+        key=f"company_search_input_{st.session_state.reset_counter}",
     )
-
-with cols[1]:
-    search_clicked = st.button("🔍 Search", type="primary", use_container_width=True)
-
-with cols[2]:
-    abort_clicked = st.button("🛑 Abort", type="secondary", use_container_width=True)
 
 with cols[3]:
     test_data_clicked = st.button(
-        "📊 Test Dashboard", type="secondary", use_container_width=True
+        "📊 Test Dashboard", type="secondary", width="stretch"
     )
 
+with cols[1]:
+    search_clicked = st.button(
+        "SEARCH", type="primary", width="stretch", icon=":material/search:"
+    )
+
+with cols[2]:
+    reset_clicked = st.button(
+        "RESET", type="secondary", width="stretch", icon=":material/refresh:"
+    )
+
+
 # Canonical Name Section - professional styling
-st.markdown('<div class="ui-section-label"></div>', unsafe_allow_html=True)
+st.html('<div class="ui-section-label"></div>')
 
 # Canonical Name Display
 # Canonical Name Display
@@ -1188,19 +730,7 @@ continue_clicked = False
 
 # Only render if NOT starting a new search (avoid duplicate key with run_investigation final state)
 if not search_clicked:
-    continue_clicked = render_resolved_ui(resolved_placeholder)
-
-# Render Progress Chain (Always visible)
-st.markdown(
-    '<div class="ui-section-label"><span class="emoji">⚙️</span><span>STATUS TRACKER</span></div>',
-    unsafe_allow_html=True,
-)
-
-pipeline_placeholder = st.empty()
-with pipeline_placeholder.container():
-    # Use new pipeline visualization
-    data = st.session_state.get("data", {})
-    render_agent_pipeline(data, show_details=False)
+    continue_clicked = render_company_summary_card(resolved_placeholder)
 
 # Main Dashboard Placeholder
 dashboard_placeholder = st.empty()
@@ -1218,22 +748,44 @@ if continue_clicked:
     )
     st.rerun()
 
-if abort_clicked:
+if reset_clicked:
     # Set abort flag FIRST to stop ongoing workflow
     st.session_state.abort_investigation = True
 
-    # Then clear all state
-    st.session_state.data = None
-    st.session_state.logs = []
-    st.session_state.progress_stage = 0
-    st.session_state.analysis_complete = False
-    st.session_state.canonical_name = None
-    st.session_state.confidence_score = None
-    st.session_state.is_resolving = False
+    # COMPREHENSIVE STATE CLEAR
+    keys_to_reset = [
+        "data",
+        "logs",
+        "progress_stage",
+        "analysis_complete",
+        "canonical_name",
+        "company_profile",
+        "confidence_score",
+        "is_resolving",
+        "investigation_paused",
+        "intermediate_state",
+        "abort_investigation",
+    ]
+
+    for key in keys_to_reset:
+        st.session_state[key] = (
+            None
+            if key != "logs"
+            and key != "progress_stage"
+            and key != "analysis_complete"
+            and key != "is_resolving"
+            and key != "investigation_paused"
+            and key != "abort_investigation"
+            else ([] if key == "logs" else (0 if key == "progress_stage" else False))
+        )
+
     st.session_state.agent_status = get_default_agent_status()
 
+    # INCREMENT COUNTER TO CLEAR WIDGET
+    st.session_state.reset_counter += 1
+
     # Add log message
-    add_log("System", "Investigation aborted by user")
+    add_log("System", "Dashboard fully reset")
 
     st.rerun()
 
@@ -1287,4 +839,14 @@ if st.session_state.analysis_complete and st.session_state.data:
 elif not st.session_state.analysis_complete and st.session_state.progress_stage == 0:
     # Empty State - Show nothing or a welcome message
     pass
-# End of Streamlit App - Force Reload 1
+
+
+# ── IntelX Assistant (Right-side Popover) ──
+_ix_ticker = st.session_state.get("ticker", "") or ""
+if not _ix_ticker:
+    _ix_data = st.session_state.get("data") or {}
+    _ix_ticker = (_ix_data.get("company_profile") or {}).get("ticker", "") or ""
+_ix_company = st.session_state.get("canonical_name", "") or ""
+
+with st.popover("\U0001f4ac IntelX Assistant", width="content"):
+    render_chatbot_panel(_ix_ticker, _ix_company)

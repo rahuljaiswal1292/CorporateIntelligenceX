@@ -30,7 +30,7 @@ class ScraperOrchestrator:
         self.wiki_scraper = WikiScraper()
         self.yahoo_scraper = YahooFinanceScraper()
 
-    def run(self, state):
+    def run(self, state: AgentState):
         """
         LangGraph Entry Point.
         """

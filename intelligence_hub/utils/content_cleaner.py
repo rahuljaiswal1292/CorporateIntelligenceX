@@ -22,55 +22,21 @@ def clean_html_to_markdown(html_content: str) -> str:
     # 1. STRIP BOILERPLATE & NOISE
     # Remove boilerplate elements
     boilerplate_selectors = [
-        "header",
-        "footer",
-        "nav",
-        "aside",
-        ".nav",
-        ".footer",
-        ".header",
-        ".sidebar",
-        ".menu",
-        ".ads",
-        ".advertisement",
-        ".social-share",
-        ".adx-market-watch",
-        ".breadcrumbs-nav",
-        ".company-profile-nav",
-        ".pagination",
-        ".adx-pagination",
-        ".newsletter-section",
-        "script",
-        "style",
-        "meta",
-        "noscript",
-        "iframe",
-        "object",
-        "embed",
-        "applet",
-        "svg",
-        "button",
-        "input",
-        "form",
-        "select",
-        "option",
+        'header', 'footer', 'nav', 'aside', '.nav', '.footer', '.header',
+        '.sidebar', '.menu', '.ads', '.advertisement', '.social-share',
+        '.adx-market-watch', '.breadcrumbs-nav', '.company-profile-nav',
+        '.pagination', '.adx-pagination', '.newsletter-section',
+        "script", "style", "meta", "noscript", "iframe", "object", "embed", "applet", "svg", "button", "input", "form", "select", "option"
     ]
     for selector in boilerplate_selectors:
         for element in soup.select(selector):
             element.decompose()
-
+        
     # Remove elements by class/id heuristics (common boilerplate)
     # Be careful not to remove content.
     # Safe to remove: cookie-banner, popup, advertisement, social-share
     # Updated: changed 'share' to 'share-'/ 'share_' to avoid matching 'shareholders'
-    for element in soup.find_all(
-        attrs={
-            "class": re.compile(
-                r"cookie|popup|ad-|advert|banner|social|share-|share_|sidebar|widget|menu|navigation",
-                re.I,
-            )
-        }
-    ):
+    for element in soup.find_all(attrs={"class": re.compile(r"cookie|popup|ad-|advert|banner|social|share-|share_|sidebar|widget|menu|navigation", re.I)}):
         element.decompose()
 
     # 2. FLATTEN TABLES (Handle colspan/rowspan)
@@ -86,7 +52,7 @@ def clean_html_to_markdown(html_content: str) -> str:
     # DFM SPECIFIC: Flex Tables and Grid Structures
     _process_dfm_flex_table(soup)
     _process_dfm_grid_to_table(soup)
-
+    
     # ADX SPECIFIC: Orderbook Grid
     _process_adx_orderbook_grid(soup)
 
@@ -99,36 +65,17 @@ def clean_html_to_markdown(html_content: str) -> str:
 
     # 4. REMOVE FONT STYLES (Clean Prose)
     # We want to strip formatting tags but keep structural ones.
-    # After our custom processors have converted flex/grid to <table>,
+    # After our custom processors have converted flex/grid to <table>, 
     # we can safely strip <div> and <span> to get clean text inside table cells.
     # Note: markdownify can sometimes jumble text if div/span are stripped without spaces.
     # We'll add a space before and after block-like tags to prevent merging.
-    for tag in soup.find_all(["div", "span", "p"]):
+    for tag in soup.find_all(['div', 'span', 'p']):
         if tag.get_text(strip=True):
             tag.insert_before(soup.new_string(" "))
             tag.insert_after(soup.new_string(" "))
 
-    strip_tags = [
-        "b",
-        "strong",
-        "i",
-        "em",
-        "u",
-        "s",
-        "strike",
-        "font",
-        "sup",
-        "sub",
-        "big",
-        "small",
-        "mark",
-        "ins",
-        "del",
-        "img",
-        "div",
-        "span",
-    ]
-
+    strip_tags = ['b', 'strong', 'i', 'em', 'u', 's', 'strike', 'font', 'sup', 'sub', 'big', 'small', 'mark', 'ins', 'del', 'img', 'div', 'span'] 
+    
     # 5. CONVERT TO MARKDOWN
     # heading_style="ATX" -> # Header
     markdown_text = md(str(soup), heading_style="ATX", strip=strip_tags)
@@ -367,6 +314,193 @@ def _process_dl_to_table(dl, soup):
             tr.append(td2)
 
             tbody.append(tr)
+            
+def _process_dfm_flex_table(soup):
+    """
+    Detects and converts DFM flex-tables (table-flex, t-row, t-col/t-cell) to HTML tables.
+    """
+    # 1. Handle .table-flex with .t-row and .t-cell (Simple list-like tables)
+    for flex_table in soup.find_all(class_="table-flex"):
+        # If it has .t-row and .t-cell structure
+        rows = flex_table.find_all(class_="t-row")
+        if not rows: continue
+        
+        html_table = soup.new_tag("table")
+        tbody = soup.new_tag("tbody")
+        html_table.append(tbody)
+        
+        for row in rows:
+            tr = soup.new_tag("tr")
+            # Headers might be specified via class or just first row
+            cells = row.find_all(class_="t-cell")
+            if not cells: continue
+            
+            for cell in cells:
+                td = soup.new_tag("td")
+                td.string = cell.get_text(separator=" ", strip=True)
+                tr.append(td)
+            tbody.append(tr)
+            
+        flex_table.replace_with(html_table)
+
+    # 2. Handle .table-flex-vertical with .t-row and .t-col (Grid-like key-value tables)
+    for flex_table in soup.find_all(class_="table-flex-vertical"):
+        rows = flex_table.find_all(class_="t-row")
+        if not rows: continue
+        
+        html_table = soup.new_tag("table")
+        tbody = soup.new_tag("tbody")
+        html_table.append(tbody)
+        
+        for row in rows:
+            cols = row.find_all(class_="t-col")
+            if not cols: 
+                # Sometimes t-row has t-cell directly
+                cols = row.find_all(class_="t-cell")
+                if not cols: continue
+            
+            for col in cols:
+                # Find label
+                label_el = col.find(class_=re.compile(r"t-head|text-muted|text-xs"))
+                label = label_el.get_text(strip=True) if label_el else "Info"
+                
+                # Clone col and remove label to get value
+                from copy import copy
+                col_copy = BeautifulSoup(str(col), 'html.parser').find()
+                l_copy = col_copy.find(class_=re.compile(r"t-head|text-muted|text-xs"))
+                if l_copy: l_copy.decompose()
+                
+                value = col_copy.get_text(separator=" ", strip=True)
+                
+                if label and value:
+                    tr = soup.new_tag("tr")
+                    th = soup.new_tag("th")
+                    th.string = label
+                    td = soup.new_tag("td")
+                    td.string = value
+                    tr.append(th)
+                    tr.append(td)
+                    tbody.append(tr)
+                
+        flex_table.replace_with(html_table)
+
+def _process_dfm_grid_to_table(soup):
+    """
+    Detects and converts DFM grid-based key-value pairs into HTML tables.
+    Matches classes like grid-cols-1, md:grid-cols-2, etc.
+    """
+    for grid in soup.find_all(class_=re.compile(r"grid-cols-\d+")):
+        # Skip if already inside a table we created
+        if grid.find_parent("table"): continue
+        
+        items = grid.find_all(recursive=False)
+        if not items: continue
+        
+        processed_pairs = []
+        for item in items:
+            # Look for spans/divs with specific DFM classes or structural patterns
+            # Pattern 1: Labels with text-xs, text-muted, font-medium
+            label_el = item.find(class_=re.compile(r"text-xs|text-muted|font-medium|uppercase"))
+            if label_el:
+                label = label_el.get_text(strip=True)
+                # Value is the rest of the text
+                from copy import copy
+                item_copy = BeautifulSoup(str(item), 'html.parser').find()
+                l_copy = item_copy.find(class_=re.compile(r"text-xs|text-muted|font-medium|uppercase"))
+                if l_copy: l_copy.decompose()
+                value = item_copy.get_text(separator=" ", strip=True)
+                
+                if label and value:
+                    processed_pairs.append((label, value))
+            else:
+                # Pattern 2: Two children, first is label
+                children = item.find_all(recursive=False)
+                if len(children) >= 2:
+                    label = children[0].get_text(strip=True)
+                    value = children[1].get_text(separator=" ", strip=True)
+                    if label and value:
+                        processed_pairs.append((label, value))
+
+        if len(processed_pairs) > 1:
+            html_table = soup.new_tag("table")
+            tbody = soup.new_tag("tbody")
+            html_table.append(tbody)
+            
+            for label, value in processed_pairs:
+                tr = soup.new_tag("tr")
+                th = soup.new_tag("th")
+                th.string = label
+                td = soup.new_tag("td")
+                td.string = value
+                tr.append(th)
+                tr.append(td)
+                tbody.append(tr)
+            
+            grid.replace_with(html_table)
+
+def _process_adx_orderbook_grid(soup):
+    """
+    Detects and converts ADX orderbook grid structures to HTML tables.
+    Focuses on col-6 BID/ASK PRICE containers and data rows.
+    """
+    # 1. Look for BID PRICE / ASK PRICE headers
+    # These are usually in row -> col-6 -> report-title
+    rows = soup.find_all(class_="row")
+    for row in rows:
+        titles = row.find_all(class_="report-title")
+        if any("BID PRICE" in t.get_text().upper() for t in titles) and \
+           any("ASK PRICE" in t.get_text().upper() for t in titles):
+            
+            # Found the orderbook section. 
+            # We need to find the data rows sibling to this or within the same container.
+            # ADX orderbooks often have a specific parent for the data.
+            container = row.find_parent(class_="component-table-style") or row.parent
+            
+            # Find all data cells. They might be in a list or another grid.
+            # Typical structure: a series of divs with bid and ask values.
+            # Including 'price-info_count' which was identified in manual inspection.
+            data_cells = container.find_all(class_=re.compile(r"price-info|record|price-info_count", re.I))
+            if not data_cells: continue
+            
+            html_table = soup.new_tag("table")
+            thead = soup.new_tag("thead")
+            tbody = soup.new_tag("tbody")
+            html_table.append(thead)
+            html_table.append(tbody)
+            
+            # Header
+            h_row = soup.new_tag("tr")
+            for h in ["Bid Price", "Ask Price"]:
+                th = soup.new_tag("th")
+                th.string = h
+                h_row.append(th)
+            thead.append(h_row)
+            
+            # This is a bit tricky as BID/ASK are often side-by-side in HTML or alternating.
+            # Let's group them or just list them.
+            # Heuristic: Find all numeric strings in this container and pair them.
+            values = []
+            for cell in data_cells:
+                # Some cells might contain labels, we want pure numbers
+                txt = cell.get_text(strip=True).replace(",", "")
+                if re.match(r"^\d+\.?\d*$", txt):
+                    values.append(txt)
+            
+            # Pair them (assuming Bid-Ask, Bid-Ask...)
+            for i in range(0, len(values) - 1, 2):
+                tr = soup.new_tag("tr")
+                td1 = soup.new_tag("td")
+                td1.string = values[i]
+                td2 = soup.new_tag("td")
+                td2.string = values[i+1]
+                tr.append(td1)
+                tr.append(td2)
+                tbody.append(tr)
+                
+            if len(tbody.find_all("tr")) > 0:
+                row.replace_with(html_table)
+                # Decompose the original container if it's still there
+                # container.decompose() # Risky, let's just replace the header row for now.
 
 
 def _process_dfm_flex_table(soup):

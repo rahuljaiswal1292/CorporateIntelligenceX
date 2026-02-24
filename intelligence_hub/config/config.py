@@ -34,6 +34,9 @@ AGENT_MAX_EXECUTION_TIME = int(os.getenv("AGENT_MAX_EXECUTION_TIME", "300"))  # 
 
 # General Data Directory
 DATA_DIRECTORY = os.getenv("DATA_DIRECTORY", os.path.join(os.getcwd(), "data"))
+PROCESSED_DATA_DIRECTORY = os.getenv(
+    "PROCESSED_DATA_DIRECTORY", os.path.join(os.getcwd(), "processed_data")
+)
 
 # ChromaDB Configuration
 CHROMADB_PERSIST_DIRECTORY = os.getenv(

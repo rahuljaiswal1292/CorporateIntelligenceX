@@ -449,17 +449,14 @@ def render_main_dashboard(placeholder=None):
         if isinstance(ded_data, dict) and ded_data.get("companies"):
             companies_list = ded_data.get("companies", [])
             summary = ded_data.get("summary", {})
-            total_companies = ded_data.get("total_companies", len(companies_list))
-            total_licenses = summary.get("total_licenses", 0)
             match_confidence = summary.get("match_confidence", "unknown")
-            overview_text = summary.get("overview", "")
             potential_sectors = summary.get("potential_sectors", [])
             subsidiary_info = summary.get("subsidiary_info", [])
 
             conf_map = {
-                "very_high": ("#10b981", "#d1fae5", "\u2705 Very High Confidence"),
-                "high":      ("#059669", "#d1fae5", "\u2705 High Confidence"),
-                "medium":    ("#f59e0b", "#fef3c7", "\u26a0\ufe0f Medium Confidence"),
+                "very_high": ("#003366", "#e0f2fe", "\u2705 Very High Confidence"),
+                "high":      ("#00509e", "#e0f2fe", "\u2705 High Confidence"),
+                "medium":    ("#0077ff", "#f0f9ff", "\u26a0\ufe0f Medium Confidence"),
                 "low":       ("#ef4444", "#fee2e2", "\u26a0\ufe0f Low Confidence"),
             }
             conf_color, conf_bg, conf_label = conf_map.get(
@@ -481,8 +478,7 @@ def render_main_dashboard(placeholder=None):
             </div>
             """)
 
-
-            # Top company match — single detailed card
+            # Top company match — compact detailed card
             if companies_list:
                 top = companies_list[0]
                 trade_name  = top.get("trade_name_en", "Unknown Entity")
@@ -491,123 +487,116 @@ def render_main_dashboard(placeholder=None):
                 lic_count   = top.get("license_count", 0)
                 categories  = top.get("license_categories", [])
                 activities  = top.get("activities", [])
+                license_nums = top.get("license_numbers", [])
+                sector_tags  = top.get("sector_tags", [])
                 earliest    = top.get("earliest_issue_date", "—")
                 latest_exp  = top.get("latest_expiry_date", "—")
-                score_col   = "#10b981" if sim_pct >= 70 else ("#f59e0b" if sim_pct >= 40 else "#ef4444")
 
-                act_tags = "".join([
-                    f'<span style="background:#eff6ff;color:#1d4ed8;font-size:11px;font-weight:600;'
-                    f'padding:4px 10px;border-radius:20px;white-space:nowrap;border:1px solid #bfdbfe;">{a}</span>'
-                    for a in activities
+                # Sector Tags (Blue shaded)
+                sec_pills = "".join([
+                    f'<span style="background:#003366;color:white;font-size:10px;font-weight:600;'
+                    f'padding:4px 12px;border-radius:20px;white-space:nowrap;border:1px solid #002244;margin-bottom:4px;">{s}</span>'
+                    for s in sector_tags[:6]
                 ])
-                cat_tags = "".join([
-                    f'<span style="background:#f0fdf4;color:#166534;font-size:11px;font-weight:600;'
-                    f'padding:4px 10px;border-radius:20px;white-space:nowrap;border:1px solid #bbf7d0;">{c}</span>'
+
+                # License Numbers (Numbered chips, Blue shades)
+                lic_chips = "".join([
+                    f'<span style="background:#f0f9ff;color:#0077ff;font-size:10px;font-weight:700;'
+                    f'padding:4px 10px;border-radius:20px;border:1px solid #bae6fd;margin-bottom:4px;display:flex;align-items:center;gap:4px;">'
+                    f'<span style="color:#003366;opacity:0.6;">#</span>{l}</span>'
+                    for l in license_nums[:5]
+                ])
+
+                # Category & Activity (Light Blue shades)
+                cat_pills = "".join([
+                    f'<span style="background:#e0f2fe;color:#003366;font-size:10px;font-weight:600;'
+                    f'padding:4px 10px;border-radius:20px;white-space:nowrap;border:1px solid #bae6fd;margin-bottom:4px;">{c}</span>'
                     for c in categories
+                ])
+                act_pills = "".join([
+                    f'<span style="background:#f8fafc;color:#475569;font-size:10px;font-weight:600;'
+                    f'padding:4px 10px;border-radius:20px;white-space:nowrap;border:1px solid #e2e8f0;margin-bottom:4px;">{a}</span>'
+                    for a in activities[:6]
                 ])
 
                 st.html(f"""
-                <div style="max-width:500px;">
-                <div style="background:white; border:2px solid #0077ff; border-radius:14px;
-                            padding:28px; box-shadow:0 6px 24px rgba(0,119,255,0.12); margin-bottom:20px;">
+                <div style="width:560px; max-width:100%; font-family:'Poppins',sans-serif;">
+                <div style="background:white; border:1px solid #e2e8f0; border-top:4px solid #003366; border-radius:14px;
+                            padding:28px; box-shadow:0 8px 30px rgba(0,51,102,0.06); margin-bottom:24px;">
 
-                    <!-- Header row -->
+                    <!-- Header -->
                     <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:24px;">
                         <div style="flex:1;">
-                            <div style="font-family:'Poppins',sans-serif; font-size:11px; font-weight:700;
-                                        color:#0077ff; text-transform:uppercase; letter-spacing:0.8px;
-                                        margin-bottom:6px;">✓ Top Match</div>
-                            <div style="font-family:'Poppins',sans-serif; font-size:18px; font-weight:700;
-                                        color:#003366; line-height:1.3;">{trade_name}</div>
+                            <div style="font-size:11px; font-weight:700; color:#0077ff; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:6px;">✓ Primary Registration</div>
+                            <div style="font-size:22px; font-weight:700; color:#003366; line-height:1.2;">{trade_name}</div>
                         </div>
-                        <div style="text-align:center; background:linear-gradient(135deg,#003366,#0077ff);
-                                    border-radius:12px; padding:12px 20px; flex-shrink:0; margin-left:20px;">
-                            <div style="font-family:'Poppins',sans-serif; color:rgba(255,255,255,0.75);
-                                        font-size:9px; font-weight:700; text-transform:uppercase;
-                                        letter-spacing:0.8px; margin-bottom:4px;">Match Score</div>
-                            <div style="font-family:'Poppins',sans-serif; color:white; font-size:26px;
-                                        font-weight:800; line-height:1;">{sim_pct}%</div>
+                        <div style="text-align:center; background:#f0f9ff; border-radius:12px; padding:12px 18px; border:1px solid #bae6fd;">
+                            <div style="color:#0077ff; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">Match</div>
+                            <div style="color:#003366; font-size:24px; font-weight:800; line-height:1;">{sim_pct}%</div>
                         </div>
                     </div>
 
-                    <!-- Stats row -->
-                    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:24px;
-                                padding:20px; background:#f8fafc; border-radius:10px; border:1px solid #e2e8f0;">
+                    <!-- Core Stats Grid -->
+                    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:24px;
+                                padding:20px; background:#f8fafc; border-radius:12px;">
                         <div style="text-align:center;">
-                            <div style="font-family:'Poppins',sans-serif; color:#64748b; font-size:10px;
-                                        font-weight:700; text-transform:uppercase; letter-spacing:0.5px;
-                                        margin-bottom:6px;">Total Licenses</div>
-                            <div style="font-family:'Poppins',sans-serif; color:#003366; font-size:28px;
-                                        font-weight:800;">{lic_count}</div>
+                            <div style="color:#64748b; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Licenses</div>
+                            <div style="color:#003366; font-size:28px; font-weight:800;">{lic_count}</div>
                         </div>
                         <div style="text-align:center; border-left:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">
-                            <div style="font-family:'Poppins',sans-serif; color:#64748b; font-size:10px;
-                                        font-weight:700; text-transform:uppercase; letter-spacing:0.5px;
-                                        margin-bottom:6px;">Established</div>
-                            <div style="font-family:'Poppins',sans-serif; color:#1e293b; font-size:14px;
-                                        font-weight:700;">{earliest}</div>
+                            <div style="color:#64748b; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Established</div>
+                            <div style="color:#1e293b; font-size:14px; font-weight:700;">{earliest}</div>
                         </div>
                         <div style="text-align:center;">
-                            <div style="font-family:'Poppins',sans-serif; color:#64748b; font-size:10px;
-                                        font-weight:700; text-transform:uppercase; letter-spacing:0.5px;
-                                        margin-bottom:6px;">License Expiry</div>
-                            <div style="font-family:'Poppins',sans-serif; color:#1e293b; font-size:14px;
-                                        font-weight:700;">{latest_exp}</div>
+                            <div style="color:#64748b; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">License Expiry</div>
+                            <div style="color:#1e293b; font-size:14px; font-weight:700;">{latest_exp}</div>
                         </div>
                     </div>
 
-                    <!-- License types -->
-                    {f'''<div style="margin-bottom:18px;">
-                        <div style="font-family:Poppins,sans-serif; color:#64748b; font-size:10px; font-weight:700;
-                                    text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">License Type</div>
-                        <div style="display:flex; flex-wrap:wrap; gap:6px;">{cat_tags}</div>
-                    </div>''' if cat_tags else ''}
+                    <!-- Sector Tags (Added) -->
+                    {f'''<div style="margin-bottom:20px;">
+                        <div style="color:#64748b; font-size:10px; font-weight:700; text-transform:uppercase; margin-bottom:8px; display:flex; align-items:center; gap:6px;">\u231b Entity Classification</div>
+                        <div style="display:flex; flex-wrap:wrap; gap:8px;">{sec_pills}</div>
+                    </div>''' if sec_pills else ''}
 
-                    <!-- Activities -->
-                    {f'''<div>
-                        <div style="font-family:Poppins,sans-serif; color:#64748b; font-size:10px; font-weight:700;
-                                    text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">Registered Activities ({len(activities)})</div>
-                        <div style="display:flex; flex-wrap:wrap; gap:6px;">{act_tags}</div>
-                    </div>''' if act_tags else ''}
+                    <!-- Licence Numbers -->
+                    {f'''<div style="margin-bottom:20px;">
+                        <div style="color:#64748b; font-size:10px; font-weight:700; text-transform:uppercase; margin-bottom:8px; display:flex; align-items:center; gap:6px;">📋 Licence Numbers</div>
+                        <div style="display:flex; flex-wrap:wrap; gap:8px;">{lic_chips}</div>
+                    </div>''' if lic_chips else ''}
+
+                    <!-- License Types & Activities -->
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; padding-top:20px; border-top:1px solid #f1f5f9;">
+                        {f'''<div>
+                            <div style="color:#64748b; font-size:10px; font-weight:700; text-transform:uppercase; margin-bottom:10px;">License Type</div>
+                            <div style="display:flex; flex-wrap:wrap; gap:6px;">{cat_pills}</div>
+                        </div>''' if cat_pills else ''}
+                        {f'''<div>
+                            <div style="color:#64748b; font-size:10px; font-weight:700; text-transform:uppercase; margin-bottom:10px;">Primary Activities</div>
+                            <div style="display:flex; flex-wrap:wrap; gap:6px;">{act_pills}</div>
+                        </div>''' if act_pills else ''}
+                    </div>
 
                 </div>
                 </div>
                 """)
 
-            # Sectors & Related Entities row
-            if potential_sectors or subsidiary_info:
-                sec_col, sub_col = st.columns(2)
-                if potential_sectors:
-                    sector_chips = "".join([
-                        f'<span style="background:linear-gradient(135deg,#eff6ff,#dbeafe);color:#1e40af;font-family:Poppins,sans-serif;font-size:12px;font-weight:600;padding:5px 14px;border-radius:20px;border:1px solid #bfdbfe;">{s}</span>'
-                        for s in potential_sectors
-                    ])
-                    with sec_col:
-                        st.html(f"""
-                        <div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:16px;
-                                    box-shadow:0 2px 8px rgba(0,0,0,0.04);margin-top:0;">
-                            <div style="font-family:'Poppins',sans-serif;color:#003366;font-size:12px;font-weight:700;
-                                        text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">\U0001f4c2 Identified Sectors</div>
-                            <div style="display:flex;flex-wrap:wrap;gap:8px;">{sector_chips}</div>
-                        </div>
-                        """)
-                if subsidiary_info:
-                    sub_rows = "".join([
-                        f'<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;">'
-                        f'<div><div style="font-family:Poppins,sans-serif;color:#1e293b;font-size:12px;font-weight:600;">{sub.get("name","\u2014")}</div>'
-                        f'<div style="font-family:Poppins,sans-serif;color:#94a3b8;font-size:10px;margin-top:2px;">{sub.get("relationship","")}</div></div>'
-                        f'<div style="font-family:Poppins,sans-serif;color:#0077ff;font-size:12px;font-weight:700;white-space:nowrap;margin-left:12px;">{sub.get("licenses",0)} lic.</div></div>'
-                        for sub in subsidiary_info[:4]
-                    ])
-                    with sub_col:
-                        st.html(f"""
-                        <div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:16px;
-                                    box-shadow:0 2px 8px rgba(0,0,0,0.04);margin-top:0;">
-                            <div style="font-family:'Poppins',sans-serif;color:#003366;font-size:12px;font-weight:700;
-                                        text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">\U0001f517 Related Entities</div>
-                            {sub_rows}
-                        </div>
-                        """)
+            # Related Entities
+            if subsidiary_info:
+                sub_rows = "".join([
+                    f'<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;">'
+                    f'<div><div style="font-family:Poppins,sans-serif;color:#1e293b;font-size:12px;font-weight:600;">{sub.get("name","\u2014")}</div>'
+                    f'<div style="font-family:Poppins,sans-serif;color:#64748b;font-size:10px;margin-top:2px;">{sub.get("relationship","")}</div></div>'
+                    f'<div style="font-family:Poppins,sans-serif;color:#0077ff;font-size:12px;font-weight:700;white-space:nowrap;margin-left:12px;">{sub.get("licenses",0)} lic.</div></div>'
+                    for sub in subsidiary_info[:4]
+                ])
+                st.html(f"""
+                <div style="width:560px; max-width:100%; background:white; border:1px solid #e2e8f0; border-radius:12px; padding:20px; box-shadow:0 4px 12px rgba(0,0,0,0.03);">
+                    <div style="font-family:'Poppins',sans-serif;color:#003366;font-size:12px;font-weight:700;
+                                text-transform:uppercase;letter-spacing:0.8px;margin-bottom:12px;display:flex;align-items:center;gap:8px;">\U0001f517 Related Network</div>
+                    {sub_rows}
+                </div>
+                """)
     else:
         st.info("Company profile data pending...")
 

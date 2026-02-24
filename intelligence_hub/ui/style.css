@@ -1,224 +1,128 @@
 /* --- General App Structure --- */
 .stApp {
-    background-color: #F8FAFC;
-    /* Slightly cooler/brighter background */
-    font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-    color: #0F172A;
-    /* Slate 900 - readable black */
+    background: linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);
+    font-family: 'Inter', 'Poppins', sans-serif;
+    color: #1E293B;
     font-size: 16px;
-    /* Increased base size */
 }
 
 /* --- Sidebar --- */
 section[data-testid="stSidebar"] {
-    background-color: #002D62;
-    color: #FFFFFF;
+    background: linear-gradient(180deg, #002D62 0%, #001A38 100%) !important;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15) !important;
 }
 
 [data-testid="stSidebarHeader"] {
-    height: 20px !important;
+    height: 60px !important;
+    padding: 1rem !important;
 }
 
 section[data-testid="stSidebar"] div,
 section[data-testid="stSidebar"] label,
 section[data-testid="stSidebar"] span {
     color: #F1F5F9 !important;
-    /* Brighter white/gray */
     font-size: 14px;
-}
-
-section[data-testid="stSidebar"] h1,
-section[data-testid="stSidebar"] h2,
-section[data-testid="stSidebar"] h3 {
-    color: #FFFFFF !important;
-    font-weight: 700;
 }
 
 /* --- Headers --- */
 h1,
 h2,
 h3 {
-    color: #1E293B;
-    /* Slate 800 */
+    font-family: 'Poppins', sans-serif;
+    color: #0F172A;
     font-weight: 800;
-    /* Bolder */
-    letter-spacing: -0.02em;
+    letter-spacing: -0.025em;
+    margin-bottom: 1rem;
 }
 
 h1 {
-    font-size: 2.2rem !important;
+    font-size: 2.5rem !important;
+    line-height: 1.2 !important;
 }
 
 h2 {
     font-size: 1.8rem !important;
+    line-height: 1.3 !important;
 }
 
 h3 {
     font-size: 1.4rem !important;
+    line-height: 1.4 !important;
 }
 
 /* --- Metric Cards --- */
 div[data-testid="stMetric"] {
-    background-color: white;
-    border: 1px solid #E2E8F0;
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    transition: transform 0.2s;
-    font-family: 'Poppins', sans-serif;
+    background: rgba(255, 255, 255, 0.8) !important;
+    backdrop-filter: blur(8px) !important;
+    border: 1px solid rgba(226, 232, 240, 0.5) !important;
+    padding: 24px !important;
+    border-radius: 16px !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -2px rgba(0, 0, 0, 0.02) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 div[data-testid="stMetric"]:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    transform: translateY(-4px) !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+    border-color: #0077ff !important;
 }
 
-/* Metric label */
-div[data-testid="stMetric"] label[data-testid="stMetricLabel"] {
-    font-family: 'Poppins', sans-serif !important;
-    font-size: 0.78rem !important;
-    font-weight: 600 !important;
-    color: #64748b !important;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-}
-
-/* Metric value */
-div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
-    font-family: 'Poppins', sans-serif !important;
-    font-size: 1.5rem !important;
-    font-weight: 700 !important;
-    color: #1e293b !important;
-}
-
-/* Metric delta */
-div[data-testid="stMetric"] div[data-testid="stMetricDelta"] {
-    font-family: 'Poppins', sans-serif !important;
-    font-size: 0.78rem !important;
-    font-weight: 600 !important;
-}
-
-/* --- Captions & Small Headers (Increased Visibility) --- */
-div[data-testid="stCaptionContainer"],
-.stCaption {
-    font-size: 0.95rem !important;
-    /* Larger per user request */
-    color: #334155 !important;
-    /* Slate 700 - Darker/Visible */
-    font-weight: 800 !important;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 6px;
-}
-
-/* --- Search Bar & Inputs --- */
+/* --- Inputs --- */
 div[data-testid="stTextInput"] input {
-    background-color: #FFFFFF !important;
-    color: #0F172A !important;
-    /* Black/Dark Slate */
-    caret-color: #0F172A !important;
-    /* Cursor color */
-    border: 3px solid #002D62 !important;
-    /* Thick navy border */
+    background-color: white !important;
+    border: 2px solid #E2E8F0 !important;
     border-radius: 12px !important;
-    /* Rounded square corners */
-    font-size: 1.2rem !important;
-    /* Bigger font size */
     padding: 12px 16px !important;
-    /* Extra padding for better spacing */
-    font-weight: 500 !important;
+    font-size: 1rem !important;
+    transition: all 0.2s ease !important;
 }
 
-/* Fix hidden 'X' clear button in text input */
-div[data-testid="stTextInput"] button[aria-label="Clear"] {
-    color: #0F172A !important;
-    /* Black X */
-    fill: #0F172A !important;
-}
-
-div[data-testid="stTextInput"] {
-    color: #0F172A !important;
+div[data-testid="stTextInput"] input:focus {
+    border-color: #0077ff !important;
+    box-shadow: 0 0 0 4px rgba(0, 119, 255, 0.1) !important;
 }
 
 /* --- Buttons --- */
-/* Primary Search Button (Navy Background with White Text) */
 div.stButton>button[kind="primary"],
 [data-testid="stBaseButton-primary"],
 button[kind="primary"] {
-    background: linear-gradient(180deg, #00408A 0%, #002D62 100%) !important;
-    background-color: #002D62 !important;
+    background: linear-gradient(135deg, #00408A 0%, #002D62 100%) !important;
     color: #FFFFFF !important;
     font-weight: 600 !important;
-    border: 1px solid #002D62 !important;
-    border-bottom: 4px solid #001A38 !important;
-    /* Visual 3D base */
-    border-radius: 8px !important;
-    font-size: 1rem !important;
-    padding: 0px 1.2rem !important;
-    min-height: 45px !important;
-    /* Uniform height */
-    line-height: normal !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    box-shadow: 0 4px 6px rgba(0, 45, 98, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
-    transition: all 0.15s ease !important;
-    background-image: linear-gradient(180deg, #00408A 0%, #002D62 100%) !important;
-}
-
-div.stButton>button[kind="primary"] p {
-    color: #FFFFFF !important;
-    fill: #FFFFFF !important;
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 12px 24px !important;
+    min-height: 48px !important;
+    box-shadow: 0 4px 12px rgba(0, 45, 98, 0.2) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 div.stButton>button[kind="primary"]:hover,
-[data-testid="stBaseButton-primary"]:hover,
-button[kind="primary"]:hover {
-    background: linear-gradient(180deg, #0056b3 0%, #00408A 100%) !important;
-    background-color: #00408A !important;
-    border-color: #00408A !important;
-    border-bottom-color: #001A38 !important;
-    transform: translateY(2px) !important;
-    /* Click effect simulation */
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
-    color: #FFFFFF !important;
+[data-testid="stBaseButton-primary"]:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 20px rgba(0, 45, 98, 0.3) !important;
+    background: linear-gradient(135deg, #0056b3 0%, #00408A 100%) !important;
 }
 
-/* Clear Button (Gold Background with Navy Text) */
 div.stButton>button[kind="secondary"],
 [data-testid="stBaseButton-secondary"],
-button[kind="secondary"],
-div.stButton>button:not([kind="primary"]) {
-    background: linear-gradient(180deg, #FFC107 0%, #FFB600 100%) !important;
-    background-color: #FFB600 !important;
+button[kind="secondary"] {
+    background: white !important;
     color: #002D62 !important;
-    font-weight: 600;
-    border: 1px solid #CC9200 !important;
-    border-bottom: 4px solid #B38600 !important;
-    /* Visual 3D base */
-    border-radius: 8px !important;
-    min-height: 45px !important;
-    /* Uniform height */
-    line-height: normal !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
-    transition: all 0.15s ease !important;
-    background-image: linear-gradient(180deg, #FFC107 0%, #FFB600 100%) !important;
+    font-weight: 600 !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 12px !important;
+    min-height: 48px !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+    transition: all 0.3s ease !important;
 }
 
 div.stButton>button[kind="secondary"]:hover,
-[data-testid="stBaseButton-secondary"]:hover,
-button[kind="secondary"]:hover,
-div.stButton>button:not([kind="primary"]):hover {
-    background: linear-gradient(180deg, #FFD54F 0%, #FFC107 100%) !important;
-    background-color: #FFC107 !important;
-    border-color: #FFA000 !important;
-    border-bottom-color: #B38600 !important;
-    transform: translateY(2px) !important;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
-    color: #002D62 !important;
+[data-testid="stBaseButton-secondary"]:hover {
+    background: #F8FAFC !important;
+    border-color: #002D62 !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
 }
 
 /* --- Alerts (st.info/success/warning) --- */
@@ -557,8 +461,137 @@ div[data-testid="stDecoration"] {
 
 /* Make the log text look more like a terminal */
 [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
-    /* font-family: 'Courier New', monospace; */
+    font-family: 'Courier New', monospace;
     font-size: 0.85rem !important;
     line-height: 1.2 !important;
     margin-bottom: 5px !important;
+}
+
+/* --- Premium Summary Card --- */
+.summary-card {
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    transition: all 0.3s ease;
+}
+
+.summary-card:hover {
+    box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+.summary-header {
+    border-bottom: 1px solid #F1F5F9;
+    padding-bottom: 20px;
+    margin-bottom: 25px;
+}
+
+.confidence-badge {
+    padding: 6px 12px;
+    border-radius: 99px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    background: #DCFCE7;
+    color: #166534;
+}
+
+.confidence-badge.medium {
+    background: #FEF9C3;
+    color: #854D0E;
+}
+
+.confidence-badge.low {
+    background: #FEE2E2;
+    color: #991B1B;
+}
+
+/* --- Shimmer Animation --- */
+.shimmer {
+    background: linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%);
+    background-size: 200% 100%;
+    animation: shimmer-load 2s infinite;
+    border-radius: 8px;
+}
+
+@keyframes shimmer-load {
+    0% {
+        background-position: -200% 0;
+    }
+
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+/* --- Canonical Container --- */
+.canonical-container {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+    height: 60px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    margin: 20px 0 35px 0;
+}
+
+.canonical-label {
+    background: #002D62;
+    color: white;
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 240px;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.canonical-value {
+    background: white;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 12px;
+    border: 1px solid #E2E8F0;
+    border-left: none;
+}
+
+.canonical-text {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #0F172A;
+}
+
+.canonical-check {
+    color: #10B981;
+    font-weight: 800;
+    font-size: 1.2rem;
+}
+
+.canonical-value.resolving .canonical-text {
+    color: #64748B;
+    font-style: italic;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
 }

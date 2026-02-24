@@ -46,8 +46,13 @@ class LLMConnector:
         else:
             llm_config = LLMConfig()
 
-        # Individual parameters override config
+        # Individual parameter overrides
+        # Individual parameter overrides
         self.model = model if model is not None else llm_config.model
+
+        # NOTE: We keep the full model name (including 'models/' prefix if present)
+        # to ensure compatibility with all LangChain Google GenAI library versions.
+
         self.temperature = (
             temperature if temperature is not None else llm_config.temperature
         )
@@ -240,6 +245,18 @@ class LLMConnector:
                 logger.error(f"LLM Error: {str(e)}")
                 return self._get_mock_insights()
         return self._get_mock_insights()
+
+    def call_llm(self, messages: List[Dict[str, str]]) -> str:
+        """Sends a list of messages to the LLM and returns the text response."""
+        logger.info(f"[{self.mode}] Running Chat Completion...")
+        if self.llm is not None:
+            try:
+                response = self.llm.invoke(messages)
+                return response.content
+            except Exception as e:
+                logger.error(f"LLM Error: {str(e)}")
+                return "Error generating response."
+        return "LLM not initialized."
 
     def analyze_with_images(self, prompt: str, images: List[str]) -> str:
         """Sends a prompt and a list of base64 encoded images to the LLM."""

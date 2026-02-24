@@ -32,8 +32,10 @@ logs/
 # Data
 data/
 chroma*/
+processed_data/
 
 # Test files
 test*.py
 validate*.py
 verify*.py
+last_headers.json

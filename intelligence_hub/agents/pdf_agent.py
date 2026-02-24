@@ -71,6 +71,43 @@ class PdfAgent(BaseAgent):
             self.log(f"Failed to load PDF prompts: {e}", "ERROR")
             return []
 
+    def should_execute(self, state: AgentState) -> tuple[bool, str]:
+        """
+        Decide if PDF processing should run
+
+        Args:
+            state: Shared agent state
+
+        Returns:
+            (should_run, reasoning)
+        """
+        company_name = state.get("company_name") or "Unknown"
+        safe_company_name = str(company_name).strip()
+
+        # Try multiple directory variants for robustness
+        potential_paths = [
+            os.path.join(DATA_DIRECTORY, safe_company_name),  # Exact match
+            os.path.join(
+                DATA_DIRECTORY, safe_company_name.lower()
+            ),  # lowercase (emaar)
+            os.path.join(
+                DATA_DIRECTORY, safe_company_name.title()
+            ),  # title case (Emaar)
+        ]
+
+        data_dir = None
+        for path in potential_paths:
+            if os.path.exists(path) and os.path.isdir(path):
+                data_dir = path
+                break
+
+        # Check if directory exists and has PDFs
+        if not data_dir:
+            return (
+                False,
+                f"Directory not found for {safe_company_name} (checked: {', '.join(potential_paths)})",
+            )
+
     def _get_file_hash(self, file_path: str) -> str:
         """Calculate MD5 hash of the first 64KB of the file for duplicate detection."""
         hasher = hashlib.md5()
@@ -575,7 +612,7 @@ class PdfAgent(BaseAgent):
         except:
             return {}
 
-    def run(self, state: AgentState) -> AgentState:
+    def run(self, state: AgentState):
         """Run PDF agent workflow"""
         logs = state.get("logs", [])
         should_run, reasoning = self.should_execute(state)
@@ -585,12 +622,40 @@ class PdfAgent(BaseAgent):
             logs.append(f"PdfAgent: Skipped - {reasoning}")
             return {"logs": logs, "pdf_results": []}
 
+        # Execute PDF processing
         try:
             result = self.execute(state)
             pdf_results = result.get("data", [])
-            logs.append(f"PdfAgent: Processed {len(pdf_results)} PDFs (Smart Mode)")
-            return {"logs": logs, "pdf_results": pdf_results}
+
+            logs.append(f"PdfAgent: Processed {len(pdf_results)} PDFs")
+            return {**state, "logs": logs, "pdf_results": pdf_results}
+
         except Exception as e:
             self.log(f"PDF processing failed: {e}", "ERROR")
             logs.append(f"PdfAgent: Failed - {str(e)}")
-            return {"logs": logs, "pdf_results": []}
+            return {**state, "logs": logs, "pdf_results": []}
+
+    def process_pdf(self, file_path: str) -> List[str]:
+        """
+        Parses PDF and returns a list of text chunks.
+        """
+        doc = fitz.open(file_path)
+        text = ""
+        for page in doc:
+            text += page.get_text()
+
+        return self.chunk_text(text)
+
+    def chunk_text(
+        self, text: str, chunk_size: int = 1000, overlap: int = 100
+    ) -> List[str]:
+        """
+        Simple overlapping chunker.
+        """
+        chunks = []
+        start = 0
+        while start < len(text):
+            end = start + chunk_size
+            chunks.append(text[start:end])
+            start += chunk_size - overlap
+        return chunks

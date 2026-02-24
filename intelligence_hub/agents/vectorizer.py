@@ -72,4 +72,8 @@ class VectorizerAgent:
             **state,
             "logs": logs,
             "vector_ids": vector_ids,
+            # Preserving state
+            "ticker": ticker,
+            "company_name": state.get("company_name"),
+            "financial_data": scraped_data,
         }

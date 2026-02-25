@@ -419,38 +419,53 @@ class PdfAgent(BaseAgent):
             targets = self._find_relevant_pages(toc_text)
             self.log(f"Identified targets for {file_name}: {targets}")
 
-            # Use targets if found, else fallback
             if targets:
-                # B. Define Page Sets to Read
+                # B. Calibrate Page Mapping (Handle 2-up / Offsets)
+                mapping_info = self._calibrate_page_mapping(doc, targets)
+                self.log(f"Calibration completed: {mapping_info}")
+
+                # C. Define Page Sets to Read
                 pages_to_read = set()
 
-                # Always read first 3 pages for Meta/Intro
-                for i in range(min(3, total_pages)):
+                # Always read first few physical pages for Meta/Intro
+                for i in range(min(5, total_pages)):
                     pages_to_read.add(i)
 
                 # Add Financials Pages
-                fin_page = targets.get("financials_page")
-                if (
-                    fin_page
-                    and isinstance(fin_page, int)
-                    and 0 <= fin_page < total_pages
-                ):
-                    # Read target + next 4 pages (buffer)
-                    for i in range(fin_page, min(fin_page + 5, total_pages)):
-                        pages_to_read.add(i)
+                logical_fin_page = targets.get("financials_page")
+                if logical_fin_page and isinstance(logical_fin_page, int):
+                    # Use mapping to find physical page
+                    phys_fin_page = mapping_info.get("mapping_func")(logical_fin_page)
+                    self.log(
+                        f"Mapping Financials: Logical {logical_fin_page} -> Physical {phys_fin_page}"
+                    )
+
+                    if 0 <= phys_fin_page < total_pages:
+                        # Read target + buffer
+                        for i in range(
+                            max(0, phys_fin_page - 1),
+                            min(phys_fin_page + 6, total_pages),
+                        ):
+                            pages_to_read.add(i)
 
                 # Add Structure/Subsidiaries Pages
-                struct_page = targets.get("structure_page")
-                if (
-                    struct_page
-                    and isinstance(struct_page, int)
-                    and 0 <= struct_page < total_pages
-                ):
-                    # Read target + next 2 pages
-                    for i in range(struct_page, min(struct_page + 3, total_pages)):
-                        pages_to_read.add(i)
+                logical_struct_page = targets.get("structure_page")
+                if logical_struct_page and isinstance(logical_struct_page, int):
+                    phys_struct_page = mapping_info.get("mapping_func")(
+                        logical_struct_page
+                    )
+                    self.log(
+                        f"Mapping Structure: Logical {logical_struct_page} -> Physical {phys_struct_page}"
+                    )
 
-                # C. Extract Text & Images (Hybrid) from Targeted Pages
+                    if 0 <= phys_struct_page < total_pages:
+                        for i in range(
+                            max(0, phys_struct_page - 1),
+                            min(phys_struct_page + 4, total_pages),
+                        ):
+                            pages_to_read.add(i)
+
+                # D. Extract Text & Images (Hybrid) from Targeted Pages
                 sorted_pages = sorted(list(pages_to_read))
                 self.log(f"Reading {len(sorted_pages)} specific pages from {file_name}")
 
@@ -589,6 +604,128 @@ class PdfAgent(BaseAgent):
                     extracted_data[cat] = single_resp
 
         return extracted_data
+
+    def _calibrate_page_mapping(self, doc, targets: Dict[str, int]) -> Dict:
+        """
+        Calibrates the offset between logical TOC pages and physical PDF indices.
+        Handles:
+        1. Simple offsets (e.g. 2-page cover/intro)
+        2. 2-up layouts (e.g. Logical 10 is Physical 7)
+        """
+        total_pages = len(doc)
+        logical_ref = targets.get("financials_page")
+
+        # Default mapping (Identity)
+        calibration = {"offset": 0, "is_2up": False, "mapping_func": lambda x: x}
+
+        if not logical_ref:
+            return calibration
+
+        self.log(
+            f"Calibrating mapping using Financials reference (Logical Page: {logical_ref})..."
+        )
+
+        # Search for a broad window around the suspected physical page
+        # If logical is 100, we check from 50 to 120
+        # For small logical refs, start from 0. For large ones, skip first few pages (covers)
+        search_start = max(0, int(logical_ref * 0.5) - 5)
+        if logical_ref >= 5:
+            search_start = max(min(search_start, total_pages - 1), 3)
+
+        search_end = min(total_pages, logical_ref + 10)
+
+        # Prioritize more specific keywords to find the actual table start
+        keywords = [
+            "Consolidated Statement of Financial Position",
+            "Consolidated Income Statement",
+            "Consolidated Statement of Income",
+            "Statement of Financial Position",
+            "Consolidated Financial Statements",
+        ]
+
+        found_phys_page = None
+        for i in range(search_start, search_end):
+            text = doc[i].get_text()
+            # Check for prioritized keywords
+            for kw in keywords:
+                if kw.lower() in text.lower():
+                    # Special check: To avoid cover pages or Auditor's report references:
+                    # Actual financial tables almost always contain currency units like "AED million" or "AED '000"
+                    # Normalize whitespace for robust matching (handles non-breaking spaces)
+                    text_norm = re.sub(r"\s+", " ", text)
+                    has_currency = any(
+                        curr in text_norm
+                        for curr in [
+                            "AED million",
+                            "AED '000",
+                            "US$ million",
+                            "US$ '000",
+                        ]
+                    )
+
+                    if not has_currency:
+                        # If it's the high-priority "Income Statement" and it's long text,
+                        # but no currency, it might still be a false positive (ref in Auditor's report)
+                        continue
+
+                    if (
+                        len(text.strip()) < 200
+                        and kw == "Consolidated Financial Statements"
+                    ):
+                        continue
+
+                    found_phys_page = i
+                    self.log(
+                        f"Calibration: Found '{kw}' with currency markers on physical page {i}"
+                    )
+                    break
+            if found_phys_page is not None:
+                break
+
+        if found_phys_page is not None:
+            # We found it! Now determine the mapping characteristics
+            logical_val = logical_ref
+            physical_val = found_phys_page
+
+            # Heuristic for 2-up: If logical is significantly higher than physical
+            # (e.g. Logical 10 vs Physical 7)
+            if logical_val > physical_val + 2 and physical_val > 0:
+                self.log(
+                    f"Calibration: Detected potential 2-up or compressed layout (L:{logical_val} vs P:{physical_val})"
+                )
+                is_2up = True
+                # Ratio-based mapping: physical = logical * (physical_val / logical_val)
+                ratio = physical_val / logical_val
+                calibration["is_2up"] = True
+                calibration["ratio"] = ratio
+                calibration["mapping_func"] = lambda x: int(x * ratio)
+            else:
+                # Linear offset mapping: physical = logical - offset
+                offset = logical_val - physical_val
+                calibration["offset"] = offset
+                calibration["mapping_func"] = lambda x: max(0, x - offset)
+
+            self.log(
+                f"Calibration successful: Target Physical Page is {found_phys_page}"
+            )
+        else:
+            self.log(
+                "Calibration: Could not find anchor keywords. Falling back to simple offset detection."
+            )
+            # Fallback: Check if first physical page has page number "1"
+            # Often front matter is not numbered or uses roman numerals
+            for i in range(min(15, total_pages)):
+                text = doc[i].get_text()
+                if re.search(r"\b1\b", text):
+                    offset = 1 - i
+                    calibration["offset"] = offset
+                    calibration["mapping_func"] = lambda x: max(0, x + offset)
+                    self.log(
+                        f"Calibration: Found Page 1 on Physical {i}. Offset set to {offset}"
+                    )
+                    break
+
+        return calibration
 
     def _find_relevant_pages(self, toc_text: str) -> Dict[str, int]:
         """Ask LLM to find page numbers from TOC text."""

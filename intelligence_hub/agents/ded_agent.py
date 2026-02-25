@@ -216,6 +216,7 @@ class DEDAgent(BaseAgent):
             try:
                 all_records = collection.get(
                     include=["metadatas"],
+                    limit=1000,
                 )
                 name_lower = company_name.lower()
                 for metadata in all_records.get("metadatas", []):
@@ -264,10 +265,24 @@ class DEDAgent(BaseAgent):
             except Exception as e:
                 self.log(f"Alias scan failed: {e}", "WARNING")
 
+            # FAST PATH: If we have a very high confidence alias/exact match, skip similarity search
+            if companies_dict:
+                top_score = max(c["similarity_score"] for c in companies_dict.values())
+                if top_score >= 0.98:
+                    self.log(f"High-confidence metadata match found ({top_score:.2f}), skipping similarity search for speed.")
+                    # Sort and return early
+                    companies = sorted(
+                        companies_dict.values(),
+                        key=lambda x: x["similarity_score"],
+                        reverse=True,
+                    )
+                    result["companies"] = companies
+                    result["total_found"] = len(companies)
+                    return result
+
             # STEP 2: Similarity search on searchable text
             self.log(f"Step 2: Performing similarity search (top {top_k})...")
             self.log(f"Searching ChromaDB for similar companies...")
-            self.log(f"This may take 10-30 seconds for large datasets...")
             try:
                 import time
                 import threading
@@ -299,13 +314,14 @@ class DEDAgent(BaseAgent):
                 query_thread = threading.Thread(target=run_query)
                 query_thread.start()
 
-                # Log progress while waiting
+                # Log progress while waiting (Fast polling)
                 wait_seconds = 0
                 while not query_complete.is_set():
-                    query_complete.wait(5)  # Wait 5 seconds at a time
+                    query_complete.wait(0.5)  # Poll every 0.5s instead of 5s
                     if not query_complete.is_set():
-                        wait_seconds += 5
-                        self.log(f"Still searching... ({wait_seconds}s elapsed)")
+                        wait_seconds += 0.5
+                        if wait_seconds % 5 == 0: # Only log every 5s to avoid log spam
+                            self.log(f"Still searching... ({wait_seconds:.1f}s elapsed)")
 
                 query_thread.join()
 

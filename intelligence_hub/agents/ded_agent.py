@@ -42,72 +42,53 @@ class DEDAgent(BaseAgent):
             profile_store=profile_store,
         )
 
-        # Initialize ChromaDB client for DED database (separate path to avoid conflicts)
+        # Initialize ChromaDB client for DED database (chroma_ded_selected)
         try:
-            ded_db_path = os.path.join(os.getcwd(), "data", "chroma_db_selected")
-            # Create directory if it doesn't exist
+            ded_db_path = os.path.join(os.getcwd(), "data", "chroma_ded_selected")
             os.makedirs(ded_db_path, exist_ok=True)
-
             self.chroma_client = chromadb.PersistentClient(path=ded_db_path)
+            self._ded_db_path = ded_db_path
+
+            # ── Startup sanity-check ─────────────────────────────────────────
+            # Try to get the collection right away so we know the DB is ready.
+            # If it is missing, bootstrap it now (runs create_ded_selected_db.py)
+            # so the first query never has to wait for a cold-start build.
+            try:
+                _col = self.chroma_client.get_collection(name="ded_selected")
+                _count = _col.count()
+                self.log(
+                    f"DED database ready: '{ded_db_path}' "
+                    f"| collection 'ded_selected' | {_count} documents"
+                )
+            except Exception:
+                self.log(
+                    "DED 'ded_selected' collection not found at startup — "
+                    "bootstrapping from create_ded_selected_db.py …",
+                    "WARNING",
+                )
+                built = self._bootstrap_ded_database()
+                if built:
+                    self.log("DED database bootstrapped successfully at startup.")
+                else:
+                    self.log(
+                        "DED database bootstrap failed at startup. "
+                        "Queries will attempt a rebuild on first use.",
+                        "ERROR",
+                    )
         except Exception as e:
             self.log(
                 f"Failed to initialize DED ChromaDB client: {e}",
                 "WARNING",
             )
             self.chroma_client = None
+            self._ded_db_path = None
 
     def should_execute(self, state: AgentState) -> tuple[bool, str]:
         """
-        Decide if DED lookup should run
-
-        Args:
-            state: Shared agent state
-
-        Returns:
-            (should_run, reasoning)
+        DED license lookup always runs — no LLM gate.
+        Every company operating in UAE should be checked against DED.
         """
-        basic_profile = state.get("enrichments", {})
-
-        # Load decision prompt
-        decision_prompt = load_prompt("agent_ded_decision.txt")
-
-        prompt = ChatPromptTemplate.from_messages(
-            [
-                ("system", decision_prompt),
-                (
-                    "user",
-                    "Analyze this company profile and decide if UAE DED license lookup should be performed:\n\n{profile_json}",
-                ),
-            ]
-        )
-
-        # Invoke LLM for decision
-        chain = prompt | self.llm_connector.llm
-        response = chain.invoke({"profile_json": json.dumps(basic_profile, indent=2)})
-
-        # Parse decision
-        try:
-            content = response.content
-            if "```json" in content:
-                content = content.split("```json")[1].split("```")[0]
-            elif "```" in content:
-                content = content.split("```")[1].split("```")[0]
-
-            decision = json.loads(content.strip())
-            should_run = decision.get("should_execute", False)
-            reasoning = decision.get(
-                "reasoning",
-                "No reasoning provided",
-            )
-
-            return (should_run, reasoning)
-
-        except Exception as e:
-            self.log(
-                f"Decision parsing failed: {e}, defaulting to SKIP",
-                "WARNING",
-            )
-            return (False, f"Decision error: {e}")
+        return (True, "DED lookup is always performed for all companies.")
 
     def _get_serp_profile_from_chromadb(self, company_name: str) -> Optional[Dict]:
         """
@@ -151,7 +132,7 @@ class DEDAgent(BaseAgent):
         self,
         company_name: str,
         top_k: int = 10,
-        similarity_threshold: float = 0.5,
+        similarity_threshold: float = 0.05,
     ) -> Dict:
         """
         Query DED license database via ChromaDB using hybrid approach:
@@ -175,18 +156,25 @@ class DEDAgent(BaseAgent):
         }
 
         try:
-            # Get DED collection
+            # Get DED collection — auto-bootstrap if missing
             try:
-                collection = self.chroma_client.get_collection(name="uae_ded_licenses")
+                collection = self.chroma_client.get_collection(name="ded_selected")
             except Exception:
                 self.log(
-                    "DED licenses collection not found in ChromaDB",
+                    "DED 'ded_selected' collection not found — attempting to build it now…",
                     "WARNING",
                 )
-                result["error"] = (
-                    "DED database not available - run aggregate_ded_extract.py and load to ChromaDB"
-                )
-                return result
+                built = self._bootstrap_ded_database()
+                if not built:
+                    result["error"] = (
+                        "DED database not available. Run create_ded_selected_db.py manually."
+                    )
+                    return result
+                try:
+                    collection = self.chroma_client.get_collection(name="ded_selected")
+                except Exception as e2:
+                    result["error"] = f"DED collection still unavailable after rebuild: {e2}"
+                    return result
 
             self.log(f"Querying DED database for: {company_name}")
             self.log("PROGRESS:25:Initiating DED search")
@@ -346,6 +334,52 @@ class DEDAgent(BaseAgent):
 
         return result
 
+    def _bootstrap_ded_database(self) -> bool:
+        """
+        Run create_ded_selected_db.py to build the DED ChromaDB from scratch.
+        Returns True if successful.
+        """
+        import subprocess
+        import sys
+
+        script_path = os.path.join(os.getcwd(), "create_ded_selected_db.py")
+        if not os.path.exists(script_path):
+            self.log(
+                f"create_ded_selected_db.py not found at {script_path}",
+                "ERROR",
+            )
+            return False
+
+        self.log("Running create_ded_selected_db.py to build DED database…")
+        try:
+            result = subprocess.run(
+                [sys.executable, script_path],
+                capture_output=True,
+                text=True,
+                cwd=os.getcwd(),
+                timeout=300,  # 5-minute safety timeout
+            )
+            if result.returncode == 0:
+                self.log("DED database built successfully.")
+                # Re-initialise client so it picks up the new collection
+                if self._ded_db_path:
+                    self.chroma_client = chromadb.PersistentClient(
+                        path=self._ded_db_path
+                    )
+                return True
+            else:
+                self.log(
+                    f"create_ded_selected_db.py failed:\n{result.stderr[-500:]}",
+                    "ERROR",
+                )
+                return False
+        except subprocess.TimeoutExpired:
+            self.log("create_ded_selected_db.py timed out after 5 minutes", "ERROR")
+            return False
+        except Exception as e:
+            self.log(f"Error running create_ded_selected_db.py: {e}", "ERROR")
+            return False
+
     def _parse_aggregated_license_data(
         self,
         metadata: Dict,
@@ -353,8 +387,9 @@ class DEDAgent(BaseAgent):
         match_type: str,
     ) -> Optional[Dict]:
         """
-        Parse aggregated license data from ChromaDB metadata
-        (from aggregate_ded_extract.py output)
+        Parse license data from ChromaDB metadata.
+        Supports both the legacy aggregated format and the enriched
+        ded_selected schema produced by create_ded_selected_db.py.
 
         Args:
             metadata: Metadata dict from ChromaDB
@@ -365,9 +400,18 @@ class DEDAgent(BaseAgent):
             Parsed company data dict or None
         """
         try:
-            # Extract all fields from aggregated data
+            # Identity
             trade_name_en = metadata.get("trade_name_en", "Unknown")
             trade_name_ar = metadata.get("trade_name_ar", "")
+
+            # Enriched-schema fields (ded_selected)
+            sector      = metadata.get("sector", "")
+            description = metadata.get("description", "")
+            company_type = metadata.get("company_type", "")
+            sector_tags = self._parse_list_field(metadata.get("sector_tags", "[]"))
+            known_aliases = self._parse_list_field(metadata.get("known_aliases", "[]"))
+            is_government = bool(metadata.get("is_government_entity", False))
+            is_priority   = bool(metadata.get("is_priority_corporate", False))
 
             # Parse list fields (stored as JSON strings in metadata)
             license_numbers = self._parse_list_field(
@@ -377,42 +421,48 @@ class DEDAgent(BaseAgent):
                 metadata.get("license_categories", "[]")
             )
             activities = self._parse_list_field(metadata.get("activities", "[]"))
-            partners = self._parse_list_field(metadata.get("partners", "[]"))
+            partners   = self._parse_list_field(metadata.get("partners", "[]"))
             commerce_register_numbers = self._parse_list_field(
-                metadata.get(
-                    "commerce_register_numbers",
-                    "[]",
-                )
+                metadata.get("commerce_register_numbers", "[]")
             )
             issue_authorities = self._parse_list_field(
                 metadata.get("issue_authorities", "[]")
             )
 
-            # Get counts
-            license_count = int(metadata.get("license_count", 0))
+            # Counts
+            license_count  = int(metadata.get("license_count", 0))
             activity_count = int(metadata.get("activity_count", 0))
-            partner_count = int(metadata.get("partner_count", 0))
+            partner_count  = int(metadata.get("partner_count", 0))
 
-            # Get dates
+            # Dates
             earliest_issue_date = metadata.get("earliest_issue_date", "")
-            latest_expiry_date = metadata.get("latest_expiry_date", "")
+            latest_expiry_date  = metadata.get("latest_expiry_date", "")
 
             return {
-                "trade_name_en": trade_name_en,
-                "trade_name_ar": trade_name_ar,
-                "similarity_score": round(similarity_score, 3),
-                "match_type": match_type,
-                "license_count": license_count,
-                "license_numbers": license_numbers,
-                "license_categories": license_categories,
-                "activities": activities[:10],  # Limit to top 10 for summary
-                "activity_count": activity_count,
-                "partners": partners[:10],  # Limit to top 10 for summary
-                "partner_count": partner_count,
+                "trade_name_en":            trade_name_en,
+                "trade_name_ar":            trade_name_ar,
+                "similarity_score":         round(similarity_score, 3),
+                "match_type":               match_type,
+                # Enriched fields
+                "sector":                   sector,
+                "description":              description,
+                "company_type":             company_type,
+                "sector_tags":              sector_tags,
+                "known_aliases":            known_aliases,
+                "is_government_entity":     is_government,
+                "is_priority_corporate":    is_priority,
+                # License info
+                "license_count":            license_count,
+                "license_numbers":          license_numbers[:10],
+                "license_categories":       license_categories,
+                "activities":               activities[:10],
+                "activity_count":           activity_count,
+                "partners":                 partners[:10],
+                "partner_count":            partner_count,
                 "commerce_register_numbers": commerce_register_numbers,
-                "issue_authorities": issue_authorities,
-                "earliest_issue_date": earliest_issue_date,
-                "latest_expiry_date": latest_expiry_date,
+                "issue_authorities":        issue_authorities,
+                "earliest_issue_date":      earliest_issue_date,
+                "latest_expiry_date":       latest_expiry_date,
             }
 
         except Exception as e:

@@ -8,9 +8,19 @@ def replace(old, new):
 
 
 def merge_dicts(old: Dict[str, Any], new: Dict[str, Any]) -> Dict[str, Any]:
-    """Merge two dictionaries, typically for enrichments"""
-    if old is None:
-        return new or {}
+    """Merge two dictionaries, typically for enrichments.
+    Defensively handles cases where parallel nodes return lists or None."""
+    # Coerce lists to dict (LangGraph fan-in edge case)
+    if isinstance(old, list):
+        old = old[0] if old and isinstance(old[0], dict) else {}
+    if isinstance(new, list):
+        new = new[0] if new and isinstance(new[0], dict) else {}
+
+    if not isinstance(old, dict):
+        old = {}
+    if not isinstance(new, dict):
+        return old
+
     updated = dict(old)
     if new:
         updated.update(new)

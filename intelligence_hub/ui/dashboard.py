@@ -62,12 +62,63 @@ def get_test_dashboard_data():
             "wikipedia": {"url": "https://en.wikipedia.org/wiki/Emirates_NBD"},
             "serp": {"count": 15},
             "ded": {
-                "license_number": "DED-123456",
-                "activity_type": "Banking & Financial Services",
-                "status": "Active",
-                "expiry_date": "31-Dec-2027",
-                "trade_name": "Emirates NBD Bank PJSC",
-                "url": "https://www.ded.ae",
+                "canonical_name": "Emirates NBD Bank PJSC",
+                "query_type": "hybrid_search",
+                "total_companies": 2,
+                "companies": [
+                    {
+                        "trade_name_en": "EMIRATES NBD BANK PJSC",
+                        "trade_name_ar": "",
+                        "similarity_score": 0.97,
+                        "match_type": "similarity",
+                        "license_count": 3,
+                        "license_numbers": [],
+                        "license_categories": ["Commercial"],
+                        "activities": ["Commercial Bank", "Investment Banking"],
+                        "activity_count": 2,
+                        "partners": [],
+                        "partner_count": 0,
+                        "commerce_register_numbers": [],
+                        "issue_authorities": [],
+                        "earliest_issue_date": "12/03/2007",
+                        "latest_expiry_date": "31/12/2027",
+                    },
+                    {
+                        "trade_name_en": "EMIRATES NBD CAPITAL (PJSC)",
+                        "trade_name_ar": "",
+                        "similarity_score": 0.61,
+                        "match_type": "similarity",
+                        "license_count": 1,
+                        "license_numbers": [],
+                        "license_categories": ["Professional"],
+                        "activities": ["Financial Consultancy"],
+                        "activity_count": 1,
+                        "partners": [],
+                        "partner_count": 0,
+                        "commerce_register_numbers": [],
+                        "issue_authorities": [],
+                        "earliest_issue_date": "05/06/2010",
+                        "latest_expiry_date": "30/06/2026",
+                    },
+                ],
+                "summary": {
+                    "overview": "Found 2 matching UAE company(ies) with 4 active license(s). Top match: EMIRATES NBD BANK PJSC (similarity: 97%, match type: similarity)",
+                    "active_licenses": [],
+                    "potential_sectors": ["Commercial", "Professional"],
+                    "shareholder_details": [],
+                    "subsidiary_info": [
+                        {
+                            "name": "EMIRATES NBD CAPITAL (PJSC)",
+                            "relationship": "Potential subsidiary (name similarity)",
+                            "licenses": 1,
+                            "activities": ["Financial Consultancy"],
+                        }
+                    ],
+                    "match_confidence": "very_high",
+                    "total_companies_found": 2,
+                    "total_licenses": 4,
+                },
+                "timestamp": "2026-02-25T00:00:00",
             },
         },
         "insights": [
@@ -320,16 +371,8 @@ def render_main_dashboard(placeholder=None):
         description = meta.get("description", "No description available")
         website = meta.get("website", "#")
 
-        # Get DED data - handle both single license (dict) and multiple licenses (list)
+        # Get DED data (aggregated format from DEDAgent)
         ded_data = enrichments.get("ded", {})
-
-        # Normalize to list format
-        if isinstance(ded_data, dict) and ded_data:
-            licenses = [ded_data]  # Single license
-        elif isinstance(ded_data, list):
-            licenses = ded_data  # Multiple licenses
-        else:
-            licenses = []  # No licenses
 
         st.html(
             f"""
@@ -402,72 +445,175 @@ def render_main_dashboard(placeholder=None):
         """
         )
 
-        # DED License Information - Still below profile
-        if licenses:
-            license_count = len(licenses)
+        # === DED LICENSE REGISTRY SECTION (Aggregated Format) ===
+        if isinstance(ded_data, dict) and ded_data.get("companies"):
+            companies_list = ded_data.get("companies", [])
+            summary = ded_data.get("summary", {})
+            match_confidence = summary.get("match_confidence", "unknown")
+            potential_sectors = summary.get("potential_sectors", [])
+            subsidiary_info = summary.get("subsidiary_info", [])
+
+            conf_map = {
+                "very_high": ("#003366", "#e0f2fe", "\u2705 Very High Confidence"),
+                "high": ("#00509e", "#e0f2fe", "\u2705 High Confidence"),
+                "medium": ("#0077ff", "#f0f9ff", "\u26a0\ufe0f Medium Confidence"),
+                "low": ("#ef4444", "#fee2e2", "\u26a0\ufe0f Low Confidence"),
+            }
+            conf_color, conf_bg, conf_label = conf_map.get(
+                match_confidence,
+                ("#64748b", "#f1f5f9", "\u2139\ufe0f Confidence Unknown"),
+            )
+
+            # Section header
             st.html(
                 f"""
-            <div style="
-                font-family: 'Poppins', sans-serif;
-                color: #003366;
-                font-size: 15px;
-                font-weight: 700;
-                margin-top: 10px;
-                margin-bottom: 12px;
-                display: flex;
-                align-items: center;
-                gap: 8px;
-            ">
-                <span style="font-size: 18px;">🏛️</span>
-                <span>DED License Information {f'({license_count} Licenses)' if license_count > 1 else ''}</span>
+            <div style="font-family:'Poppins',sans-serif; font-size:20px; font-weight:700;
+                        color:#003366; margin-top:8px; margin-bottom:16px; padding-bottom:10px;
+                        border-bottom:2px solid #0077ff; display:flex; align-items:center; gap:12px;">
+                <span style="font-size:24px;">\U0001f3db\ufe0f</span>
+                <span>DED License Registry</span>
+                <span style="margin-left:auto; background:{conf_bg}; color:{conf_color};
+                             font-size:11px; font-weight:700; padding:4px 12px; border-radius:20px;
+                             border:1px solid {conf_color}33; text-transform:uppercase; letter-spacing:0.5px;">
+                    {conf_label}
+                </span>
             </div>
             """
             )
 
-            # Display licenses in a grid (3 columns for broader layout)
-            lic_cols = st.columns(3)
-            for idx, lic in enumerate(licenses):
-                license_number = lic.get("license_number", "N/A")
-                activity_type = lic.get("activity_type", "N/A")
-                lic_status = lic.get("status", "N/A")
-                expiry_date = lic.get("expiry_date", "N/A")
-                trade_name = lic.get("trade_name", "")
+            # Top company match — compact detailed card
+            if companies_list:
+                top = companies_list[0]
+                trade_name = top.get("trade_name_en", "Unknown Entity")
+                similarity = top.get("similarity_score", 0)
+                sim_pct = int(similarity * 100)
+                lic_count = top.get("license_count", 0)
+                categories = top.get("license_categories", [])
+                activities = top.get("activities", [])
+                license_nums = top.get("license_numbers", [])
+                sector_tags = top.get("sector_tags", [])
+                earliest = top.get("earliest_issue_date", "—")
+                latest_exp = top.get("latest_expiry_date", "—")
 
-                with lic_cols[idx % 3]:
-                    st.html(
-                        f"""
-                    <div style="
-                        background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
-                        border: 1px solid #e2e8f0;
-                        border-left: 3px solid #0077ff;
-                        border-radius: 8px;
-                        padding: 16px;
-                        margin-bottom: 12px;
-                        box-shadow: 0 2px 8px rgba(0, 51, 102, 0.06);
-                        min-height: 140px;
-                    ">
-                        {f'<div style="font-family: Poppins, sans-serif; color: #003366; font-size: 13px; font-weight: 700; margin-bottom: 12px;">{trade_name}</div>' if trade_name else ''}
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                            <div>
-                                <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;">License No.</div>
-                                <div style="font-family: 'Poppins', sans-serif; color: #1e293b; font-size: 13px; font-weight: 600;">{license_number}</div>
-                            </div>
-                            <div>
-                                <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;">Status</div>
-                                <div style="font-family: 'Poppins', sans-serif; color: {'#10b981' if lic_status.lower() == 'active' else '#ef4444' if lic_status.lower() == 'expired' else '#1e293b'}; font-size: 13px; font-weight: 700;">{lic_status}</div>
-                            </div>
-                            <div>
-                                <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;">Activity Type</div>
-                                <div style="font-family: 'Poppins', sans-serif; color: #1e293b; font-size: 12px; font-weight: 600;">{activity_type}</div>
-                            </div>
-                            <div>
-                                <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;">Expiry Date</div>
-                                <div style="font-family: 'Poppins', sans-serif; color: #1e293b; font-size: 13px; font-weight: 600;">{expiry_date}</div>
-                            </div>
+                # Sector Tags (Blue shaded)
+                sec_pills = "".join(
+                    [
+                        f'<span style="background:#003366;color:white;font-size:10px;font-weight:600;'
+                        f'padding:4px 12px;border-radius:20px;white-space:nowrap;border:1px solid #002244;margin-bottom:4px;">{s}</span>'
+                        for s in sector_tags[:6]
+                    ]
+                )
+
+                # License Numbers (Numbered chips, Blue shades)
+                lic_chips = "".join(
+                    [
+                        f'<span style="background:#f0f9ff;color:#0077ff;font-size:10px;font-weight:700;'
+                        f'padding:4px 10px;border-radius:20px;border:1px solid #bae6fd;margin-bottom:4px;display:flex;align-items:center;gap:4px;">'
+                        f'<span style="color:#003366;opacity:0.6;">#</span>{l}</span>'
+                        for l in license_nums[:5]
+                    ]
+                )
+
+                # Category & Activity (Light Blue shades)
+                cat_pills = "".join(
+                    [
+                        f'<span style="background:#e0f2fe;color:#003366;font-size:10px;font-weight:600;'
+                        f'padding:4px 10px;border-radius:20px;white-space:nowrap;border:1px solid #bae6fd;margin-bottom:4px;">{c}</span>'
+                        for c in categories
+                    ]
+                )
+                act_pills = "".join(
+                    [
+                        f'<span style="background:#f8fafc;color:#475569;font-size:10px;font-weight:600;'
+                        f'padding:4px 10px;border-radius:20px;white-space:nowrap;border:1px solid #e2e8f0;margin-bottom:4px;">{a}</span>'
+                        for a in activities[:6]
+                    ]
+                )
+
+                st.html(
+                    f"""
+                <div style="width:560px; max-width:100%; font-family:'Poppins',sans-serif;">
+                <div style="background:white; border:1px solid #e2e8f0; border-top:4px solid #003366; border-radius:14px;
+                            padding:28px; box-shadow:0 8px 30px rgba(0,51,102,0.06); margin-bottom:24px;">
+
+                    <!-- Header -->
+                    <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:24px;">
+                        <div style="flex:1;">
+                            <div style="font-size:11px; font-weight:700; color:#0077ff; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:6px;">✓ Primary Registration</div>
+                            <div style="font-size:22px; font-weight:700; color:#003366; line-height:1.2;">{trade_name}</div>
+                        </div>
+                        <div style="text-align:center; background:#f0f9ff; border-radius:12px; padding:12px 18px; border:1px solid #bae6fd;">
+                            <div style="color:#0077ff; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">Match</div>
+                            <div style="color:#003366; font-size:24px; font-weight:800; line-height:1;">{sim_pct}%</div>
                         </div>
                     </div>
-                    """
-                    )
+
+                    <!-- Core Stats Grid -->
+                    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:24px;
+                                padding:20px; background:#f8fafc; border-radius:12px;">
+                        <div style="text-align:center;">
+                            <div style="color:#64748b; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Licenses</div>
+                            <div style="color:#003366; font-size:28px; font-weight:800;">{lic_count}</div>
+                        </div>
+                        <div style="text-align:center; border-left:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">
+                            <div style="color:#64748b; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Established</div>
+                            <div style="color:#1e293b; font-size:14px; font-weight:700;">{earliest}</div>
+                        </div>
+                        <div style="text-align:center;">
+                            <div style="color:#64748b; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">License Expiry</div>
+                            <div style="color:#1e293b; font-size:14px; font-weight:700;">{latest_exp}</div>
+                        </div>
+                    </div>
+
+                    <!-- Sector Tags (Added) -->
+                    {f'''<div style="margin-bottom:20px;">
+                        <div style="color:#64748b; font-size:10px; font-weight:700; text-transform:uppercase; margin-bottom:8px; display:flex; align-items:center; gap:6px;">\u231b Entity Classification</div>
+                        <div style="display:flex; flex-wrap:wrap; gap:8px;">{sec_pills}</div>
+                    </div>''' if sec_pills else ''}
+
+                    <!-- Licence Numbers -->
+                    {f'''<div style="margin-bottom:20px;">
+                        <div style="color:#64748b; font-size:10px; font-weight:700; text-transform:uppercase; margin-bottom:8px; display:flex; align-items:center; gap:6px;">📋 Licence Numbers</div>
+                        <div style="display:flex; flex-wrap:wrap; gap:8px;">{lic_chips}</div>
+                    </div>''' if lic_chips else ''}
+
+                    <!-- License Types & Activities -->
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; padding-top:20px; border-top:1px solid #f1f5f9;">
+                        {f'''<div>
+                            <div style="color:#64748b; font-size:10px; font-weight:700; text-transform:uppercase; margin-bottom:10px;">License Type</div>
+                            <div style="display:flex; flex-wrap:wrap; gap:6px;">{cat_pills}</div>
+                        </div>''' if cat_pills else ''}
+                        {f'''<div>
+                            <div style="color:#64748b; font-size:10px; font-weight:700; text-transform:uppercase; margin-bottom:10px;">Primary Activities</div>
+                            <div style="display:flex; flex-wrap:wrap; gap:6px;">{act_pills}</div>
+                        </div>''' if act_pills else ''}
+                    </div>
+
+                </div>
+                </div>
+                """
+                )
+
+            # Related Entities
+            if subsidiary_info:
+                sub_rows = "".join(
+                    [
+                        f'<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;">'
+                        f'<div><div style="font-family:Poppins,sans-serif;color:#1e293b;font-size:12px;font-weight:600;">{sub.get("name","\u2014")}</div>'
+                        f'<div style="font-family:Poppins,sans-serif;color:#64748b;font-size:10px;margin-top:2px;">{sub.get("relationship","")}</div></div>'
+                        f'<div style="font-family:Poppins,sans-serif;color:#0077ff;font-size:12px;font-weight:700;white-space:nowrap;margin-left:12px;">{sub.get("licenses",0)} lic.</div></div>'
+                        for sub in subsidiary_info[:4]
+                    ]
+                )
+                st.html(
+                    f"""
+                <div style="width:560px; max-width:100%; background:white; border:1px solid #e2e8f0; border-radius:12px; padding:20px; box-shadow:0 4px 12px rgba(0,0,0,0.03);">
+                    <div style="font-family:'Poppins',sans-serif;color:#003366;font-size:12px;font-weight:700;
+                                text-transform:uppercase;letter-spacing:0.8px;margin-bottom:12px;display:flex;align-items:center;gap:8px;">\U0001f517 Related Network</div>
+                    {sub_rows}
+                </div>
+                """
+                )
     else:
         st.info("Company profile data pending...")
 
@@ -618,6 +764,7 @@ def render_main_dashboard(placeholder=None):
     )
 
     # Check for news in multiple locations
+    # News agent returns: {"articles": [...], "total_articles": N}
     news_data = enrichments.get("news", {})
     news_articles = []
     news_summary = ""
@@ -662,9 +809,14 @@ def render_main_dashboard(placeholder=None):
         for idx, article in enumerate(news_articles[:3]):
             if isinstance(article, dict):
                 title = article.get("title", "Untitled")
-                url = article.get("url", "#")
+                # Support both 'url' (legacy) and 'link' (news agent)
+                url = article.get("url") or article.get("link", "#")
                 source = article.get("source", "News Source")
-                date = article.get("date", "")
+                # Support both 'date' (legacy) and 'published' (news agent)
+                date = article.get("date") or article.get("published", "")
+                # Trim RFC date to just the date part if needed (e.g. "Fri, 13 Feb 2026 04:50:22 GMT" -> "13 Feb 2026")
+                if date and "," in date:
+                    date = date.split(",")[1].strip().rsplit(" ", 1)[0].strip()
 
                 with news_cols[idx]:
                     st.html(

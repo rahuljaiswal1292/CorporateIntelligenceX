@@ -73,7 +73,13 @@ class PresentationAgent(BaseAgent):
         )
 
         enrichments = state.get("enrichments", {}) or {}
+        if isinstance(enrichments, list):
+            enrichments = enrichments[0] if enrichments and isinstance(enrichments[0], dict) else {}
+
         financial_data = state.get("financial_data", {}) or {}
+        if isinstance(financial_data, list):
+            financial_data = financial_data[0] if financial_data and isinstance(financial_data[0], dict) else {}
+
         final_report = state.get("final_report", {}) or {}
 
         # Defensive check for final_report (handled list case from legacy/LLM errors)
@@ -273,7 +279,11 @@ class PresentationAgent(BaseAgent):
                 self.log(f"Failed to extract latest metrics: {e}", "WARNING")
 
         competitor_analysis = enrichments.get("Competitor Analysis") or {}
+        if isinstance(competitor_analysis, list):
+            competitor_analysis = competitor_analysis[0] if competitor_analysis and isinstance(competitor_analysis[0], dict) else {}
         comp_data_block = competitor_analysis.get("data") or {}
+        if isinstance(comp_data_block, list):
+            comp_data_block = comp_data_block[0] if comp_data_block and isinstance(comp_data_block[0], dict) else {}
 
         financials = {
             "current": current_metrics,

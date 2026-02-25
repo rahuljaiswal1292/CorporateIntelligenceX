@@ -689,7 +689,7 @@ def render_main_dashboard(placeholder=None):
             (
                 "ROE",
                 curr.get("roe", "N/A"),
-                "linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)",
+                "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)",
             ),
             (
                 "ROA",
@@ -965,8 +965,8 @@ def render_main_dashboard(placeholder=None):
                 showgrid=True,
                 gridcolor="#f1f5f9",
                 tickfont=dict(color="#64748b", size=11),
+                type="date",  # Changed from 'category' to 'date'
                 rangeslider=dict(visible=False),
-                type="category",
             ),
             yaxis=dict(
                 showgrid=True,
@@ -974,6 +974,13 @@ def render_main_dashboard(placeholder=None):
                 tickfont=dict(color="#64748b", size=11),
                 side="right",
             ),
+        )
+
+        fig.update_xaxes(
+            dtick=7 * 24 * 60 * 60 * 1000,  # Every 7 days
+            tickformat="%d\n%b-%y",  # Day on top, Month-Year below
+            gridcolor="#f1f5f9",
+            tickfont=dict(size=10, color="#64748b"),
         )
 
         # Add volume if available

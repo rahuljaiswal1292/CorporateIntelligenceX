@@ -253,7 +253,10 @@ class PresentationAgent(BaseAgent):
                 close_key = "Close" if is_adx else "Last"
 
                 chart_data = {
-                    "dates": [d["Date"] for d in sorted_daily],
+                    "dates": [
+                        datetime.strptime(d["Date"], date_fmt).strftime("%Y-%m-%d")
+                        for d in sorted_daily
+                    ],
                     "open": [d["Open"] for d in sorted_daily],
                     "high": [d["High"] for d in sorted_daily],
                     "low": [d["Low"] for d in sorted_daily],

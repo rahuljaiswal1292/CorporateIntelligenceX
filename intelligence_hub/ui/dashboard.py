@@ -373,6 +373,7 @@ def render_main_dashboard(placeholder=None):
 
         # Get DED data (aggregated format from DEDAgent)
         ded_data = enrichments.get("ded", {})
+        shareholder_data = enrichments.get("shareholders", {})
 
         st.html(
             f"""
@@ -423,7 +424,7 @@ def render_main_dashboard(placeholder=None):
             ">{description}</p>
             {f'<div style="margin-bottom: 16px;"><a href="{website}" target="_blank" style="font-family: Poppins, sans-serif; color: #0077ff; text-decoration: none; font-weight: 600; font-size: 14px;">🌐 Visit Website →</a></div>' if website != "#" else ''}
             
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 24px; padding-top: 24px; border-top: 1px solid #e2e8f0;">
                 <div>
                     <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px;">Industry</div>
                     <div style="font-family: 'Poppins', sans-serif; color: #1e293b; font-size: 15px; font-weight: 600;">{meta.get('sector', 'N/A')}</div>
@@ -437,10 +438,36 @@ def render_main_dashboard(placeholder=None):
                     <div style="font-family: 'Poppins', sans-serif; color: #1e293b; font-size: 15px; font-weight: 600;">{meta.get('headquarters', 'N/A')}</div>
                 </div>
                 <div>
-                    <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px;">Exchange</div>
-                    <div style="font-family: 'Poppins', sans-serif; color: #1e293b; font-size: 15px; font-weight: 600;">{meta.get('exchange', 'N/A')}: {meta.get('ticker', '')}</div>
+                    <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px;">Ownership</div>
+                    <div style="font-family: 'Poppins', sans-serif; color: #1e293b; font-size: 15px; font-weight: 600;">{shareholder_data.get('ownership_type', meta.get('company_type', 'N/A'))}</div>
                 </div>
             </div>
+
+            {f'''
+            <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid #e2e8f0;">
+                <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 12px; letter-spacing: 0.8px;">Major Shareholders & Ownership Structure</div>
+                <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                    {"".join([f"""
+                    <div style="
+                        background: #f0f9ff;
+                        border: 1px solid #bae6fd;
+                        border-radius: 8px;
+                        padding: 10px 14px;
+                        display: flex;
+                        flex-direction: column;
+                        min-width: 140px;
+                    ">
+                        <span style="font-family: 'Poppins', sans-serif; color: #003366; font-size: 13px; font-weight: 700;">{sh.get('name', 'Unknown')}</span>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                            <span style="font-family: 'Poppins', sans-serif; color: #0077ff; font-size: 11px; font-weight: 600;">{sh.get('percentage') if sh.get('percentage') else 'N/A'}</span>
+                            <span style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 9px; font-weight: 600; text-transform: uppercase;">{sh.get('type', 'Entity')}</span>
+                        </div>
+                    </div>
+                    """ for sh in shareholder_data.get('major_shareholders', [])[:6]])}
+                </div>
+                {f'<p style="font-family: Poppins, sans-serif; color: #64748b; font-size: 12px; margin-top: 12px; line-height: 1.5; font-style: italic;">{shareholder_data.get("ownership_notes")}</p>' if shareholder_data.get("ownership_notes") else ""}
+            </div>
+            ''' if shareholder_data.get('major_shareholders') else ""}
         </div>
         """
         )

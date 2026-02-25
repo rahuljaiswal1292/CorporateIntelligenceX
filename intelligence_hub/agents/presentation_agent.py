@@ -342,6 +342,9 @@ class PresentationAgent(BaseAgent):
         if news_articles:
             news_summary = self._generate_news_summary(news_articles)
 
+        # 4. Shareholder Mapping
+        shareholder_data = enrichments.get("shareholders") or {}
+
         # Wikipedia URL Extraction from sources
         wiki_url = None
         sources = financial_data.get("sources", []) or []
@@ -355,7 +358,8 @@ class PresentationAgent(BaseAgent):
                 wiki_url = src.get("url")
                 break
         if not wiki_url:
-            wiki_url = (enrichments.get("wikipedia") or {}).get("url")
+            wiki_block = enrichments.get("wikipedia") or {}
+            wiki_url = wiki_block.get("url") or wiki_block.get("wikipedia_url")
 
         # SERP Count
         meta_block = enrichments.get("_metadata") or {}
@@ -369,6 +373,7 @@ class PresentationAgent(BaseAgent):
             "wikipedia": {"url": wiki_url},
             "serp": {"count": serp_count},
             "ded": ded_info,
+            "shareholders": shareholder_data,
         }
 
         # --- Aggregate Sources for "Data Sources and References" ---

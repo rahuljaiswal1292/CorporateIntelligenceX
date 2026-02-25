@@ -371,9 +371,9 @@ def render_main_dashboard(placeholder=None):
         description = meta.get("description", "No description available")
         website = meta.get("website", "#")
 
-        # Get DED data (aggregated format from DEDAgent)
-        ded_data = enrichments.get("ded", {})
-        shareholder_data = enrichments.get("shareholders", {})
+        # Get DED data (handle both raw and formatted keys)
+        ded_data = enrichments.get("ded") or enrichments.get("uae_ded_license") or {}
+        shareholder_data = enrichments.get("shareholders") or enrichments.get("shareholder_structure") or {}
 
         st.html(
             f"""
@@ -798,7 +798,7 @@ def render_main_dashboard(placeholder=None):
 
     # Robust extraction from various common formats
     if isinstance(news_data, dict):
-        news_articles = news_data.get("sources", []) or news_data.get("articles", [])
+        news_articles = news_data.get("sources") or news_data.get("articles") or []
         news_summary = news_data.get("summary", "")
     elif isinstance(news_data, list):
         news_articles = news_data

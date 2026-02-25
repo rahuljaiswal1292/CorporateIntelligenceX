@@ -6,7 +6,7 @@ loads every record into a fresh ChromaDB collection called 'ded_selected'
 stored at  data/chroma_ded_selected.
 
 Documents (used for embedding & semantic search):
-    The 'enhanced_searchable_text' field — contains name, Arabic name,
+    The 'enhanced_searchable_text' field - contains name, Arabic name,
     sector, company type, tags, aliases, activities and description.
 
 Metadata (stored for LLM reasoning / filtering):
@@ -116,20 +116,20 @@ def main():
             "Run generate_enriched_corporates.py first."
         )
 
-    print(f"Loading {SOURCE_JSON} …")
+    print(f"Loading {SOURCE_JSON} ...")
     with open(SOURCE_JSON, encoding="utf-8") as f:
         data: list = json.load(f)
-    print(f"  → {len(data)} records loaded.")
+    print(f"  -> {len(data)} records loaded.")
 
     # 2. Init ChromaDB
     os.makedirs(DB_PATH, exist_ok=True)
-    print(f"Initialising ChromaDB at '{DB_PATH}' …")
+    print(f"Initialising ChromaDB at '{DB_PATH}' ...")
     client = chromadb.PersistentClient(path=DB_PATH)
 
     # 3. Drop & recreate collection (fresh load)
     try:
         client.delete_collection(COLLECTION)
-        print(f"  → Deleted existing collection '{COLLECTION}'.")
+        print(f"  -> Deleted existing collection '{COLLECTION}'.")
     except Exception:
         pass
 
@@ -141,7 +141,7 @@ def main():
             "total_records": str(len(data)),
         },
     )
-    print(f"  → Collection '{COLLECTION}' created.")
+    print(f"  -> Collection '{COLLECTION}' created.")
 
     # 4. Build batches
     ids, documents, metadatas = [], [], []
@@ -161,7 +161,7 @@ def main():
 
     # 5. Batch upsert
     total = len(ids)
-    print(f"Inserting {total} documents in batches of {BATCH_SIZE} …")
+    print(f"Inserting {total} documents in batches of {BATCH_SIZE} ...")
     for start in range(0, total, BATCH_SIZE):
         end = min(start + BATCH_SIZE, total)
         collection.add(
@@ -169,15 +169,15 @@ def main():
             documents=documents[start:end],
             metadatas=metadatas[start:end],
         )
-        print(f"  ✓ Batch {start + 1}–{end} added.")
+        print(f"  [OK] Batch {start + 1}-{end} added.")
 
     # 6. Verify
     count = collection.count()
-    print(f"\n✅ Done! '{COLLECTION}' collection has {count} documents.")
+    print(f"\nDone! '{COLLECTION}' collection has {count} documents.")
     print(f"   DB path : {os.path.abspath(DB_PATH)}")
 
     # 7. Quick smoke-test query
-    print("\n── Smoke-test: searching 'Emirates NBD bank Dubai' ──")
+    print("\n-- Smoke-test: searching 'Emirates NBD bank Dubai' --")
     results = collection.query(
         query_texts=["Emirates NBD bank Dubai"],
         n_results=3,

@@ -14,6 +14,7 @@ from intelligence_hub.agents.presentation_agent import PresentationAgent
 from intelligence_hub.agents.wikipedia_agent import WikipediaAgent
 from intelligence_hub.agents.news_agent import NewsAgent
 from intelligence_hub.agents.ded_agent import DEDAgent
+from intelligence_hub.agents.shareholder_agent import ShareholderAgent
 
 # Connectors and storage
 from intelligence_hub.llm.connector import LLMConnector
@@ -258,6 +259,48 @@ def run_ded_node(state: AgentState):
     return {"logs": logs}
 
 
+def run_shareholder_node(state: AgentState):
+    """Executes Shareholder Agent"""
+    company_name = (
+        state.get("canonical_name")
+        or state.get("company_name")
+        or state.get("query", "Unknown")
+    )
+    logs = []
+
+    try:
+        store = CorporateProfileStore()
+        llm_config = state.get("llm_config", {})
+        llm_connector = LLMConnector(config=llm_config)
+
+        def log_handler(msg):
+            logs.append(msg.strip())
+            print(msg.strip())
+
+        agent = ShareholderAgent(
+            company_name=company_name,
+            llm_connector=llm_connector,
+            profile_store=store,
+            log_callback=log_handler,
+        )
+
+        result = agent.run(state)
+        logs.append(f"Shareholder Agent: {result.get('status', 'unknown')}")
+
+        return {
+            "logs": logs,
+            "enrichments": (
+                {"shareholders": result.get("data")}
+                if result.get("status") == "completed"
+                else {}
+            ),
+        }
+    except Exception as e:
+        logs.append(f"Shareholder Agent failed: {str(e)}")
+
+    return {"logs": logs}
+
+
 def join_enrichment_node(state: AgentState):
     """
     Passthrough join node.
@@ -404,6 +447,7 @@ def create_enrichment_graph():
     workflow.add_node("wikipedia", run_wikipedia_node)
     workflow.add_node("news", run_news_node)
     workflow.add_node("ded", run_ded_node)
+    workflow.add_node("shareholders", run_shareholder_node)
     workflow.add_node("competitors", run_competitor_analysis_node)
 
     # ── FAN-IN fix: explicit join node ────────────────────────────────────
@@ -433,12 +477,14 @@ def create_enrichment_graph():
     workflow.add_edge("start_enrichment", "wikipedia")
     workflow.add_edge("start_enrichment", "news")
     workflow.add_edge("start_enrichment", "ded")
+    workflow.add_edge("start_enrichment", "shareholders")
     workflow.add_edge("start_enrichment", "competitors")
 
     # Convergence
     workflow.add_edge("wikipedia", "scraper")
     workflow.add_edge("news", "scraper")
     workflow.add_edge("ded", "scraper")
+    workflow.add_edge("shareholders", "scraper")
     workflow.add_edge("competitors", "scraper")
 
     # Sequential

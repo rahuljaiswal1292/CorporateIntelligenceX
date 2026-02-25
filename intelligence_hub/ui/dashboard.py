@@ -371,8 +371,9 @@ def render_main_dashboard(placeholder=None):
         description = meta.get("description", "No description available")
         website = meta.get("website", "#")
 
-        # Get DED data (aggregated format from DEDAgent)
-        ded_data = enrichments.get("ded", {})
+        # Get DED data (handle both raw and formatted keys)
+        ded_data = enrichments.get("ded") or enrichments.get("uae_ded_license") or {}
+        shareholder_data = enrichments.get("shareholders") or enrichments.get("shareholder_structure") or {}
 
         st.html(
             f"""
@@ -423,7 +424,7 @@ def render_main_dashboard(placeholder=None):
             ">{description}</p>
             {f'<div style="margin-bottom: 16px;"><a href="{website}" target="_blank" style="font-family: Poppins, sans-serif; color: #0077ff; text-decoration: none; font-weight: 600; font-size: 14px;">🌐 Visit Website →</a></div>' if website != "#" else ''}
             
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 24px; padding-top: 24px; border-top: 1px solid #e2e8f0;">
                 <div>
                     <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px;">Industry</div>
                     <div style="font-family: 'Poppins', sans-serif; color: #1e293b; font-size: 15px; font-weight: 600;">{meta.get('sector', 'N/A')}</div>
@@ -437,10 +438,36 @@ def render_main_dashboard(placeholder=None):
                     <div style="font-family: 'Poppins', sans-serif; color: #1e293b; font-size: 15px; font-weight: 600;">{meta.get('headquarters', 'N/A')}</div>
                 </div>
                 <div>
-                    <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px;">Exchange</div>
-                    <div style="font-family: 'Poppins', sans-serif; color: #1e293b; font-size: 15px; font-weight: 600;">{meta.get('exchange', 'N/A')}: {meta.get('ticker', '')}</div>
+                    <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px;">Ownership</div>
+                    <div style="font-family: 'Poppins', sans-serif; color: #1e293b; font-size: 15px; font-weight: 600;">{shareholder_data.get('ownership_type', meta.get('company_type', 'N/A'))}</div>
                 </div>
             </div>
+
+            {f'''
+            <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid #e2e8f0;">
+                <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 12px; letter-spacing: 0.8px;">Major Shareholders & Ownership Structure</div>
+                <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                    {"".join([f"""
+                    <div style="
+                        background: #f0f9ff;
+                        border: 1px solid #bae6fd;
+                        border-radius: 8px;
+                        padding: 10px 14px;
+                        display: flex;
+                        flex-direction: column;
+                        min-width: 140px;
+                    ">
+                        <span style="font-family: 'Poppins', sans-serif; color: #003366; font-size: 13px; font-weight: 700;">{sh.get('name', 'Unknown')}</span>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                            <span style="font-family: 'Poppins', sans-serif; color: #0077ff; font-size: 11px; font-weight: 600;">{sh.get('percentage') if sh.get('percentage') else 'N/A'}</span>
+                            <span style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 9px; font-weight: 600; text-transform: uppercase;">{sh.get('type', 'Entity')}</span>
+                        </div>
+                    </div>
+                    """ for sh in shareholder_data.get('major_shareholders', [])[:6]])}
+                </div>
+                {f'<p style="font-family: Poppins, sans-serif; color: #64748b; font-size: 12px; margin-top: 12px; line-height: 1.5; font-style: italic;">{shareholder_data.get("ownership_notes")}</p>' if shareholder_data.get("ownership_notes") else ""}
+            </div>
+            ''' if shareholder_data.get('major_shareholders') else ""}
         </div>
         """
         )
@@ -771,7 +798,7 @@ def render_main_dashboard(placeholder=None):
 
     # Robust extraction from various common formats
     if isinstance(news_data, dict):
-        news_articles = news_data.get("sources", []) or news_data.get("articles", [])
+        news_articles = news_data.get("sources") or news_data.get("articles") or []
         news_summary = news_data.get("summary", "")
     elif isinstance(news_data, list):
         news_articles = news_data
@@ -1193,14 +1220,44 @@ def render_main_dashboard(placeholder=None):
         for idx, insight in enumerate(insights[:6]):
             if isinstance(insight, dict):
                 category = insight.get("category", "General")
-                text = insight.get("text", insight.get("insight", ""))
+
+                # Support both the rich schema (finding/trigger/action/source)
+                # and the collapsed schema (text / insight) from legacy paths
+                finding  = insight.get("finding", "")
+                trigger  = insight.get("trigger", "")
+                action   = insight.get("action", "")
+                source   = insight.get("source", "")
+                # Fallback: if none of the rich keys exist, use text/insight
+                text_fallback = insight.get("text", insight.get("insight", ""))
+
+                # Pick colour accent by category keyword
+                accent = "#0077ff"
+                if "lend" in category.lower():
+                    accent = "#10b981"
+                elif "trade" in category.lower():
+                    accent = "#f59e0b"
+                elif "kyc" in category.lower() or "compliance" in category.lower():
+                    accent = "#ef4444"
+                elif "operational" in category.lower():
+                    accent = "#8b5cf6"
+
+                # Build the inner body dynamically
+                if finding or trigger or action:
+                    body_html = f"""
+                        {'<div style="margin-bottom:8px;"><span style="font-family:Poppins,sans-serif;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">📍 Finding</span><div style="font-family:Poppins,sans-serif;color:#1e293b;font-size:13px;line-height:1.5;margin-top:2px;">' + finding + '</div></div>' if finding else ''}
+                        {'<div style="margin-bottom:8px;"><span style="font-family:Poppins,sans-serif;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">⚡ Trigger</span><div style="font-family:Poppins,sans-serif;color:#1e293b;font-size:13px;line-height:1.5;margin-top:2px;">' + trigger + '</div></div>' if trigger else ''}
+                        {'<div style="background:rgba(0,119,255,0.06);border-radius:8px;padding:10px 12px;margin-top:10px;"><span style="font-family:Poppins,sans-serif;font-size:10px;font-weight:700;color:' + accent + ';text-transform:uppercase;letter-spacing:0.5px;">💡 RM Action</span><div style="font-family:Poppins,sans-serif;color:#0f172a;font-size:13px;font-weight:600;line-height:1.5;margin-top:4px;">' + action + '</div></div>' if action else ''}
+                        {'<div style="margin-top:8px;font-family:Poppins,sans-serif;font-size:11px;color:#94a3b8;">Source: ' + source + '</div>' if source else ''}
+                    """
+                else:
+                    body_html = f'<div style="font-family:Poppins,sans-serif;color:#334155;font-size:13px;line-height:1.6;">{text_fallback}</div>'
 
                 with insight_cols[idx % 2]:
                     st.html(
                         f"""
                     <div style="
                         background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-                        border-left: 4px solid #0077ff;
+                        border-left: 4px solid {accent};
                         border-radius: 12px;
                         padding: 20px;
                         margin-bottom: 16px;
@@ -1210,20 +1267,14 @@ def render_main_dashboard(placeholder=None):
                        onmouseout="this.style.transform='translateX(0)'; this.style.boxShadow='0 2px 8px rgba(0, 51, 102, 0.06)';">
                         <div style="
                             font-family: 'Poppins', sans-serif;
-                            color: #0077ff;
+                            color: {accent};
                             font-weight: 700;
                             font-size: 11px;
                             text-transform: uppercase;
-                            margin-bottom: 10px;
+                            margin-bottom: 12px;
                             letter-spacing: 0.8px;
                         ">{category}</div>
-                        <div style="
-                            font-family: 'Poppins', sans-serif;
-                            color: #334155;
-                            line-height: 1.6;
-                            font-size: 14px;
-                            font-weight: 400;
-                        ">{text}</div>
+                        {body_html}
                     </div>
                     """
                     )

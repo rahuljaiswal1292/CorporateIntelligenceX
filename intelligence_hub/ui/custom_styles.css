@@ -353,9 +353,9 @@ div.stButton>button[kind="secondary"]:hover,
 }
 
 .canonical-value.resolving .canonical-text {
-    color: #7f8c8d;
+    color: #0077ff;
     font-style: italic;
-    font-weight: 500;
+    font-weight: 600;
     animation: blink 1.5s ease-in-out infinite;
 }
 
@@ -363,7 +363,7 @@ div.stButton>button[kind="secondary"]:hover,
 
     0%,
     100% {
-        opacity: 0.3;
+        opacity: 0.4;
     }
 
     50% {

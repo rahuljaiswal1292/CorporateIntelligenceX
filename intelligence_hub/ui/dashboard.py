@@ -694,27 +694,27 @@ def render_main_dashboard(placeholder=None):
             (
                 "ROA",
                 curr.get("roa", "N/A"),
-                "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)",
+                "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)",
             ),
             (
                 "NPL Ratio",
                 curr.get("npl_ratio", "N/A"),
-                "linear-gradient(135deg, #475569 0%, #64748b 100%)",
+                "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)",
             ),
             (
                 "Capital Adequacy",
                 curr.get("capital_adequacy", "N/A"),
-                "linear-gradient(135deg, #059669 0%, #10b981 100%)",
+                "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)",
             ),
             (
                 "Cost-to-Income",
                 curr.get("cost_to_income", "N/A"),
-                "linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%)",
+                "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)",
             ),
             (
                 "LCR",
                 curr.get("liquidity_coverage_ratio", "N/A"),
-                "linear-gradient(135deg, #ea580c 0%, #f97316 100%)",
+                "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)",
             ),
         ]
 
@@ -781,6 +781,33 @@ def render_main_dashboard(placeholder=None):
         news_articles = data.get("news_articles", []) or data.get("news", [])
 
     if news_summary:
+        # Convert simple markdown for HTML display
+        processed_summary = news_summary.replace("**", "<b>", 1).replace(
+            "**", "</b>", 1
+        )
+        # Handle multiple boldings
+        while "**" in processed_summary:
+            processed_summary = processed_summary.replace("**", "<b>", 1).replace(
+                "**", "</b>", 1
+            )
+
+        # Convert simple dashes to styled list items
+        lines = processed_summary.split("\n")
+        html_lines = []
+        for line in lines:
+            line = line.strip()
+            if line.startswith("-"):
+                content = line[1:].strip()
+                html_lines.append(
+                    f'<div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: flex-start;">'
+                    f'<span style="color: #0077ff; font-weight: 900; margin-top: 1px;">•</span>'
+                    f"<span>{content}</span></div>"
+                )
+            elif line:
+                html_lines.append(f'<div style="margin-bottom: 8px;">{line}</div>')
+
+        final_summary_html = "".join(html_lines)
+
         st.html(
             f"""
         <div style="
@@ -794,11 +821,13 @@ def render_main_dashboard(placeholder=None):
             line-height: 1.6;
             font-size: 15px;
         ">
-            <div style="font-weight: 700; color: #003366; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+            <div style="font-weight: 700; color: #003366; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
                 <span style="font-size: 20px;">🤖</span> 
                 <span>AI Insights Summary</span>
             </div>
-            {news_summary}
+            <div style="font-size: 14px;">
+                {final_summary_html}
+            </div>
         </div>
         """
         )

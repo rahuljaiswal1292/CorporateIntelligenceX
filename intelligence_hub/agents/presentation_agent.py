@@ -74,11 +74,19 @@ class PresentationAgent(BaseAgent):
 
         enrichments = state.get("enrichments", {}) or {}
         if isinstance(enrichments, list):
-            enrichments = enrichments[0] if enrichments and isinstance(enrichments[0], dict) else {}
+            enrichments = (
+                enrichments[0]
+                if enrichments and isinstance(enrichments[0], dict)
+                else {}
+            )
 
         financial_data = state.get("financial_data", {}) or {}
         if isinstance(financial_data, list):
-            financial_data = financial_data[0] if financial_data and isinstance(financial_data[0], dict) else {}
+            financial_data = (
+                financial_data[0]
+                if financial_data and isinstance(financial_data[0], dict)
+                else {}
+            )
 
         final_report = state.get("final_report", {}) or {}
 
@@ -280,10 +288,18 @@ class PresentationAgent(BaseAgent):
 
         competitor_analysis = enrichments.get("Competitor Analysis") or {}
         if isinstance(competitor_analysis, list):
-            competitor_analysis = competitor_analysis[0] if competitor_analysis and isinstance(competitor_analysis[0], dict) else {}
+            competitor_analysis = (
+                competitor_analysis[0]
+                if competitor_analysis and isinstance(competitor_analysis[0], dict)
+                else {}
+            )
         comp_data_block = competitor_analysis.get("data") or {}
         if isinstance(comp_data_block, list):
-            comp_data_block = comp_data_block[0] if comp_data_block and isinstance(comp_data_block[0], dict) else {}
+            comp_data_block = (
+                comp_data_block[0]
+                if comp_data_block and isinstance(comp_data_block[0], dict)
+                else {}
+            )
 
         financials = {
             "current": current_metrics,
@@ -555,13 +571,14 @@ class PresentationAgent(BaseAgent):
         You are a highly experienced Financial Analyst and Relationship Manager.
         I will provide you with a list of recent news articles about {self.company_name}.
         
-        Your task is to provide a concise, high-level executive summary (1-2 paragraphs) that captures the overall sentiment and key developments.
-        The summary should be professional and highlight items of strategic importance to a banking Relationship Manager.
+        Your task is to provide a concise, high-level executive summary in bullet points (using - ) that captures the overall sentiment and key developments. 
+        Each bullet point should highlight key words or phrases using bold (e.g., **Strategic Growth**).
+        Focus on items of strategic importance to a banking Relationship Manager.
         
         News Articles:
         {articles_str}
         
-        Executive News Summary:
+        Executive News Summary (Bulleted list with bold highlights):
         """
 
         try:

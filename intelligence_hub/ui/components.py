@@ -1163,9 +1163,17 @@ def render_company_summary_card(
                 col_continue, col_abort = st.columns([2.5, 1])
 
                 with col_continue:
-                    btn_disabled = not st.session_state.get("canonical_name")
+                    btn_disabled = (
+                        not st.session_state.get("canonical_name")
+                        or st.session_state.get("is_generating", False)
+                    )
+                    btn_label = (
+                        "⏳ Generating Profile..."
+                        if st.session_state.get("is_generating", False)
+                        else "🚀 GENERATE PROFILE"
+                    )
                     if st.button(
-                        "🚀 GENERATE PROFILE",
+                        btn_label,
                         key=key,
                         disabled=btn_disabled,
                         type="primary",

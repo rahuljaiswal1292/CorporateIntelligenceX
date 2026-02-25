@@ -120,6 +120,8 @@ if "reset_counter" not in st.session_state:
     st.session_state.reset_counter = 0
 if "show_chatbot" not in st.session_state:
     st.session_state.show_chatbot = False
+if "is_generating" not in st.session_state:
+    st.session_state.is_generating = False
 
 
 # Removed local helpers (moved to intelligence_hub.ui.utils and components.py)
@@ -167,6 +169,7 @@ def run_investigation(
         st.session_state.investigation_paused = False
         st.session_state.company_profile = None  # Clear old profile
         st.session_state.intermediate_state = None
+        st.session_state.is_generating = False  # Reset generate flag
         st.session_state.thread_id = str(uuid.uuid4())
         st.session_state.agent_status = get_default_agent_status()
         st.session_state.agent_status["master_agent"] = "running"
@@ -731,8 +734,74 @@ dashboard_placeholder = st.empty()
 
 # Action: Continue Profiling
 if continue_clicked:
-    # Ensure invalid states are cleared
+    # Disable button immediately and show loading state
+    st.session_state.is_generating = True
     st.session_state.investigation_paused = False
+    # Show blinking dashboard placeholder before enrichment starts
+    with dashboard_placeholder.container():
+        company = st.session_state.get("canonical_name", "Company")
+        _agents = [
+            "Wikipedia Agent", "News Agent", "DED Agent",
+            "Financial Scraper", "Analyst Agent"
+        ]
+        _agent_pills = "".join([
+            f'<div style="display:flex;align-items:center;gap:10px;color:rgba(255,255,255,0.8);font-size:0.9rem;font-family:\'Inter\', sans-serif;font-weight:500;">'
+            f'<span style="display:inline-block;width:10px;height:10px;border-radius:50%;'
+            f'background:#0077ff;box-shadow: 0 0 10px rgba(0, 119, 255, 0.5);animation:dashPulse 2s ease-in-out infinite;'
+            f'animation-delay:{i * 0.3:.1f}s;"></span>{a}</div>'
+            for i, a in enumerate(_agents)
+        ])
+        st.html(f"""
+        <div style="
+            margin-top: 32px;
+            padding: 56px 40px;
+            background: linear-gradient(135deg, #002D62 0%, #001A38 100%);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 45, 98, 0.25);
+            animation: dashPulse 2.5s ease-in-out infinite;
+        ">
+            <style>
+            @keyframes dashPulse {{
+                0%, 100% {{ opacity: 1; transform: scale(1); box-shadow: 0 0 0 0 rgba(0,119,255,0.0); }}
+                50% {{ opacity: 0.9; transform: scale(0.99); box-shadow: 0 0 40px 6px rgba(0,119,255,0.25); }}
+            }}
+            @keyframes spin {{
+                to {{ transform: rotate(360deg); }}
+            }}
+            </style>
+            <div style="
+                width: 60px; height: 60px;
+                border: 5px solid rgba(255,255,255,0.1);
+                border-top-color: #0077ff;
+                border-radius: 50%;
+                animation: spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+                margin: 0 auto 28px;
+                box-shadow: 0 0 20px rgba(0, 119, 255, 0.2);
+            "></div>
+            <h3 style="
+                color:#FFFFFF; 
+                font-family: 'Poppins', sans-serif;
+                font-size: 1.6rem; 
+                font-weight: 700; 
+                margin:0 0 12px;
+                letter-spacing: -0.02em;
+            ">Generating Intelligence Profile</h3>
+            <p style="
+                color:rgba(255,255,255,0.7); 
+                font-family: 'Inter', sans-serif;
+                font-size: 1.1rem; 
+                margin:0 0 32px;
+                line-height: 1.5;
+            ">
+                Running multi-agent enrichment for <strong style='color:#0077ff; font-weight: 700;'>{company}</strong>
+            </p>
+            <div style="display:flex; justify-content:center; gap:28px 40px; flex-wrap:wrap; max-width: 800px; margin: 0 auto;">
+                {_agent_pills}
+            </div>
+        </div>
+        """)
     run_investigation(
         None,
         pipeline_placeholder,
@@ -740,6 +809,7 @@ if continue_clicked:
         sidebar_logs_placeholder,
         dashboard_placeholder,
     )
+    st.session_state.is_generating = False
     st.rerun()
 
 if reset_clicked:
@@ -816,7 +886,12 @@ elif (
 
 # Final Dashboard Render (if analysis complete and not running investigation right now)
 if st.session_state.analysis_complete and st.session_state.data:
+    st.session_state.is_generating = False
     render_main_dashboard(dashboard_placeholder)
+
+elif st.session_state.get("is_generating"):
+    # Show blinking state while enrichment is actively running
+    pass  # placeholder is already populated by the continue_clicked block above
 
 elif not st.session_state.analysis_complete and st.session_state.progress_stage == 0:
     # Empty State - Show nothing or a welcome message

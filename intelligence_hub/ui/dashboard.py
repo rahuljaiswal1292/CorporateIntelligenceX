@@ -455,16 +455,18 @@ def render_main_dashboard(placeholder=None):
 
             conf_map = {
                 "very_high": ("#003366", "#e0f2fe", "\u2705 Very High Confidence"),
-                "high":      ("#00509e", "#e0f2fe", "\u2705 High Confidence"),
-                "medium":    ("#0077ff", "#f0f9ff", "\u26a0\ufe0f Medium Confidence"),
-                "low":       ("#ef4444", "#fee2e2", "\u26a0\ufe0f Low Confidence"),
+                "high": ("#00509e", "#e0f2fe", "\u2705 High Confidence"),
+                "medium": ("#0077ff", "#f0f9ff", "\u26a0\ufe0f Medium Confidence"),
+                "low": ("#ef4444", "#fee2e2", "\u26a0\ufe0f Low Confidence"),
             }
             conf_color, conf_bg, conf_label = conf_map.get(
-                match_confidence, ("#64748b", "#f1f5f9", "\u2139\ufe0f Confidence Unknown")
+                match_confidence,
+                ("#64748b", "#f1f5f9", "\u2139\ufe0f Confidence Unknown"),
             )
 
             # Section header
-            st.html(f"""
+            st.html(
+                f"""
             <div style="font-family:'Poppins',sans-serif; font-size:20px; font-weight:700;
                         color:#003366; margin-top:8px; margin-bottom:16px; padding-bottom:10px;
                         border-bottom:2px solid #0077ff; display:flex; align-items:center; gap:12px;">
@@ -476,50 +478,60 @@ def render_main_dashboard(placeholder=None):
                     {conf_label}
                 </span>
             </div>
-            """)
+            """
+            )
 
             # Top company match — compact detailed card
             if companies_list:
                 top = companies_list[0]
-                trade_name  = top.get("trade_name_en", "Unknown Entity")
-                similarity  = top.get("similarity_score", 0)
-                sim_pct     = int(similarity * 100)
-                lic_count   = top.get("license_count", 0)
-                categories  = top.get("license_categories", [])
-                activities  = top.get("activities", [])
+                trade_name = top.get("trade_name_en", "Unknown Entity")
+                similarity = top.get("similarity_score", 0)
+                sim_pct = int(similarity * 100)
+                lic_count = top.get("license_count", 0)
+                categories = top.get("license_categories", [])
+                activities = top.get("activities", [])
                 license_nums = top.get("license_numbers", [])
-                sector_tags  = top.get("sector_tags", [])
-                earliest    = top.get("earliest_issue_date", "—")
-                latest_exp  = top.get("latest_expiry_date", "—")
+                sector_tags = top.get("sector_tags", [])
+                earliest = top.get("earliest_issue_date", "—")
+                latest_exp = top.get("latest_expiry_date", "—")
 
                 # Sector Tags (Blue shaded)
-                sec_pills = "".join([
-                    f'<span style="background:#003366;color:white;font-size:10px;font-weight:600;'
-                    f'padding:4px 12px;border-radius:20px;white-space:nowrap;border:1px solid #002244;margin-bottom:4px;">{s}</span>'
-                    for s in sector_tags[:6]
-                ])
+                sec_pills = "".join(
+                    [
+                        f'<span style="background:#003366;color:white;font-size:10px;font-weight:600;'
+                        f'padding:4px 12px;border-radius:20px;white-space:nowrap;border:1px solid #002244;margin-bottom:4px;">{s}</span>'
+                        for s in sector_tags[:6]
+                    ]
+                )
 
                 # License Numbers (Numbered chips, Blue shades)
-                lic_chips = "".join([
-                    f'<span style="background:#f0f9ff;color:#0077ff;font-size:10px;font-weight:700;'
-                    f'padding:4px 10px;border-radius:20px;border:1px solid #bae6fd;margin-bottom:4px;display:flex;align-items:center;gap:4px;">'
-                    f'<span style="color:#003366;opacity:0.6;">#</span>{l}</span>'
-                    for l in license_nums[:5]
-                ])
+                lic_chips = "".join(
+                    [
+                        f'<span style="background:#f0f9ff;color:#0077ff;font-size:10px;font-weight:700;'
+                        f'padding:4px 10px;border-radius:20px;border:1px solid #bae6fd;margin-bottom:4px;display:flex;align-items:center;gap:4px;">'
+                        f'<span style="color:#003366;opacity:0.6;">#</span>{l}</span>'
+                        for l in license_nums[:5]
+                    ]
+                )
 
                 # Category & Activity (Light Blue shades)
-                cat_pills = "".join([
-                    f'<span style="background:#e0f2fe;color:#003366;font-size:10px;font-weight:600;'
-                    f'padding:4px 10px;border-radius:20px;white-space:nowrap;border:1px solid #bae6fd;margin-bottom:4px;">{c}</span>'
-                    for c in categories
-                ])
-                act_pills = "".join([
-                    f'<span style="background:#f8fafc;color:#475569;font-size:10px;font-weight:600;'
-                    f'padding:4px 10px;border-radius:20px;white-space:nowrap;border:1px solid #e2e8f0;margin-bottom:4px;">{a}</span>'
-                    for a in activities[:6]
-                ])
+                cat_pills = "".join(
+                    [
+                        f'<span style="background:#e0f2fe;color:#003366;font-size:10px;font-weight:600;'
+                        f'padding:4px 10px;border-radius:20px;white-space:nowrap;border:1px solid #bae6fd;margin-bottom:4px;">{c}</span>'
+                        for c in categories
+                    ]
+                )
+                act_pills = "".join(
+                    [
+                        f'<span style="background:#f8fafc;color:#475569;font-size:10px;font-weight:600;'
+                        f'padding:4px 10px;border-radius:20px;white-space:nowrap;border:1px solid #e2e8f0;margin-bottom:4px;">{a}</span>'
+                        for a in activities[:6]
+                    ]
+                )
 
-                st.html(f"""
+                st.html(
+                    f"""
                 <div style="width:560px; max-width:100%; font-family:'Poppins',sans-serif;">
                 <div style="background:white; border:1px solid #e2e8f0; border-top:4px solid #003366; border-radius:14px;
                             padding:28px; box-shadow:0 8px 30px rgba(0,51,102,0.06); margin-bottom:24px;">
@@ -579,30 +591,38 @@ def render_main_dashboard(placeholder=None):
 
                 </div>
                 </div>
-                """)
+                """
+                )
 
             # Related Entities
             if subsidiary_info:
-                sub_rows = "".join([
-                    f'<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;">'
-                    f'<div><div style="font-family:Poppins,sans-serif;color:#1e293b;font-size:12px;font-weight:600;">{sub.get("name","\u2014")}</div>'
-                    f'<div style="font-family:Poppins,sans-serif;color:#64748b;font-size:10px;margin-top:2px;">{sub.get("relationship","")}</div></div>'
-                    f'<div style="font-family:Poppins,sans-serif;color:#0077ff;font-size:12px;font-weight:700;white-space:nowrap;margin-left:12px;">{sub.get("licenses",0)} lic.</div></div>'
-                    for sub in subsidiary_info[:4]
-                ])
-                st.html(f"""
+                sub_rows = "".join(
+                    [
+                        f'<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;">'
+                        f'<div><div style="font-family:Poppins,sans-serif;color:#1e293b;font-size:12px;font-weight:600;">{sub.get("name","\u2014")}</div>'
+                        f'<div style="font-family:Poppins,sans-serif;color:#64748b;font-size:10px;margin-top:2px;">{sub.get("relationship","")}</div></div>'
+                        f'<div style="font-family:Poppins,sans-serif;color:#0077ff;font-size:12px;font-weight:700;white-space:nowrap;margin-left:12px;">{sub.get("licenses",0)} lic.</div></div>'
+                        for sub in subsidiary_info[:4]
+                    ]
+                )
+                st.html(
+                    f"""
                 <div style="width:560px; max-width:100%; background:white; border:1px solid #e2e8f0; border-radius:12px; padding:20px; box-shadow:0 4px 12px rgba(0,0,0,0.03);">
                     <div style="font-family:'Poppins',sans-serif;color:#003366;font-size:12px;font-weight:700;
                                 text-transform:uppercase;letter-spacing:0.8px;margin-bottom:12px;display:flex;align-items:center;gap:8px;">\U0001f517 Related Network</div>
                     {sub_rows}
                 </div>
-                """)
+                """
+                )
     else:
         st.info("Company profile data pending...")
 
-    # === SECTION 3: FINANCIAL SNAPSHOT - Now below Profile ===
+    # === SECTION 3: FINANCIAL SNAPSHOT ===
+    curr = financials.get("current", {})
+    period_label = curr.get("period", "")
+
     st.html(
-        """
+        f"""
     <div style="
         font-family: 'Poppins', sans-serif;
         font-size: 20px;
@@ -619,6 +639,7 @@ def render_main_dashboard(placeholder=None):
     ">
         <span style="font-size: 24px;">💰</span>
         <span>Financial Snapshot</span>
+        {f'<span style="padding:5px; background: #e2e8f0; color: #475569; font-size: 11px; padding: 4px 12px; border-radius: 20px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; border: 2px solid black;">{period_label}</span>' if period_label else ''}
     </div>
     """
     )
@@ -626,7 +647,7 @@ def render_main_dashboard(placeholder=None):
     if financials and "current" in financials:
         curr = financials.get("current", {})
 
-        # Primary Metrics - Revenue & Profit (Full Width Grid)
+        # Primary Metrics - 5 Big Cards in a Grid
         st.html(
             f"""
         <div style="
@@ -637,23 +658,26 @@ def render_main_dashboard(placeholder=None):
             box-shadow: 0 4px 16px rgba(30, 58, 138, 0.3);
             color: white;
         ">
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
-                <div style="border-right: 1px solid rgba(255,255,255,0.2); padding-right: 20px;">
+            <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px;">
+                <div style="border-right: 1px solid rgba(255,255,255,0.2); padding-right: 15px;">
                     <div style="font-family: 'Poppins', sans-serif; color: rgba(255, 255, 255, 0.8); font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.8px;">Total Revenue</div>
-                    <div style="font-family: 'Poppins', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">{curr.get("rev", "N/A")}</div>
-                    {f'<div style="font-family: Poppins, sans-serif; color: #4ade80; font-size: 12px; font-weight: 600; margin-top: 4px;">↑ {curr.get("trend", "")}</div>' if curr.get("trend") else ''}
+                    <div style="font-family: 'Poppins', sans-serif; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">{curr.get("rev", "N/A")}</div>
                 </div>
-                <div style="border-right: 1px solid rgba(255,255,255,0.2); padding-right: 20px;">
+                <div style="border-right: 1px solid rgba(255,255,255,0.2); padding-right: 15px;">
                     <div style="font-family: 'Poppins', sans-serif; color: rgba(255, 255, 255, 0.8); font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.8px;">Net Profit</div>
-                    <div style="font-family: 'Poppins', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">{curr.get("profit", "N/A")}</div>
+                    <div style="font-family: 'Poppins', sans-serif; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">{curr.get("profit", "N/A")}</div>
                 </div>
-                <div style="border-right: 1px solid rgba(255,255,255,0.2); padding-right: 20px;">
-                    <div style="font-family: 'Poppins', sans-serif; color: rgba(255, 255, 255, 0.8); font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.8px;">Market Cap</div>
-                    <div style="font-family: 'Poppins', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">{financials.get("market_cap", "N/A")}</div>
+                <div style="border-right: 1px solid rgba(255,255,255,0.2); padding-right: 15px;">
+                    <div style="font-family: 'Poppins', sans-serif; color: rgba(255, 255, 255, 0.8); font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.8px;">Total Assets</div>
+                    <div style="font-family: 'Poppins', sans-serif; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">{curr.get("assets", "N/A")}</div>
+                </div>
+                <div style="border-right: 1px solid rgba(255,255,255,0.2); padding-right: 15px;">
+                    <div style="font-family: 'Poppins', sans-serif; color: rgba(255, 255, 255, 0.8); font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.8px;">Total Liabilities</div>
+                    <div style="font-family: 'Poppins', sans-serif; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">{curr.get("liabilities", "N/A")}</div>
                 </div>
                 <div>
-                    <div style="font-family: 'Poppins', sans-serif; color: rgba(255, 255, 255, 0.8); font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.8px;">Stock Price</div>
-                    <div style="font-family: 'Poppins', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">{curr.get("price", "N/A")}</div>
+                    <div style="font-family: 'Poppins', sans-serif; color: rgba(255, 255, 255, 0.8); font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.8px;">Total Equity</div>
+                    <div style="font-family: 'Poppins', sans-serif; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">{curr.get("equity", "N/A")}</div>
                 </div>
             </div>
         </div>
@@ -665,32 +689,32 @@ def render_main_dashboard(placeholder=None):
             (
                 "ROE",
                 curr.get("roe", "N/A"),
-                "linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)",
+                "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)",
             ),
             (
                 "ROA",
                 curr.get("roa", "N/A"),
-                "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)",
+                "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)",
             ),
             (
                 "NPL Ratio",
                 curr.get("npl_ratio", "N/A"),
-                "linear-gradient(135deg, #475569 0%, #64748b 100%)",
+                "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)",
             ),
             (
                 "Capital Adequacy",
                 curr.get("capital_adequacy", "N/A"),
-                "linear-gradient(135deg, #059669 0%, #10b981 100%)",
+                "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)",
             ),
             (
                 "Cost-to-Income",
                 curr.get("cost_to_income", "N/A"),
-                "linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%)",
+                "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)",
             ),
             (
                 "LCR",
                 curr.get("liquidity_coverage_ratio", "N/A"),
-                "linear-gradient(135deg, #ea580c 0%, #f97316 100%)",
+                "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)",
             ),
         ]
 
@@ -742,17 +766,71 @@ def render_main_dashboard(placeholder=None):
     # Check for news in multiple locations
     # News agent returns: {"articles": [...], "total_articles": N}
     news_data = enrichments.get("news", {})
-    if isinstance(news_data, dict):
-        news_articles = (
-            news_data.get("articles")        # news agent format
-            or news_data.get("sources")      # legacy format
-            or []
-        )
-    else:
-        news_articles = []
+    news_articles = []
+    news_summary = ""
 
+    # Robust extraction from various common formats
+    if isinstance(news_data, dict):
+        news_articles = news_data.get("sources", []) or news_data.get("articles", [])
+        news_summary = news_data.get("summary", "")
+    elif isinstance(news_data, list):
+        news_articles = news_data
+
+    # Fallbacks for articles if primary extraction failed
     if not news_articles:
-        news_articles = data.get("news_articles", [])
+        news_articles = data.get("news_articles", []) or data.get("news", [])
+
+    if news_summary:
+        # Convert simple markdown for HTML display
+        processed_summary = news_summary.replace("**", "<b>", 1).replace(
+            "**", "</b>", 1
+        )
+        # Handle multiple boldings
+        while "**" in processed_summary:
+            processed_summary = processed_summary.replace("**", "<b>", 1).replace(
+                "**", "</b>", 1
+            )
+
+        # Convert simple dashes to styled list items
+        lines = processed_summary.split("\n")
+        html_lines = []
+        for line in lines:
+            line = line.strip()
+            if line.startswith("-"):
+                content = line[1:].strip()
+                html_lines.append(
+                    f'<div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: flex-start;">'
+                    f'<span style="color: #0077ff; font-weight: 900; margin-top: 1px;">•</span>'
+                    f"<span>{content}</span></div>"
+                )
+            elif line:
+                html_lines.append(f'<div style="margin-bottom: 8px;">{line}</div>')
+
+        final_summary_html = "".join(html_lines)
+
+        st.html(
+            f"""
+        <div style="
+            background: rgba(0, 119, 255, 0.05);
+            border-left: 4px solid #0077ff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 24px;
+            font-family: 'Poppins', sans-serif;
+            color: #1e293b;
+            line-height: 1.6;
+            font-size: 15px;
+        ">
+            <div style="font-weight: 700; color: #003366; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 20px;">🤖</span> 
+                <span>AI Insights Summary</span>
+            </div>
+            <div style="font-size: 14px;">
+                {final_summary_html}
+            </div>
+        </div>
+        """
+        )
 
     if news_articles and len(news_articles) > 0:
         # Display top 3 news in a grid
@@ -887,8 +965,8 @@ def render_main_dashboard(placeholder=None):
                 showgrid=True,
                 gridcolor="#f1f5f9",
                 tickfont=dict(color="#64748b", size=11),
+                type="date",  # Changed from 'category' to 'date'
                 rangeslider=dict(visible=False),
-                type="category",
             ),
             yaxis=dict(
                 showgrid=True,
@@ -896,6 +974,13 @@ def render_main_dashboard(placeholder=None):
                 tickfont=dict(color="#64748b", size=11),
                 side="right",
             ),
+        )
+
+        fig.update_xaxes(
+            dtick=7 * 24 * 60 * 60 * 1000,  # Every 7 days
+            tickformat="%d\n%b-%y",  # Day on top, Month-Year below
+            gridcolor="#f1f5f9",
+            tickfont=dict(size=10, color="#64748b"),
         )
 
         # Add volume if available

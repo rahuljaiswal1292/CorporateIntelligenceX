@@ -88,14 +88,20 @@ class AnalystAgent(BaseAgent):
 
         # 3. Construct Prompt for Insights
         prompt = f"""
-        You are a Corporate Banking Relationship Manager.
-        Analyze the data for {company_name} ({ticker}) to generate 5 strategic banking opportunities.
-        
-        Financial Data: {json.dumps(scraped_data.get('financials', {}), indent=2)}
+        You are a Senior Corporate Banking Relationship Manager specialized in value-added advisory and cross-selling.
+        Analyze the financial health and operational needs of {company_name} ({ticker}) to identify 5 high-impact banking opportunities.
+
+        Objective: Map specific financial gaps (e.g., high DSOs, FX exposure, or capital intensity) to the Bank's product suite (Lending, Trade Finance, Cash Management, Treasury, or Advisory).
+
+        Financial Data: {json.dumps(state, indent=2)}
         Market Context: {context_str}
-        
-        Return STRICTLY JSON format with these exact keys for each item: 
-        category, finding, source, trigger, action.
+
+        For each opportunity, return STRICTLY JSON format with these exact keys:
+        - category: The bank product line (e.g., 'Working Capital & Trade', 'Treasury & FX', 'Lending').
+        - finding: The specific financial metric or trend from the data driving this need (e.g., 'Rising accounts receivable aging').
+        - source: The data point or context snippet used.
+        - trigger: The RM's value proposition (e.g., 'Optimize liquidity by unlocking cash trapped in the supply chain').
+        - action: The specific bank product or RM support to offer (e.g., 'Pitch a non-recourse Receivables Discounting facility').
         """
 
         self.log("Generating strategic insights with LLM...")

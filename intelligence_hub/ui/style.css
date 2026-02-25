@@ -12,6 +12,10 @@ section[data-testid="stSidebar"] {
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15) !important;
 }
 
+div[data-testid="stSidebarContent"] {
+    margin-top: -2rem;
+}
+
 [data-testid="stSidebarHeader"] {
     height: 60px !important;
     padding: 1rem !important;
@@ -57,6 +61,7 @@ div[data-testid="stMetric"] {
     border: 1px solid rgba(226, 232, 240, 0.5) !important;
     padding: 24px !important;
     border-radius: 16px !important;
+    height: 150px;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -2px rgba(0, 0, 0, 0.02) !important;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
@@ -461,7 +466,7 @@ div[data-testid="stDecoration"] {
 
 /* Make the log text look more like a terminal */
 [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
-    font-family: 'Courier New', monospace;
+    /* font-family: 'Courier New', monospace; */
     font-size: 0.85rem !important;
     line-height: 1.2 !important;
     margin-bottom: 5px !important;

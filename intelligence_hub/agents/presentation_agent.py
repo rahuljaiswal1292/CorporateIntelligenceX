@@ -46,8 +46,11 @@ class PresentationAgent(BaseAgent):
         try:
             val_float = float(str(value).replace(",", ""))
             # Handle unit scaling if provided (e.g. from PDF 'thousands')
-            if unit and "thousand" in unit.lower():
+            unit_lower = unit.lower() if unit else ""
+            if "thousand" in unit_lower or "000" in unit_lower:
                 val_float *= 1000
+            elif "million" in unit_lower:
+                val_float *= 1_000_000
 
             if val_float >= 1_000_000_000:
                 return f"AED {val_float / 1_000_000_000:.1f}B"
@@ -71,11 +74,19 @@ class PresentationAgent(BaseAgent):
 
         enrichments = state.get("enrichments", {}) or {}
         if isinstance(enrichments, list):
-            enrichments = enrichments[0] if enrichments and isinstance(enrichments[0], dict) else {}
+            enrichments = (
+                enrichments[0]
+                if enrichments and isinstance(enrichments[0], dict)
+                else {}
+            )
 
         financial_data = state.get("financial_data", {}) or {}
         if isinstance(financial_data, list):
-            financial_data = financial_data[0] if financial_data and isinstance(financial_data[0], dict) else {}
+            financial_data = (
+                financial_data[0]
+                if financial_data and isinstance(financial_data[0], dict)
+                else {}
+            )
 
         final_report = state.get("final_report", {}) or {}
 
@@ -136,10 +147,32 @@ class PresentationAgent(BaseAgent):
         last_year_metrics = {}
 
         if pdf_results:
-            # pdf_results is sorted newest first by PdfAgent
-            latest_pdf = pdf_results[0]
-            fin = latest_pdf.get("financials", {})
-            meta_pdf = latest_pdf.get("meta", {})
+            # pdf_results is now optimized by PdfAgent to contain the best candidate(s)
+            # We still prefer an explicit 'annual' flag if multiple were somehow provided
+            annual_reports = [
+                pdf
+                for pdf in pdf_results
+                if "annual" in str(pdf.get("meta", {}).get("period", "")).lower()
+            ]
+
+            target_pdf = annual_reports[0] if annual_reports else pdf_results[0]
+
+            fin_full = target_pdf.get("financials", {})
+            # Handle user requested nested format or legacy flat format
+            fin = fin_full.get("current_period") or fin_full
+            meta_pdf = target_pdf.get("meta", {})
+
+            # Helper to get float value
+            def to_f(obj):
+                if not obj or not isinstance(obj, dict):
+                    return None
+                val = obj.get("current")
+                if val is None:
+                    return None
+                try:
+                    return float(str(val).replace(",", ""))
+                except:
+                    return None
 
             rev_block = fin.get("revenue") or {}
             unit = rev_block.get("unit")
@@ -151,18 +184,47 @@ class PresentationAgent(BaseAgent):
                 "profit": self._format_currency(
                     (fin.get("net_income") or {}).get("current"), unit
                 ),
+                "assets": self._format_currency(
+                    (fin.get("total_assets") or {}).get("current"), unit
+                ),
+                "liabilities": self._format_currency(
+                    (fin.get("total_liabilities") or {}).get("current"), unit
+                ),
+                "equity": self._format_currency(
+                    (fin.get("equity") or {}).get("current"), unit
+                ),
             }
-            # Add ratios if available in PDF (newly implemented or parsed)
-            for ratio in [
-                "roe",
-                "roa",
-                "npl_ratio",
-                "capital_adequacy",
-                "cost_to_income",
-                "liquidity_coverage_ratio",
-            ]:
-                if ratio in fin:
-                    current_metrics[ratio] = fin[ratio]
+
+            # --- Deterministic Ratio Calculations ---
+            rev = to_f(fin.get("revenue"))
+            net_income = to_f(fin.get("net_income"))
+            equity = to_f(fin.get("equity"))
+            assets = to_f(fin.get("total_assets"))
+            opex = to_f(fin.get("operating_expenses"))
+            int_inc = to_f(fin.get("interest_income"))
+            int_exp = to_f(fin.get("interest_expense"))
+            npl = to_f(fin.get("impaired_loans"))
+
+            if net_income is not None and equity and equity != 0:
+                current_metrics["roe"] = f"{(net_income / equity) * 100:.2f}%"
+
+            if net_income is not None and rev and rev != 0:
+                current_metrics["npm"] = f"{(net_income / rev) * 100:.2f}%"
+
+            if opex is not None and rev and rev != 0:
+                current_metrics["cost_to_income"] = f"{(opex / rev) * 100:.2f}%"
+
+            if int_inc is not None and int_exp is not None and assets and assets != 0:
+                # Simplified NIM calculation
+                current_metrics["nim"] = f"{((int_inc - int_exp) / assets) * 100:.2f}%"
+
+            if npl is not None and assets and assets != 0:
+                current_metrics["npl_ratio"] = f"{(npl / assets) * 100:.2f}%"
+
+            # Fallback for predefined ratios if they exist in raw PDF output
+            for ratio_key in ["roa", "capital_adequacy", "liquidity_coverage_ratio"]:
+                if ratio_key in fin and ratio_key not in current_metrics:
+                    current_metrics[ratio_key] = fin[ratio_key]
 
             ni_block = fin.get("net_income") or {}
             last_year_metrics = {
@@ -191,7 +253,10 @@ class PresentationAgent(BaseAgent):
                 close_key = "Close" if is_adx else "Last"
 
                 chart_data = {
-                    "dates": [d["Date"] for d in sorted_daily],
+                    "dates": [
+                        datetime.strptime(d["Date"], date_fmt).strftime("%Y-%m-%d")
+                        for d in sorted_daily
+                    ],
                     "open": [d["Open"] for d in sorted_daily],
                     "high": [d["High"] for d in sorted_daily],
                     "low": [d["Low"] for d in sorted_daily],
@@ -226,10 +291,18 @@ class PresentationAgent(BaseAgent):
 
         competitor_analysis = enrichments.get("Competitor Analysis") or {}
         if isinstance(competitor_analysis, list):
-            competitor_analysis = competitor_analysis[0] if competitor_analysis and isinstance(competitor_analysis[0], dict) else {}
+            competitor_analysis = (
+                competitor_analysis[0]
+                if competitor_analysis and isinstance(competitor_analysis[0], dict)
+                else {}
+            )
         comp_data_block = competitor_analysis.get("data") or {}
         if isinstance(comp_data_block, list):
-            comp_data_block = comp_data_block[0] if comp_data_block and isinstance(comp_data_block[0], dict) else {}
+            comp_data_block = (
+                comp_data_block[0]
+                if comp_data_block and isinstance(comp_data_block[0], dict)
+                else {}
+            )
 
         financials = {
             "current": current_metrics,
@@ -238,19 +311,36 @@ class PresentationAgent(BaseAgent):
         }
 
         # 3. Enrichments Mapping
-        # News: Rename link -> url, published -> date
+        # News: Rename link -> url, published -> date, and generate summary
         news_articles = []
         news_block = enrichments.get("news") or {}
-        raw_articles = news_block.get("articles", [])
+
+        # Robust extraction for results from various news agents
+        raw_articles = []
+        if isinstance(news_block, dict):
+            raw_articles = news_block.get("articles", []) or news_block.get(
+                "sources", []
+            )
+        elif isinstance(news_block, list):
+            raw_articles = news_block
+
         for art in raw_articles:
+            if not isinstance(art, dict):
+                continue
             news_articles.append(
                 {
-                    "title": art.get("title"),
-                    "url": art.get("link"),
-                    "source": art.get("source"),
-                    "date": art.get("published"),
+                    "title": art.get("title") or art.get("headline"),
+                    "url": art.get("url") or art.get("link"),
+                    "source": art.get("source") or art.get("publisher"),
+                    "date": art.get("date")
+                    or art.get("published")
+                    or art.get("published_date"),
                 }
             )
+
+        news_summary = ""
+        if news_articles:
+            news_summary = self._generate_news_summary(news_articles)
 
         # Wikipedia URL Extraction from sources
         wiki_url = None
@@ -275,7 +365,7 @@ class PresentationAgent(BaseAgent):
         ded_info = enrichments.get("uae_ded_license") or {}
 
         enrichments_block = {
-            "news": {"sources": news_articles},
+            "news": {"sources": news_articles, "summary": news_summary},
             "wikipedia": {"url": wiki_url},
             "serp": {"count": serp_count},
             "ded": ded_info,
@@ -337,6 +427,31 @@ class PresentationAgent(BaseAgent):
             title = src.get("title") or "Exchange Data Source"
             if url and not any(d["url"] == url for d in data_sources):
                 data_sources.append({"title": title, "url": url, "type": "exchange"})
+
+        # 5a. Exchange Profile Links (DFM/ADX)
+        if ticker != "Unknown":
+            if str(exchange).upper() == "DFM":
+                dfm_url = f"https://www.dfm.ae/the-exchange/market-information/company/{ticker}"
+                if not any(d["url"] == dfm_url for d in data_sources):
+                    data_sources.insert(
+                        0,
+                        {
+                            "title": "DFM Company Profile",
+                            "url": dfm_url,
+                            "type": "exchange",
+                        },
+                    )
+            elif str(exchange).upper() == "ADX":
+                adx_url = f"https://www.adx.ae/en/main-market/company-profile/overview?symbols={ticker}"
+                if not any(d["url"] == adx_url for d in data_sources):
+                    data_sources.insert(
+                        0,
+                        {
+                            "title": "ADX Company Profile",
+                            "url": adx_url,
+                            "type": "exchange",
+                        },
+                    )
 
         # 6. PDF Results (Metadata)
         for pdf in pdf_results:
@@ -444,3 +559,35 @@ class PresentationAgent(BaseAgent):
         }
 
         return updates
+
+    def _generate_news_summary(self, news_articles: List[Dict]) -> str:
+        """Generates a concise LLM summary of the provided news articles."""
+        if not news_articles:
+            return ""
+
+        # Format articles for the prompt
+        articles_str = ""
+        for i, art in enumerate(news_articles[:5]):  # use top 5 for summary
+            articles_str += f"{i+1}. Title: {art.get('title')}\n   Source: {art.get('source')}\n   Date: {art.get('date')}\n\n"
+
+        prompt = f"""
+        You are a highly experienced Financial Analyst and Relationship Manager.
+        I will provide you with a list of recent news articles about {self.company_name}.
+        
+        Your task is to provide a concise, high-level executive summary in bullet points (using - ) that captures the overall sentiment and key developments. 
+        Each bullet point should highlight key words or phrases using bold (e.g., **Strategic Growth**).
+        Focus on items of strategic importance to a banking Relationship Manager.
+        
+        News Articles:
+        {articles_str}
+        
+        Executive News Summary (Bulleted list with bold highlights):
+        """
+
+        try:
+            summary = self.llm_connector.analyze(prompt)
+            # Basic cleanup if needed
+            return summary.strip()
+        except Exception as e:
+            self.log(f"Failed to generate news summary: {e}", "WARNING")
+            return ""

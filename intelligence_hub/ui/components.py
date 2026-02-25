@@ -1111,7 +1111,12 @@ def render_company_summary_card(
                 """
 
         # --- Render the Card ---
-        if st.session_state.get("canonical_name"):
+        # Only show the full card once resolution AND profiling are done
+        ready = (
+            st.session_state.get("canonical_name")
+            and not st.session_state.get("is_resolving", False)
+        )
+        if ready:
             card_html = f"""
             <div class="summary-card">
                 <div class="summary-header">
@@ -1184,14 +1189,97 @@ def render_company_summary_card(
                         st.session_state.agent_status = get_default_agent_status()
                         st.rerun()
         elif st.session_state.get("is_resolving"):
+            # Blinking skeleton card — mirrors the real summary card layout
             st.html(
                 """
-            <div class="summary-card" style="opacity: 0.7;">
-                <div class="shimmer" style="height: 30px; width: 60%; margin-bottom: 20px;"></div>
-                <div class="shimmer" style="height: 100px; width: 100%; margin-bottom: 20px;"></div>
-                <div style="display: flex; gap: 20px;">
-                    <div class="shimmer" style="height: 200px; flex: 2;"></div>
-                    <div class="shimmer" style="height: 200px; flex: 1;"></div>
+            <style>
+            @keyframes cix-pulse {
+                0%   { opacity: 1; }
+                50%  { opacity: 0.35; }
+                100% { opacity: 1; }
+            }
+            @keyframes cix-shimmer {
+                0%   { background-position: -600px 0; }
+                100% { background-position: 600px 0; }
+            }
+            .cix-skel {
+                border-radius: 8px;
+                background: linear-gradient(90deg, #e8edf5 25%, #d0daea 50%, #e8edf5 75%);
+                background-size: 600px 100%;
+                animation: cix-shimmer 1.6s infinite linear;
+            }
+            .cix-skel-title  { height: 28px; width: 55%; margin-bottom: 10px; }
+            .cix-skel-sub    { height: 14px; width: 35%; margin-bottom: 28px; }
+            .cix-skel-line   { height: 13px; margin-bottom: 10px; }
+            .cix-skel-kv     { height: 13px; width: 80%; margin-bottom: 10px; }
+            .cix-badge-blink {
+                display: inline-flex; align-items: center; gap: 8px;
+                background: #e0f2fe; color: #0077ff;
+                border: 1px solid #bae6fd; border-radius: 20px;
+                padding: 5px 14px; font-size: 11px; font-weight: 700;
+                font-family: 'Poppins', sans-serif; text-transform: uppercase;
+                letter-spacing: 0.6px; margin-bottom: 22px;
+                animation: cix-pulse 1.4s ease-in-out infinite;
+            }
+            .cix-dot {
+                width: 8px; height: 8px; border-radius: 50%;
+                background: #0077ff;
+                animation: cix-pulse 1.4s ease-in-out infinite;
+            }
+            </style>
+
+            <div class="summary-card" style="position:relative;">
+
+                <!-- Status badge -->
+                <div class="cix-badge-blink">
+                    <span class="cix-dot"></span>
+                    Resolving Entity &amp; Fetching Profile&hellip;
+                </div>
+
+                <!-- Header skeleton -->
+                <div class="cix-skel cix-skel-title"></div>
+                <div class="cix-skel cix-skel-sub"></div>
+
+                <!-- Two-column body -->
+                <div style="display:grid; grid-template-columns: 2fr 1fr; gap:30px; margin-top:8px;">
+
+                    <!-- Left: description lines -->
+                    <div>
+                        <div class="cix-skel" style="height:13px; width:90%; margin-bottom:10px;"></div>
+                        <div class="cix-skel" style="height:13px; width:85%; margin-bottom:10px;"></div>
+                        <div class="cix-skel" style="height:13px; width:80%; margin-bottom:10px;"></div>
+                        <div class="cix-skel" style="height:13px; width:70%; margin-bottom:24px;"></div>
+
+                        <!-- QA block -->
+                        <div class="cix-skel" style="height:11px; width:40%; margin-bottom:10px;"></div>
+                        <div class="cix-skel" style="height:11px; width:60%; margin-bottom:10px;"></div>
+                        <div class="cix-skel" style="height:11px; width:50%; margin-bottom:10px;"></div>
+
+                        <!-- Ref tags -->
+                        <div style="display:flex; gap:10px; margin-top:20px;">
+                            <div class="cix-skel" style="height:28px; width:80px; border-radius:16px;"></div>
+                            <div class="cix-skel" style="height:28px; width:70px; border-radius:16px;"></div>
+                            <div class="cix-skel" style="height:28px; width:90px; border-radius:16px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Right: KG + socials -->
+                    <div style="border-left:1px solid #eee; padding-left:20px;">
+                        <div class="cix-skel cix-skel-kv"></div>
+                        <div class="cix-skel cix-skel-kv"></div>
+                        <div class="cix-skel cix-skel-kv"></div>
+                        <div class="cix-skel cix-skel-kv"></div>
+                        <div class="cix-skel cix-skel-kv" style="margin-top:18px;"></div>
+                        <div class="cix-skel cix-skel-kv"></div>
+
+                        <!-- Social icon circles -->
+                        <div style="display:flex; gap:10px; margin-top:22px;">
+                            <div class="cix-skel" style="width:36px;height:36px;border-radius:50%;"></div>
+                            <div class="cix-skel" style="width:36px;height:36px;border-radius:50%;"></div>
+                            <div class="cix-skel" style="width:36px;height:36px;border-radius:50%;"></div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
             """

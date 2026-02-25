@@ -475,36 +475,52 @@ class PresentationAgent(BaseAgent):
                 unique_sources.append(s)
                 seen_urls.add(s["url"])
 
-        # 4. Insights Mapping (action -> text)
+        # 4. Insights Mapping — preserve full rich schema from LLM
         insights = []
 
-        # Helper to extract category/text with synonyms and case-insensitivity
         def parse_insight(opt):
+            """
+            Normalise a raw insight dict into a canonical form.
+            Preserves all rich fields (finding, trigger, action, source)
+            so the dashboard can render each field separately.
+            Falls back gracefully for legacy / plain-text insights.
+            """
             if not isinstance(opt, dict):
                 return {"category": "Insight", "text": str(opt)}
 
             # Case-insensitive key lookup
             keys = {k.lower(): v for k, v in opt.items()}
 
-            cat = keys.get("category") or keys.get("type") or "Insight"
+            cat     = str(keys.get("category") or keys.get("type") or "Insight")
+            finding = str(keys.get("finding")  or "")
+            trigger = str(keys.get("trigger")  or "")
+            action  = str(keys.get("action")   or "")
+            source  = str(keys.get("source")   or "")
 
-            # Text synonyms: action, finding, opportunity, text
-            txt = (
-                keys.get("action")
-                or keys.get("finding")
+            # Legacy / collapsed-text fallback
+            text = str(
+                keys.get("text")
+                or keys.get("insight")
                 or keys.get("opportunity")
-                or keys.get("text")
-                or str(opt)
+                or ""
             )
 
-            return {"category": str(cat), "text": str(txt)}
+            return {
+                "category": cat,
+                "finding":  finding,
+                "trigger":  trigger,
+                "action":   action,
+                "source":   source,
+                # keep text for any legacy renderers that still use it
+                "text":     action or finding or text or str(opt),
+            }
 
         strategic_opts = final_report.get("Strategic_banking_opportunities", [])
-        if isinstance(strategic_opts, list):
+        if isinstance(strategic_opts, list) and strategic_opts:
             for opt in strategic_opts:
                 insights.append(parse_insight(opt))
         else:
-            # Fallback to top-level insights list
+            # Fallback to top-level insights list (set directly by AnalystAgent)
             raw_insights = state.get("insights", [])
             for opt in raw_insights:
                 insights.append(parse_insight(opt))

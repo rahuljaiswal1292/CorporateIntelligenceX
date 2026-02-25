@@ -1193,14 +1193,44 @@ def render_main_dashboard(placeholder=None):
         for idx, insight in enumerate(insights[:6]):
             if isinstance(insight, dict):
                 category = insight.get("category", "General")
-                text = insight.get("text", insight.get("insight", ""))
+
+                # Support both the rich schema (finding/trigger/action/source)
+                # and the collapsed schema (text / insight) from legacy paths
+                finding  = insight.get("finding", "")
+                trigger  = insight.get("trigger", "")
+                action   = insight.get("action", "")
+                source   = insight.get("source", "")
+                # Fallback: if none of the rich keys exist, use text/insight
+                text_fallback = insight.get("text", insight.get("insight", ""))
+
+                # Pick colour accent by category keyword
+                accent = "#0077ff"
+                if "lend" in category.lower():
+                    accent = "#10b981"
+                elif "trade" in category.lower():
+                    accent = "#f59e0b"
+                elif "kyc" in category.lower() or "compliance" in category.lower():
+                    accent = "#ef4444"
+                elif "operational" in category.lower():
+                    accent = "#8b5cf6"
+
+                # Build the inner body dynamically
+                if finding or trigger or action:
+                    body_html = f"""
+                        {'<div style="margin-bottom:8px;"><span style="font-family:Poppins,sans-serif;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">📍 Finding</span><div style="font-family:Poppins,sans-serif;color:#1e293b;font-size:13px;line-height:1.5;margin-top:2px;">' + finding + '</div></div>' if finding else ''}
+                        {'<div style="margin-bottom:8px;"><span style="font-family:Poppins,sans-serif;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">⚡ Trigger</span><div style="font-family:Poppins,sans-serif;color:#1e293b;font-size:13px;line-height:1.5;margin-top:2px;">' + trigger + '</div></div>' if trigger else ''}
+                        {'<div style="background:rgba(0,119,255,0.06);border-radius:8px;padding:10px 12px;margin-top:10px;"><span style="font-family:Poppins,sans-serif;font-size:10px;font-weight:700;color:' + accent + ';text-transform:uppercase;letter-spacing:0.5px;">💡 RM Action</span><div style="font-family:Poppins,sans-serif;color:#0f172a;font-size:13px;font-weight:600;line-height:1.5;margin-top:4px;">' + action + '</div></div>' if action else ''}
+                        {'<div style="margin-top:8px;font-family:Poppins,sans-serif;font-size:11px;color:#94a3b8;">Source: ' + source + '</div>' if source else ''}
+                    """
+                else:
+                    body_html = f'<div style="font-family:Poppins,sans-serif;color:#334155;font-size:13px;line-height:1.6;">{text_fallback}</div>'
 
                 with insight_cols[idx % 2]:
                     st.html(
                         f"""
                     <div style="
                         background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-                        border-left: 4px solid #0077ff;
+                        border-left: 4px solid {accent};
                         border-radius: 12px;
                         padding: 20px;
                         margin-bottom: 16px;
@@ -1210,20 +1240,14 @@ def render_main_dashboard(placeholder=None):
                        onmouseout="this.style.transform='translateX(0)'; this.style.boxShadow='0 2px 8px rgba(0, 51, 102, 0.06)';">
                         <div style="
                             font-family: 'Poppins', sans-serif;
-                            color: #0077ff;
+                            color: {accent};
                             font-weight: 700;
                             font-size: 11px;
                             text-transform: uppercase;
-                            margin-bottom: 10px;
+                            margin-bottom: 12px;
                             letter-spacing: 0.8px;
                         ">{category}</div>
-                        <div style="
-                            font-family: 'Poppins', sans-serif;
-                            color: #334155;
-                            line-height: 1.6;
-                            font-size: 14px;
-                            font-weight: 400;
-                        ">{text}</div>
+                        {body_html}
                     </div>
                     """
                     )

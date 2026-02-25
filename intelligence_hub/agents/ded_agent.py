@@ -209,6 +209,61 @@ class DEDAgent(BaseAgent):
                     "WARNING",
                 )
 
+            # STEP 1b: Alias scan — find records whose known_aliases contains
+            # the search term (case-insensitive substring match on stored JSON).
+            # This reliably handles ticker → company lookups (e.g. "EMAAR" → Emaar Dev.)
+            self.log("Step 1b: Scanning known_aliases for ticker/alias match...")
+            try:
+                all_records = collection.get(
+                    include=["metadatas"],
+                )
+                name_lower = company_name.lower()
+                for metadata in all_records.get("metadatas", []):
+                    aliases_raw = metadata.get("known_aliases", "[]")
+                    try:
+                        aliases_list = json.loads(aliases_raw) if isinstance(aliases_raw, str) else aliases_raw
+                    except Exception:
+                        aliases_list = []
+
+                    # Exact alias match scores higher than substring match
+                    exact_alias = any(name_lower == str(a).lower() for a in aliases_list)
+                    partial_alias = not exact_alias and any(
+                        name_lower in str(a).lower() for a in aliases_list
+                    )
+
+                    if exact_alias or partial_alias:
+                        key = metadata.get("trade_name_en", "")
+                        if not key:
+                            continue
+
+                        # Score tiers:
+                        #  0.99 — exact alias + priority corporate  (canonical PJSC entries)
+                        #  0.98 — exact alias, non-priority
+                        #  0.96 — partial alias + priority corporate
+                        #  0.95 — partial alias, non-priority (branch / subsidiary)
+                        is_priority = bool(metadata.get("is_priority_corporate", False))
+                        if exact_alias:
+                            alias_score = 0.99 if is_priority else 0.98
+                        else:
+                            alias_score = 0.96 if is_priority else 0.95
+
+                        # Upsert: replace if this hit scores higher than a previous match
+                        existing = companies_dict.get(key)
+                        if not existing or existing["similarity_score"] < alias_score:
+                            company_data = self._parse_aggregated_license_data(
+                                metadata,
+                                similarity_score=alias_score,
+                                match_type="alias",
+                            )
+                            if company_data:
+                                companies_dict[key] = company_data
+                                self.log(
+                                    f"Alias match: '{company_name}' → '{key}'"
+                                    f"  [score={alias_score:.2f}, priority={is_priority}]"
+                                )
+            except Exception as e:
+                self.log(f"Alias scan failed: {e}", "WARNING")
+
             # STEP 2: Similarity search on searchable text
             self.log(f"Step 2: Performing similarity search (top {top_k})...")
             self.log(f"Searching ChromaDB for similar companies...")

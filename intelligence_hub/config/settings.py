@@ -196,6 +196,18 @@ class Settings:
             "exchange": "ADX",
             "website": "https://www.adnocdistribution.ae",
         },
+        "lulu": {
+            "name": "Lulu Retail Holdings PLC",
+            "ticker": "LULU",
+            "exchange": "ADX",
+            "website": "https://www.luluretail.com",
+        },
+        "salik": {
+            "name": "Salik PJSC",
+            "ticker": "SALIK",
+            "exchange": "DFM",
+            "website": "https://www.salik.ae",
+        },
     }
 
     def validate(self):

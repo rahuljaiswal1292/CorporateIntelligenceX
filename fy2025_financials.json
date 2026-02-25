@@ -1,0 +1,288 @@
+{
+    "EMAAR": {
+        "current": {
+            "period": "Annual 2025",
+            "rev": "AED 49.6B",
+            "profit": "AED 17.6B",
+            "assets": "AED 186.7B",
+            "liabilities": "AED 79.0B",
+            "equity": "AED 107.7B",
+            "roe": "16.34%",
+            "npm": "35.51%",
+            "cost_to_income": "7.25%",
+            "nim": "0.96%",
+            "price": "AED 17.1",
+            "trend": "0.29%"
+        },
+        "last_year": {
+            "period": "Previous Year",
+            "rev": "AED 35.5B",
+            "profit": "AED 13.5B"
+        },
+        "market_cap": "N/A"
+    },
+    "ENBD": {
+        "current": {
+            "period": "Annual 2025",
+            "rev": "AED 49.3B",
+            "profit": "AED 24.0B",
+            "assets": "AED 1,020.0B",
+            "liabilities": "AED 915.0B",
+            "equity": "AED 105.0B",
+            "roe": "22.86%",
+            "npm": "48.68%",
+            "cost_to_income": "30.50%",
+            "nim": "3.46%",
+            "price": "AED 19.8",
+            "trend": "0.15%"
+        },
+        "last_year": {
+            "period": "Previous Year",
+            "rev": "AED 44.1B",
+            "profit": "AED 21.5B"
+        },
+        "market_cap": "AED 125.0B"
+    },
+    "DIB": {
+        "current": {
+            "period": "Annual 2025",
+            "rev": "AED 13.3B",
+            "profit": "AED 7.0B",
+            "assets": "AED 416.0B",
+            "liabilities": "AED 368.0B",
+            "equity": "AED 48.0B",
+            "roe": "14.58%",
+            "npm": "52.63%",
+            "cost_to_income": "28.40%",
+            "nim": "2.90%",
+            "price": "AED 6.4",
+            "trend": "-0.31%"
+        },
+        "last_year": {
+            "period": "Previous Year",
+            "rev": "AED 23.3B",
+            "profit": "AED 8.16B"
+        },
+        "market_cap": "AED 46.5B"
+    },
+    "AIRARABIA": {
+        "current": {
+            "period": "Annual 2025",
+            "rev": "AED 7.78B",
+            "profit": "AED 1.62B",
+            "assets": "AED 16.5B",
+            "liabilities": "AED 10.2B",
+            "equity": "AED 6.3B",
+            "roe": "25.71%",
+            "npm": "20.82%",
+            "cost_to_income": "N/A",
+            "nim": "N/A",
+            "price": "AED 2.9",
+            "trend": "0.69%"
+        },
+        "last_year": {
+            "period": "Previous Year",
+            "rev": "AED 6.63B",
+            "profit": "AED 1.46B"
+        },
+        "market_cap": "AED 13.5B"
+    },
+    "SALIK": {
+        "current": {
+            "period": "Annual 2025",
+            "rev": "AED 3.1B",
+            "profit": "AED 1.55B",
+            "assets": "AED 6.5B",
+            "liabilities": "AED 5.4B",
+            "equity": "AED 1.1B",
+            "roe": "131.57%",
+            "npm": "50.00%",
+            "cost_to_income": "N/A",
+            "nim": "N/A",
+            "price": "AED 4.2",
+            "trend": "1.12%"
+        },
+        "last_year": {
+            "period": "Previous Year",
+            "rev": "AED 2.3B",
+            "profit": "AED 1.16B"
+        },
+        "market_cap": "AED 31.5B"
+    },
+    "DEWA": {
+        "current": {
+            "period": "Annual 2025",
+            "rev": "AED 32.84B",
+            "profit": "AED 9.1B",
+            "assets": "AED 195.28B",
+            "liabilities": "AED 115.0B",
+            "equity": "AED 80.28B",
+            "roe": "11.33%",
+            "npm": "27.71%",
+            "cost_to_income": "N/A",
+            "nim": "N/A",
+            "price": "AED 2.4",
+            "trend": "0.12%"
+        },
+        "last_year": {
+            "period": "Previous Year",
+            "rev": "AED 30.98B",
+            "profit": "AED 7.24B"
+        },
+        "market_cap": "AED 120.0B"
+    },
+    "ARMX": {
+        "current": {
+            "period": "Annual 2025",
+            "rev": "AED 6.36B",
+            "profit": "AED 0.02B",
+            "assets": "AED 5.8B",
+            "liabilities": "AED 3.5B",
+            "equity": "AED 2.3B",
+            "roe": "0.87%",
+            "npm": "0.32%",
+            "cost_to_income": "N/A",
+            "nim": "N/A",
+            "price": "AED 2.1",
+            "trend": "-0.50%"
+        },
+        "last_year": {
+            "period": "Previous Year",
+            "rev": "AED 6.3B",
+            "profit": "AED 0.14B"
+        },
+        "market_cap": "AED 3.0B"
+    },
+    "ADCB": {
+        "current": {
+            "period": "Annual 2025",
+            "rev": "AED 18.5B",
+            "profit": "AED 11.45B",
+            "assets": "AED 774.0B",
+            "liabilities": "AED 702.0B",
+            "equity": "AED 72.0B",
+            "roe": "15.30%",
+            "npm": "61.89%",
+            "cost_to_income": "28.20%",
+            "nim": "2.58%",
+            "price": "AED 9.5",
+            "trend": "0.42%"
+        },
+        "last_year": {
+            "period": "Previous Year",
+            "rev": "AED 16.2B",
+            "profit": "AED 10.59B"
+        },
+        "market_cap": "AED 68.0B"
+    },
+    "ADIB": {
+        "current": {
+            "period": "Annual 2025",
+            "rev": "AED 12.3B",
+            "profit": "AED 7.1B",
+            "assets": "AED 281.0B",
+            "liabilities": "AED 248.6B",
+            "equity": "AED 32.4B",
+            "roe": "28.80%",
+            "npm": "4.11%",
+            "cost_to_income": "28.60%",
+            "nim": "4.15%",
+            "price": "AED 11.2",
+            "trend": "0.80%"
+        },
+        "last_year": {
+            "period": "Previous Year",
+            "rev": "AED 10.6B",
+            "profit": "AED 6.1B"
+        },
+        "market_cap": "AED 40.5B"
+    },
+    "ALDAR": {
+        "current": {
+            "period": "Annual 2025",
+            "rev": "AED 33.8B",
+            "profit": "AED 8.8B",
+            "assets": "AED 85.0B",
+            "liabilities": "AED 45.0B",
+            "equity": "AED 40.0B",
+            "roe": "22.00%",
+            "npm": "26.04%",
+            "cost_to_income": "N/A",
+            "nim": "N/A",
+            "price": "AED 7.5",
+            "trend": "1.25%"
+        },
+        "last_year": {
+            "period": "Previous Year",
+            "rev": "AED 23.0B",
+            "profit": "AED 6.5B"
+        },
+        "market_cap": "AED 59.0B"
+    },
+    "EAND": {
+        "current": {
+            "period": "Annual 2025",
+            "rev": "AED 72.9B",
+            "profit": "AED 14.36B",
+            "assets": "AED 205.05B",
+            "liabilities": "AED 145.0B",
+            "equity": "AED 60.05B",
+            "roe": "23.91%",
+            "npm": "19.70%",
+            "cost_to_income": "N/A",
+            "nim": "N/A",
+            "price": "AED 18.5",
+            "trend": "-0.10%"
+        },
+        "last_year": {
+            "period": "Previous Year",
+            "rev": "AED 53.8B",
+            "profit": "AED 10.3B"
+        },
+        "market_cap": "AED 160.0B"
+    },
+    "FAB": {
+        "current": {
+            "period": "Annual 2025",
+            "rev": "AED 36.68B",
+            "profit": "AED 21.11B",
+            "assets": "AED 1,400.0B",
+            "liabilities": "AED 1,280.0B",
+            "equity": "AED 120.0B",
+            "roe": "19.20%",
+            "npm": "57.55%",
+            "cost_to_income": "24.50%",
+            "nim": "1.93%",
+            "price": "AED 14.8",
+            "trend": "0.33%"
+        },
+        "last_year": {
+            "period": "Previous Year",
+            "rev": "AED 31.6B",
+            "profit": "AED 17.1B"
+        },
+        "market_cap": "AED 162.0B"
+    },
+    "LULU": {
+        "current": {
+            "period": "Annual 2025",
+            "rev": "AED 29.1B",
+            "profit": "AED 0.753B",
+            "assets": "AED 22.0B",
+            "liabilities": "AED 18.0B",
+            "equity": "AED 4.0B",
+            "roe": "18.83%",
+            "npm": "2.59%",
+            "cost_to_income": "N/A",
+            "nim": "N/A",
+            "price": "AED 2.3",
+            "trend": "-0.20%"
+        },
+        "last_year": {
+            "period": "Previous Year",
+            "rev": "AED 27.5B",
+            "profit": "AED 0.71B"
+        },
+        "market_cap": "AED 23.5B"
+    }
+}

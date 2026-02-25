@@ -680,13 +680,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Render Progress Chain (Always visible)
-pipeline_placeholder = st.empty()
-with pipeline_placeholder.container():
-    # Use new pipeline visualization
-    data = st.session_state.get("data", {})
-    render_agent_pipeline(data, show_details=False)
-
 # Search Company Label - professional styling
 st.markdown(
     '<div class="ui-section-label"><span class="emoji">🔍</span><span>Search Company</span></div>',
@@ -694,7 +687,7 @@ st.markdown(
 )
 
 # Input and Buttons in single row
-cols = st.columns([5, 1, 1, 1.2])
+cols = st.columns([5, 1, 1])
 
 with cols[0]:
     query_input = st.text_input(
@@ -702,11 +695,6 @@ with cols[0]:
         placeholder="Enter company name (e.g., Tesla, Emirates NBD, ADNOC)",
         label_visibility="collapsed",
         key=f"company_search_input_{st.session_state.reset_counter}",
-    )
-
-with cols[3]:
-    test_data_clicked = st.button(
-        "📊 Test Dashboard", type="secondary", width="stretch"
     )
 
 with cols[1]:
@@ -719,6 +707,12 @@ with cols[2]:
         "RESET", type="secondary", width="stretch", icon=":material/refresh:"
     )
 
+# Render Progress Chain (Always visible)
+pipeline_placeholder = st.empty()
+with pipeline_placeholder.container():
+    # Use new pipeline visualization
+    data = st.session_state.get("data", {})
+    render_agent_pipeline(data, show_details=False)
 
 # Canonical Name Section - professional styling
 st.html('<div class="ui-section-label"></div>')
@@ -818,18 +812,6 @@ elif (
     # but sidebar search button is explicit.
     # Let's rely on the button for the "Deep Search" feel requested.
     pass
-
-# Handle Test Data Button
-if test_data_clicked:
-    # Load mock data for testing from dashboard module
-    st.session_state.data = get_test_dashboard_data()
-    st.session_state.canonical_name = "Emirates NBD Bank PJSC"
-    st.session_state.analysis_complete = True
-    st.session_state.progress_stage = 5
-    # Set all agents to success for test visualization
-    st.session_state.agent_status = {k: "success" for k in get_default_agent_status()}
-    st.success("✅ Test data loaded! Scroll down to see the dashboard.")
-    st.rerun()
 
 
 # Final Dashboard Render (if analysis complete and not running investigation right now)

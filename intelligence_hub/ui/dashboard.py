@@ -373,7 +373,11 @@ def render_main_dashboard(placeholder=None):
 
         # Get DED data (handle both raw and formatted keys)
         ded_data = enrichments.get("ded") or enrichments.get("uae_ded_license") or {}
-        shareholder_data = enrichments.get("shareholders") or enrichments.get("shareholder_structure") or {}
+        shareholder_data = (
+            enrichments.get("shareholders")
+            or enrichments.get("shareholder_structure")
+            or {}
+        )
 
         st.html(
             f"""
@@ -447,13 +451,14 @@ def render_main_dashboard(placeholder=None):
 
         # === SHAREHOLDER STRUCTURE SECTION ===
         if shareholder_data:
-            major_sh = shareholder_data.get('major_shareholders', [])
-            ownership_type = shareholder_data.get('ownership_type', 'N/A')
-            ubo = shareholder_data.get('ultimate_beneficial_owner', 'N/A')
-            notes = shareholder_data.get('ownership_notes', '')
+            major_sh = shareholder_data.get("major_shareholders", [])
+            ownership_type = shareholder_data.get("ownership_type", "N/A")
+            ubo = shareholder_data.get("ultimate_beneficial_owner", "N/A")
+            notes = shareholder_data.get("ownership_notes", "")
 
-            if major_sh or notes or ownership_type != 'N/A':
-                st.html(f"""
+            if major_sh or notes or ownership_type != "N/A":
+                st.html(
+                    f"""
                 <div style="
                     font-family: 'Poppins', sans-serif;
                     font-size: 20px;
@@ -471,10 +476,12 @@ def render_main_dashboard(placeholder=None):
                     <span style="font-size: 24px;">👥</span>
                     <span>Ownership & Shareholder Structure</span>
                 </div>
-                """)
+                """
+                )
 
                 # Top Stats Row: Ownership Type & UBO
-                st.html(f"""
+                st.html(
+                    f"""
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;">
                     <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; box-shadow: 0 2px 10px rgba(0, 51, 102, 0.04);">
                         <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px;">Ownership Type</div>
@@ -485,7 +492,8 @@ def render_main_dashboard(placeholder=None):
                         <div style="font-family: 'Poppins', sans-serif; color: #003366; font-size: 18px; font-weight: 700;">{ubo if ubo else 'Not Disclosed'}</div>
                     </div>
                 </div>
-                """)
+                """
+                )
 
                 # Main Content: Visualization and Detailed Cards
                 col_chart, col_sh_details = st.columns([1, 1.2])
@@ -497,51 +505,75 @@ def render_main_dashboard(placeholder=None):
                     total_p = 0
                     for s in major_sh:
                         try:
-                            p_val = s.get('percentage', '0')
+                            p_val = s.get("percentage", "0")
                             if p_val and isinstance(p_val, str):
-                                p_val = p_val.replace('%', '').strip()
-                                if p_val and p_val != 'N/A':
+                                p_val = p_val.replace("%", "").strip()
+                                if p_val and p_val != "N/A":
                                     p = float(p_val)
-                                    labels.append(s.get('name', 'Unknown'))
+                                    labels.append(s.get("name", "Unknown"))
                                     values.append(p)
                                     total_p += p
                         except:
                             pass
-                    
+
                     if values:
                         if total_p < 99.0:
                             labels.append("Others/Minority")
                             values.append(max(0, 100 - total_p))
-                        
-                        fig = go.Figure(data=[go.Pie(
-                            labels=labels, 
-                            values=values, 
-                            hole=.5,
-                            marker=dict(colors=['#003366', '#0077ff', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#f1f5f9']),
-                            textinfo='percent',
-                            hoverinfo='label+percent',
-                            insidetextorientation='radial'
-                        )])
+
+                        fig = go.Figure(
+                            data=[
+                                go.Pie(
+                                    labels=labels,
+                                    values=values,
+                                    hole=0.5,
+                                    marker=dict(
+                                        colors=[
+                                            "#003366",
+                                            "#0077ff",
+                                            "#3b82f6",
+                                            "#60a5fa",
+                                            "#93c5fd",
+                                            "#bfdbfe",
+                                            "#f1f5f9",
+                                        ]
+                                    ),
+                                    textinfo="percent",
+                                    hoverinfo="label+percent",
+                                    insidetextorientation="radial",
+                                )
+                            ]
+                        )
                         fig.update_layout(
                             margin=dict(t=0, b=0, l=0, r=0),
                             showlegend=True,
-                            legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
+                            legend=dict(
+                                orientation="h",
+                                yanchor="bottom",
+                                y=-0.2,
+                                xanchor="center",
+                                x=0.5,
+                            ),
                             height=350,
-                            paper_bgcolor='rgba(0,0,0,0)',
-                            plot_bgcolor='rgba(0,0,0,0)',
-                            font=dict(family="Poppins, sans-serif", size=10)
+                            paper_bgcolor="rgba(0,0,0,0)",
+                            plot_bgcolor="rgba(0,0,0,0)",
+                            font=dict(family="Poppins, sans-serif", size=10),
                         )
                         st.plotly_chart(fig, use_container_width=True)
                     else:
-                        st.html(f"""
+                        st.html(
+                            f"""
                         <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 12px; height: 350px; display: flex; align-items: center; justify-content: center; flex-direction: column; color: #64748b;">
                             <span style="font-size: 32px; margin-bottom: 12px;">📊</span>
                             <div style="font-family: 'Poppins', sans-serif; font-size: 13px;">No percentage data for visualization</div>
                         </div>
-                        """)
+                        """
+                        )
 
                 with col_sh_details:
-                    sh_cards_inner = "".join([f"""
+                    sh_cards_inner = "".join(
+                        [
+                            f"""
                         <div style="
                             background: white; 
                             border: 1px solid #e2e8f0; 
@@ -561,16 +593,22 @@ def render_main_dashboard(placeholder=None):
                                 <div style="font-family: 'Poppins', sans-serif; color: #0077ff; font-size: 16px; font-weight: 700;">{s.get('percentage') if s.get('percentage') else 'N/A'}</div>
                             </div>
                         </div>
-                    """ for s in major_sh[:6]])
-                    
-                    st.html(f"""
+                    """
+                            for s in major_sh[:6]
+                        ]
+                    )
+
+                    st.html(
+                        f"""
                     <div style="max-height: 350px; overflow-y: auto; padding: 4px; padding-right: 8px;">
                         {sh_cards_inner if sh_cards_inner else '<div style="color: #64748b; font-family: Poppins, sans-serif; font-size: 13px; font-style: italic;">No major shareholders listed</div>'}
                     </div>
-                    """)
+                    """
+                    )
 
                 if notes:
-                    st.html(f"""
+                    st.html(
+                        f"""
                     <div style="
                         background: #f0f7ff; 
                         border-left: 4px solid #0077ff; 
@@ -582,7 +620,8 @@ def render_main_dashboard(placeholder=None):
                         <div style="font-family: 'Poppins', sans-serif; color: #003366; font-size: 11px; font-weight: 800; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.6px;">Ownership & Governance Notes</div>
                         <div style="font-family: 'Poppins', sans-serif; color: #334155; font-size: 14px; line-height: 1.6; font-weight: 400;">{notes}</div>
                     </div>
-                    """)
+                    """
+                    )
 
         # === DED LICENSE REGISTRY SECTION (Aggregated Format) ===
         if isinstance(ded_data, dict) and ded_data.get("companies"):
@@ -823,7 +862,7 @@ def render_main_dashboard(placeholder=None):
         """
         )
 
-        # Key Banking Ratios - 6 cards in a grid
+        # Key Banking Ratios - 4 cards in a grid
         metrics = [
             (
                 "ROE",
@@ -831,18 +870,13 @@ def render_main_dashboard(placeholder=None):
                 "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)",
             ),
             (
-                "ROA",
-                curr.get("roa", "N/A"),
+                "NPM",
+                curr.get("npm", "N/A"),
                 "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)",
             ),
             (
-                "NPL Ratio",
-                curr.get("npl_ratio", "N/A"),
-                "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)",
-            ),
-            (
-                "Capital Adequacy",
-                curr.get("capital_adequacy", "N/A"),
+                "NIM",
+                curr.get("nim", "N/A"),
                 "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)",
             ),
             (
@@ -850,16 +884,11 @@ def render_main_dashboard(placeholder=None):
                 curr.get("cost_to_income", "N/A"),
                 "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)",
             ),
-            (
-                "LCR",
-                curr.get("liquidity_coverage_ratio", "N/A"),
-                "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)",
-            ),
         ]
 
         st.html(
             f"""
-        <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 16px;">
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px;">
             {''.join([f'''
             <div style="
                 background: {bg};
@@ -1335,10 +1364,10 @@ def render_main_dashboard(placeholder=None):
 
                 # Support both the rich schema (finding/trigger/action/source)
                 # and the collapsed schema (text / insight) from legacy paths
-                finding  = insight.get("finding", "")
-                trigger  = insight.get("trigger", "")
-                action   = insight.get("action", "")
-                source   = insight.get("source", "")
+                finding = insight.get("finding", "")
+                trigger = insight.get("trigger", "")
+                action = insight.get("action", "")
+                source = insight.get("source", "")
                 # Fallback: if none of the rich keys exist, use text/insight
                 text_fallback = insight.get("text", insight.get("insight", ""))
 

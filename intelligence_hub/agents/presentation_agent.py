@@ -1,4 +1,6 @@
 import logging
+import json
+import os
 from datetime import datetime
 from typing import Dict, Any, List, Optional, Callable
 from intelligence_hub.agents.base_agent import BaseAgent
@@ -310,6 +312,35 @@ class PresentationAgent(BaseAgent):
             "market_cap": comp_data_block.get("market_cap") or "N/A",
         }
 
+        # --- FY 2025 JSON Lookup Support ---
+        # If the ticker exists in our curated fy2025_financials.json, use it to override/enrich
+        try:
+            # Assume file is in the project root (CWD is usually root)
+            json_path = os.path.join(os.getcwd(), "fy2025_financials.json")
+            if os.path.exists(json_path):
+                with open(json_path, "r") as f:
+                    fy_data = json.load(f)
+
+                # Check for ticker match (case-insensitive for robustness)
+                ticker_upper = ticker.upper()
+                if ticker_upper in fy_data:
+                    self.log(
+                        f"Found curated FY 2025 data for {ticker_upper}, injecting..."
+                    )
+                    curated = fy_data[ticker_upper]
+
+                    # Merge current metrics
+                    financials["current"] = curated["current"].copy()
+
+                    # Merge last year
+                    financials["last_year"] = curated["last_year"]
+
+                    # Merge market cap
+                    if curated.get("market_cap") and curated["market_cap"] != "N/A":
+                        financials["market_cap"] = curated["market_cap"]
+        except Exception as e:
+            self.log(f"Failed to lookup FY 2025 curated data: {e}", "WARNING")
+
         # 3. Enrichments Mapping
         # News: Rename link -> url, published -> date, and generate summary
         news_articles = []
@@ -506,28 +537,25 @@ class PresentationAgent(BaseAgent):
             # Case-insensitive key lookup
             keys = {k.lower(): v for k, v in opt.items()}
 
-            cat     = str(keys.get("category") or keys.get("type") or "Insight")
-            finding = str(keys.get("finding")  or "")
-            trigger = str(keys.get("trigger")  or "")
-            action  = str(keys.get("action")   or "")
-            source  = str(keys.get("source")   or "")
+            cat = str(keys.get("category") or keys.get("type") or "Insight")
+            finding = str(keys.get("finding") or "")
+            trigger = str(keys.get("trigger") or "")
+            action = str(keys.get("action") or "")
+            source = str(keys.get("source") or "")
 
             # Legacy / collapsed-text fallback
             text = str(
-                keys.get("text")
-                or keys.get("insight")
-                or keys.get("opportunity")
-                or ""
+                keys.get("text") or keys.get("insight") or keys.get("opportunity") or ""
             )
 
             return {
                 "category": cat,
-                "finding":  finding,
-                "trigger":  trigger,
-                "action":   action,
-                "source":   source,
+                "finding": finding,
+                "trigger": trigger,
+                "action": action,
+                "source": source,
                 # keep text for any legacy renderers that still use it
-                "text":     action or finding or text or str(opt),
+                "text": action or finding or text or str(opt),
             }
 
         strategic_opts = final_report.get("Strategic_banking_opportunities", [])

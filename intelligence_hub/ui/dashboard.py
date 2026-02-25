@@ -61,6 +61,23 @@ def get_test_dashboard_data():
             },
             "wikipedia": {"url": "https://en.wikipedia.org/wiki/Emirates_NBD"},
             "serp": {"count": 15},
+            "shareholder_structure": {
+                "major_shareholders": [
+                    {
+                        "name": "Investment Corporation of Dubai",
+                        "percentage": "55.8%",
+                        "type": "Government Sovereign Wealth Fund",
+                    },
+                    {
+                        "name": "Public / Free Float",
+                        "percentage": "44.2%",
+                        "type": "Publicly Traded",
+                    },
+                ],
+                "ultimate_beneficial_owner": "Investment Corporation of Dubai",
+                "ownership_type": "Public Joint Stock Company (PJSC)",
+                "ownership_notes": "Emirates NBD was formed in 2007 through the merger of Emirates Bank International and National Bank of Dubai. The Investment Corporation of Dubai (ICD) remains the primary controlling shareholder.",
+            },
             "ded": {
                 "canonical_name": "Emirates NBD Bank PJSC",
                 "query_type": "hybrid_search",
@@ -72,7 +89,7 @@ def get_test_dashboard_data():
                         "similarity_score": 0.97,
                         "match_type": "similarity",
                         "license_count": 3,
-                        "license_numbers": [],
+                        "license_numbers": ["DED-123456", "DED-789012"],
                         "license_categories": ["Commercial"],
                         "activities": ["Commercial Bank", "Investment Banking"],
                         "activity_count": 2,
@@ -82,23 +99,11 @@ def get_test_dashboard_data():
                         "issue_authorities": [],
                         "earliest_issue_date": "12/03/2007",
                         "latest_expiry_date": "31/12/2027",
-                    },
-                    {
-                        "trade_name_en": "EMIRATES NBD CAPITAL (PJSC)",
-                        "trade_name_ar": "",
-                        "similarity_score": 0.61,
-                        "match_type": "similarity",
-                        "license_count": 1,
-                        "license_numbers": [],
-                        "license_categories": ["Professional"],
-                        "activities": ["Financial Consultancy"],
-                        "activity_count": 1,
-                        "partners": [],
-                        "partner_count": 0,
-                        "commerce_register_numbers": [],
-                        "issue_authorities": [],
-                        "earliest_issue_date": "05/06/2010",
-                        "latest_expiry_date": "30/06/2026",
+                        "sector_tags": [
+                            "Banking",
+                            "Financial Services",
+                            "UAE National",
+                        ],
                     },
                 ],
                 "summary": {
@@ -277,7 +282,7 @@ def render_main_dashboard(placeholder=None):
             letter-spacing: 0.02em;
             text-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
         ">
-            Profiling Dashboard
+            Profile Dashboard
         </div>
         <div style="
             font-family: 'Poppins', sans-serif;
@@ -550,16 +555,29 @@ def render_main_dashboard(placeholder=None):
                             legend=dict(
                                 orientation="h",
                                 yanchor="bottom",
-                                y=-0.2,
+                                y=-0.25,  # Adjusted to avoid overlap
                                 xanchor="center",
                                 x=0.5,
+                                font=dict(
+                                    family="Poppins, sans-serif",
+                                    size=11,
+                                    color="#1e293b",
+                                ),
+                                itemclick=False,  # Prevent hiding slices on click
+                                itemdoubleclick=False,  # Prevent isolating slices
                             ),
                             height=350,
                             paper_bgcolor="rgba(0,0,0,0)",
                             plot_bgcolor="rgba(0,0,0,0)",
                             font=dict(family="Poppins, sans-serif", size=10),
+                            clickmode="event+select",
                         )
-                        st.plotly_chart(fig, use_container_width=True)
+                        st.plotly_chart(
+                            fig,
+                            use_container_width=True,
+                            key="shareholder_structure_chart",
+                            config={"displayModeBar": False},
+                        )
                     else:
                         st.html(
                             f"""
@@ -590,7 +608,9 @@ def render_main_dashboard(placeholder=None):
                                 <div style="font-family: 'Poppins', sans-serif; color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px;">{s.get('type', 'Entity')}</div>
                             </div>
                             <div style="text-align: right;">
-                                <div style="font-family: 'Poppins', sans-serif; color: #0077ff; font-size: 16px; font-weight: 700;">{s.get('percentage') if s.get('percentage') else 'N/A'}</div>
+                                <div style="font-family: 'Poppins', sans-serif; color: #0077ff; font-size: 16px; font-weight: 700;">
+                                    {s.get('percentage') if s.get('percentage') and str(s.get('percentage')).lower() != 'null' else 'Strategic'}
+                                </div>
                             </div>
                         </div>
                     """
@@ -1099,7 +1119,7 @@ def render_main_dashboard(placeholder=None):
         letter-spacing: -0.3px;
     ">
         <span style="font-size: 28px;">📈</span>
-        <span>Stock Performance & Market Trends</span>
+        <span>Stock Performance</span>
     </div>
     """
     )

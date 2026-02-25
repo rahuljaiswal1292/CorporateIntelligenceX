@@ -41,14 +41,23 @@ def run_resolution_node(state: AgentState):
             company_name=query,
             llm_connector=LLMConnector(config=state.get("llm_config", {})),
             profile_store=store,
-            log_callback=lambda m: None,
+            log_callback=lambda m: logs.append(m),  # Collect logs in real-time
         )
+
+        logs.append("Checking local corporate registry for existing matches...")
 
         # Run Phase 0
         resolution = agent.resolve_query(query)
         canonical_name = resolution.get("company_name", query)
 
-        logs.append(f"Entity Resolved to: {canonical_name}")
+        if resolution.get("ticker") and resolution.get("ticker") != "UNKNOWN":
+            logs.append(
+                f"Entity found on {resolution.get('exchange')}: {canonical_name} ({resolution.get('ticker')})"
+            )
+        else:
+            logs.append(
+                f"No exchange listing found. Continuing as private entity: {canonical_name}"
+            )
 
         return {
             "canonical_name": canonical_name,
@@ -60,7 +69,7 @@ def run_resolution_node(state: AgentState):
             "logs": logs,
         }
     except Exception as e:
-        logs.append(f"Resolution failed: {str(e)}")
+        logs.append(f"Resolution error: {str(e)}")
         return {"logs": logs}
 
 

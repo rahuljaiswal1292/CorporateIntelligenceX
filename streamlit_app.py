@@ -1,3 +1,11 @@
+import sys
+import os
+
+# # Ensure local projects are prioritize in the search path
+# project_root = os.path.dirname(os.path.abspath(__file__))
+# if project_root not in sys.path:
+#     sys.path.insert(0, project_root)
+
 import streamlit as st
 import asyncio
 
@@ -265,6 +273,20 @@ def run_investigation(
     # Initial Pipeline Update
     update_pipeline_ui()
     update_resolved_ui()  # Initial Blink
+
+    # Instant feedback logging to reduce perceived latency
+    if not resume_mode:
+        add_log(
+            "System",
+            f"Target identified: '{query}'. Orchestrating research sequence...",
+        )
+        add_log(
+            "Master Agent", "Consulting internal Knowledge Graph & Entity Mappings..."
+        )
+        update_sidebar_logs()
+    else:
+        add_log("System", "Resuming investigation: Expanding intelligence footprint...")
+        update_sidebar_logs()
 
     for event in stream:
         # Check if user requested abort

@@ -343,7 +343,12 @@ class PresentationAgent(BaseAgent):
             news_summary = self._generate_news_summary(news_articles)
 
         # 4. Shareholder Mapping
-        shareholder_data = enrichments.get("shareholders") or {}
+        sh_raw = enrichments.get("shareholders") or {}
+        shareholder_data = (
+            sh_raw.get("data")
+            if isinstance(sh_raw, dict) and "data" in sh_raw
+            else sh_raw
+        )
 
         # Wikipedia URL Extraction from sources
         wiki_url = None
@@ -366,7 +371,12 @@ class PresentationAgent(BaseAgent):
         serp_count = meta_block.get("serp_api_calls", 0)
 
         # DED Mapping
-        ded_info = enrichments.get("uae_ded_license") or {}
+        ded_raw = enrichments.get("uae_ded_license") or {}
+        ded_info = (
+            ded_raw.get("data")
+            if isinstance(ded_raw, dict) and "data" in ded_raw
+            else ded_raw
+        )
 
         enrichments_block = {
             "news": {"sources": news_articles, "summary": news_summary},

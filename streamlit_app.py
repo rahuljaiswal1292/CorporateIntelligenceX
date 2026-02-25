@@ -1,6 +1,5 @@
 import streamlit as st
 import asyncio
-import sys
 
 # Windows-specific fix for Playwright/asyncio
 if sys.platform == "win32":
@@ -14,7 +13,7 @@ import uuid
 import base64
 from pathlib import Path
 from intelligence_hub.ui.styles import get_custom_css
-from intelligence_hub.ui.dashboard import render_main_dashboard, get_test_dashboard_data
+from intelligence_hub.ui.dashboard import render_main_dashboard
 from intelligence_hub.ui.pipeline_viz import (
     render_agent_pipeline,
     get_default_agent_status,
@@ -741,17 +740,23 @@ if continue_clicked:
     with dashboard_placeholder.container():
         company = st.session_state.get("canonical_name", "Company")
         _agents = [
-            "Wikipedia Agent", "News Agent", "DED Agent",
-            "Financial Scraper", "Analyst Agent"
+            "Wikipedia Agent",
+            "News Agent",
+            "DED Agent",
+            "Financial Scraper",
+            "Analyst Agent",
         ]
-        _agent_pills = "".join([
-            f'<div style="display:flex;align-items:center;gap:10px;color:rgba(255,255,255,0.8);font-size:0.9rem;font-family:\'Inter\', sans-serif;font-weight:500;">'
-            f'<span style="display:inline-block;width:10px;height:10px;border-radius:50%;'
-            f'background:#0077ff;box-shadow: 0 0 10px rgba(0, 119, 255, 0.5);animation:dashPulse 2s ease-in-out infinite;'
-            f'animation-delay:{i * 0.3:.1f}s;"></span>{a}</div>'
-            for i, a in enumerate(_agents)
-        ])
-        st.html(f"""
+        _agent_pills = "".join(
+            [
+                f"<div style=\"display:flex;align-items:center;gap:10px;color:rgba(255,255,255,0.8);font-size:0.9rem;font-family:'Inter', sans-serif;font-weight:500;\">"
+                f'<span style="display:inline-block;width:10px;height:10px;border-radius:50%;'
+                f"background:#0077ff;box-shadow: 0 0 10px rgba(0, 119, 255, 0.5);animation:dashPulse 2s ease-in-out infinite;"
+                f'animation-delay:{i * 0.3:.1f}s;"></span>{a}</div>'
+                for i, a in enumerate(_agents)
+            ]
+        )
+        st.html(
+            f"""
         <div style="
             margin-top: 32px;
             padding: 56px 40px;
@@ -801,7 +806,8 @@ if continue_clicked:
                 {_agent_pills}
             </div>
         </div>
-        """)
+        """
+        )
     run_investigation(
         None,
         pipeline_placeholder,

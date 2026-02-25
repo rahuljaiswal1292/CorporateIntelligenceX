@@ -282,19 +282,36 @@ class PresentationAgent(BaseAgent):
         }
 
         # 3. Enrichments Mapping
-        # News: Rename link -> url, published -> date
+        # News: Rename link -> url, published -> date, and generate summary
         news_articles = []
         news_block = enrichments.get("news") or {}
-        raw_articles = news_block.get("articles", [])
+
+        # Robust extraction for results from various news agents
+        raw_articles = []
+        if isinstance(news_block, dict):
+            raw_articles = news_block.get("articles", []) or news_block.get(
+                "sources", []
+            )
+        elif isinstance(news_block, list):
+            raw_articles = news_block
+
         for art in raw_articles:
+            if not isinstance(art, dict):
+                continue
             news_articles.append(
                 {
-                    "title": art.get("title"),
-                    "url": art.get("link"),
-                    "source": art.get("source"),
-                    "date": art.get("published"),
+                    "title": art.get("title") or art.get("headline"),
+                    "url": art.get("url") or art.get("link"),
+                    "source": art.get("source") or art.get("publisher"),
+                    "date": art.get("date")
+                    or art.get("published")
+                    or art.get("published_date"),
                 }
             )
+
+        news_summary = ""
+        if news_articles:
+            news_summary = self._generate_news_summary(news_articles)
 
         # Wikipedia URL Extraction from sources
         wiki_url = None
@@ -319,7 +336,7 @@ class PresentationAgent(BaseAgent):
         ded_info = enrichments.get("uae_ded_license") or {}
 
         enrichments_block = {
-            "news": {"sources": news_articles},
+            "news": {"sources": news_articles, "summary": news_summary},
             "wikipedia": {"url": wiki_url},
             "serp": {"count": serp_count},
             "ded": ded_info,
@@ -381,6 +398,31 @@ class PresentationAgent(BaseAgent):
             title = src.get("title") or "Exchange Data Source"
             if url and not any(d["url"] == url for d in data_sources):
                 data_sources.append({"title": title, "url": url, "type": "exchange"})
+
+        # 5a. Exchange Profile Links (DFM/ADX)
+        if ticker != "Unknown":
+            if str(exchange).upper() == "DFM":
+                dfm_url = f"https://www.dfm.ae/the-exchange/market-information/company/{ticker}"
+                if not any(d["url"] == dfm_url for d in data_sources):
+                    data_sources.insert(
+                        0,
+                        {
+                            "title": "DFM Company Profile",
+                            "url": dfm_url,
+                            "type": "exchange",
+                        },
+                    )
+            elif str(exchange).upper() == "ADX":
+                adx_url = f"https://www.adx.ae/en/main-market/company-profile/overview?symbols={ticker}"
+                if not any(d["url"] == adx_url for d in data_sources):
+                    data_sources.insert(
+                        0,
+                        {
+                            "title": "ADX Company Profile",
+                            "url": adx_url,
+                            "type": "exchange",
+                        },
+                    )
 
         # 6. PDF Results (Metadata)
         for pdf in pdf_results:
@@ -488,3 +530,34 @@ class PresentationAgent(BaseAgent):
         }
 
         return updates
+
+    def _generate_news_summary(self, news_articles: List[Dict]) -> str:
+        """Generates a concise LLM summary of the provided news articles."""
+        if not news_articles:
+            return ""
+
+        # Format articles for the prompt
+        articles_str = ""
+        for i, art in enumerate(news_articles[:5]):  # use top 5 for summary
+            articles_str += f"{i+1}. Title: {art.get('title')}\n   Source: {art.get('source')}\n   Date: {art.get('date')}\n\n"
+
+        prompt = f"""
+        You are a highly experienced Financial Analyst and Relationship Manager.
+        I will provide you with a list of recent news articles about {self.company_name}.
+        
+        Your task is to provide a concise, high-level executive summary (1-2 paragraphs) that captures the overall sentiment and key developments.
+        The summary should be professional and highlight items of strategic importance to a banking Relationship Manager.
+        
+        News Articles:
+        {articles_str}
+        
+        Executive News Summary:
+        """
+
+        try:
+            summary = self.llm_connector.analyze(prompt)
+            # Basic cleanup if needed
+            return summary.strip()
+        except Exception as e:
+            self.log(f"Failed to generate news summary: {e}", "WARNING")
+            return ""

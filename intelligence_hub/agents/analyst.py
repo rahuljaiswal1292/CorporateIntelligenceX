@@ -93,7 +93,7 @@ class AnalystAgent(BaseAgent):
 
         Objective: Map specific financial gaps (e.g., high DSOs, FX exposure, or capital intensity) to the Bank's product suite (Lending, Trade Finance, Cash Management, Treasury, or Advisory).
 
-        Financial Data: {json.dumps(scraped_data.get('financials', {}), indent=2)}
+        Financial Data: {json.dumps(state, indent=2)}
         Market Context: {context_str}
 
         For each opportunity, return STRICTLY JSON format with these exact keys:

@@ -619,10 +619,42 @@ def render_main_dashboard(placeholder=None):
 
     # Check for news in multiple locations
     news_data = enrichments.get("news", {})
-    news_articles = news_data.get("sources", []) if isinstance(news_data, dict) else []
+    news_articles = []
+    news_summary = ""
 
+    # Robust extraction from various common formats
+    if isinstance(news_data, dict):
+        news_articles = news_data.get("sources", []) or news_data.get("articles", [])
+        news_summary = news_data.get("summary", "")
+    elif isinstance(news_data, list):
+        news_articles = news_data
+
+    # Fallbacks for articles if primary extraction failed
     if not news_articles:
-        news_articles = data.get("news_articles", [])
+        news_articles = data.get("news_articles", []) or data.get("news", [])
+
+    if news_summary:
+        st.html(
+            f"""
+        <div style="
+            background: rgba(0, 119, 255, 0.05);
+            border-left: 4px solid #0077ff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 24px;
+            font-family: 'Poppins', sans-serif;
+            color: #1e293b;
+            line-height: 1.6;
+            font-size: 15px;
+        ">
+            <div style="font-weight: 700; color: #003366; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 20px;">🤖</span> 
+                <span>AI Insights Summary</span>
+            </div>
+            {news_summary}
+        </div>
+        """
+        )
 
     if news_articles and len(news_articles) > 0:
         # Display top 3 news in a grid

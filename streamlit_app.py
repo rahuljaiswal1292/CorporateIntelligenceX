@@ -267,6 +267,19 @@ def run_investigation(
     update_pipeline_ui()
     update_resolved_ui()  # Initial Blink
 
+    if not resume_mode:
+        add_log(
+            "System",
+            f"Target identified: '{query}'. Orchestrating research sequence...",
+        )
+        add_log(
+            "Master Agent", "Consulting internal Knowledge Graph & Entity Mappings..."
+        )
+        update_sidebar_logs()
+    else:
+        add_log("System", "Resuming investigation: Expanding intelligence footprint...")
+        update_sidebar_logs()
+
     for event in stream:
         # Check if user requested abort
         if st.session_state.abort_investigation:

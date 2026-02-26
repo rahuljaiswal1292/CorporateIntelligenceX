@@ -277,7 +277,7 @@ def render_main_dashboard(placeholder=None):
             letter-spacing: 0.02em;
             text-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
         ">
-            Profiling Dashboard
+            Profile Dashboard
         </div>
         <div style="
             font-family: 'Poppins', sans-serif;
@@ -745,7 +745,7 @@ def render_main_dashboard(placeholder=None):
 
                     <!-- Sector Tags (Added) -->
                     {f'''<div style="margin-bottom:20px;">
-                        <div style="color:#64748b; font-size:10px; font-weight:700; text-transform:uppercase; margin-bottom:8px; display:flex; align-items:center; gap:6px;">\u231b Entity Classification</div>
+                        <div style="color:#64748b; font-size:10px; font-weight:700; text-transform:uppercase; margin-bottom:8px; display:flex; align-items:center; gap:6px;">⌛ Entity Classification</div>
                         <div style="display:flex; flex-wrap:wrap; gap:8px;">{sec_pills}</div>
                     </div>''' if sec_pills else ''}
 
@@ -777,7 +777,7 @@ def render_main_dashboard(placeholder=None):
                 sub_rows = "".join(
                     [
                         f'<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;">'
-                        f'<div><div style="font-family:Poppins,sans-serif;color:#1e293b;font-size:12px;font-weight:600;">{sub.get("name","\u2014")}</div>'
+                        f'<div><div style="font-family:Poppins,sans-serif;color:#1e293b;font-size:12px;font-weight:600;">{sub.get("name","—")}</div>'
                         f'<div style="font-family:Poppins,sans-serif;color:#64748b;font-size:10px;margin-top:2px;">{sub.get("relationship","")}</div></div>'
                         f'<div style="font-family:Poppins,sans-serif;color:#0077ff;font-size:12px;font-weight:700;white-space:nowrap;margin-left:12px;">{sub.get("licenses",0)} lic.</div></div>'
                         for sub in subsidiary_info[:4]
@@ -1099,7 +1099,7 @@ def render_main_dashboard(placeholder=None):
         letter-spacing: -0.3px;
     ">
         <span style="font-size: 28px;">📈</span>
-        <span>Stock Performance & Market Trends</span>
+        <span>Stock Performance</span>
     </div>
     """
     )

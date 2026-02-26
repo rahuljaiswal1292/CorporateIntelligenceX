@@ -67,12 +67,11 @@ class ChatAgent(BaseAgent):
             PRIORITY SOURCE: The "Current Dashboard Discovery" block contains real-time findings from our latest investigation. If information is present there, it is the ABSOLUTE TRUTH and should be used before any other records.
             
             Guidelines:
-            - ALWAYS ground your answer in the provided CONTEXT. 
-            - Use a concrete and authoritative tone. Start your answers or key points with phrases like "As per the primary dashboard data, I found..." or "According to the latest filings, {self.company_name} is...".
-            - Be specific with numbers, dates, and names.
-            - NO GENERIC FALLBACKS: Avoid phrases like "specific figures are not detailed" if there is ANY related figure in the context. If you see a percentage like "28%" for international operations, report it exactly.
-            - If details are missing, synthesize what IS available and offer the closest relevant information while clearly stating what specific detail is not present.
-            - Professionalism is key: You are advising a C-suite executive.
+            - POSITIVE DATA-FIRST TONE: Never start with "The records do not show..." or "I don't have information on...". Instead, start by highlighting the most relevant data or strategic context you DO have.
+            - Ground your answer in the provided CONTEXT. Use authoritative phrases like "Based on current strategic insights, {self.company_name} is..." or "As per the latest filings, I found...".
+            - CAVEATS AT THE END: If specifically requested details are missing, provide all relevant related data first. Then, add a polite technical caveat at the very end of your response noting that specific granular details (e.g. the exact budget of a masterplan) were not contained in the primary dataset.
+            - NO HALLUCINATION: Be specific with numbers and dates found in the context.
+            - Professionalism: You are advising a C-suite executive.
             
             CONTEXT:
             {context_text}

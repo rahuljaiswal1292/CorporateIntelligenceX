@@ -566,11 +566,12 @@ def render_main_dashboard(placeholder=None):
                                 y=-0.2,
                                 xanchor="center",
                                 x=0.5,
+                                font=dict(color="#003366")
                             ),
                             height=350,
                             paper_bgcolor="rgba(0,0,0,0)",
                             plot_bgcolor="rgba(0,0,0,0)",
-                            font=dict(family="Poppins, sans-serif", size=10),
+                            font=dict(family="Poppins, sans-serif", size=10, color="#003366"),
                         )
                         st.plotly_chart(fig, use_container_width=True)
                     else:

@@ -21,8 +21,16 @@ div[data-testid="stStatusWidget"] {
 }
 
 [data-testid="stExpandSidebarButton"] {
-    background-color: #003366 !important;
+    background-color: transparent !important;
+    border: none !important;
     margin-top: 25px;
+    box-shadow: none !important;
+}
+
+[data-testid="stExpandSidebarButton"] svg {
+    fill: #FFFFFF !important;
+    color: #FFFFFF !important;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
 }
 
 button[data-testid="stSidebarCollapseButton"] {
@@ -214,6 +222,12 @@ div.stButton>button[kind="secondary"]:hover,
 [data-testid="stMetricValue"] p {
     font-weight: bold !important;
     font-size: 30px !important;
+    color: #1a1a1a !important;
+}
+
+[data-testid="stMetricLabel"] p {
+    color: #475569 !important;
+    font-weight: 600 !important;
 }
 
 /* Ensure main container doesn't clip */
@@ -1016,8 +1030,8 @@ div[data-baseweb="popover"] [role="option"]:hover * {
 
 [data-testid="collapsedControl"]:hover {
     transform: translateX(3px) scale(1.05) !important;
-    box-shadow: 4px 4px 20px rgba(0, 119, 255, 0.5) !important;
-    background: linear-gradient(135deg, #003366 0%, #0077ff 100%) !important;
+    box-shadow: 4px 4px 20px rgba(0, 51, 102, 0.1) !important;
+    background-color: #F8FAFC !important;
 }
 
 /* Sidebar Link/Button Hover Effects */
@@ -1395,3 +1409,18 @@ div.stButton>button:active {
     border-radius: 10px !important;
     background: #FAFBFD !important;
 }
+
+/* ========================================
+   RELIABLE VISIBILITY FOR METRICS
+   ======================================== */
+[data-testid="stMetricLabel"] {
+    color: #475569 !important;
+    font-weight: 600 !important;
+    font-family: 'Poppins', sans-serif !important;
+}
+
+[data-testid="stMetricValue"] {
+    color: #002D62 !important;
+    font-weight: 800 !important;
+    font-family: 'Poppins', sans-serif !important;
+}

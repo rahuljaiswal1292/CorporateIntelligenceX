@@ -109,9 +109,9 @@ class DFMScraper:
         self.expanded_views = set()  # Track which views have been expanded
         self.bot_handler = BotHandler() if BotHandler else None
 
-        # Stability: Track active file writes and locks
+        # Stability: Track active file writes and locks (Lazy init)
         self.active_writes = set()
-        self.file_lock = asyncio.Lock()
+        self._file_lock = None
 
         # ── Download coordination (shared across popup handler + DFMDownloadManager + year tabs) ──
         self.attempted_urls = (
@@ -121,7 +121,7 @@ class DFMScraper:
         self.failed_urls = (
             {}
         )  # norm_url -> {"method", "error", "original_url", "ticker", "page_type"}
-        self.url_lock = asyncio.Lock()  # Thread-safe URL registration
+        self._url_lock = None  # Lazy init
 
         # Wire the download manager to our shared URL registry
         self.download_manager.global_attempted_urls = self.attempted_urls
@@ -135,13 +135,31 @@ class DFMScraper:
             else None
         )
 
-        # Resource management - limit total concurrent browser pages to 10
-        self.semaphore = asyncio.Semaphore(10)
+        # Resource management - limit total concurrent browser pages to 10 (Lazy init)
+        self._semaphore = None
 
         logger.info(
             f"DFMScraper initialized: max_age_years={self.max_age_years}, "
             f"freshness_days={self.freshness_days}"
         )
+
+    @property
+    def file_lock(self):
+        if self._file_lock is None:
+            self._file_lock = asyncio.Lock()
+        return self._file_lock
+
+    @property
+    def url_lock(self):
+        if self._url_lock is None:
+            self._url_lock = asyncio.Lock()
+        return self._url_lock
+
+    @property
+    def semaphore(self):
+        if self._semaphore is None:
+            self._semaphore = asyncio.Semaphore(10)
+        return self._semaphore
 
     async def _setup_browser(self):
         """Initialize Playwright browser with stealth settings"""

@@ -503,20 +503,33 @@ def render_main_dashboard(placeholder=None):
                     labels = []
                     values = []
                     total_p = 0
+                    import re as _re
+
                     for s in major_sh:
                         try:
-                            p_val = s.get("percentage", "0")
-                            if p_val and isinstance(p_val, str):
-                                p_val = p_val.replace("%", "").strip()
-                                if p_val and p_val != "N/A":
-                                    p = float(p_val)
-                                    labels.append(s.get("name", "Unknown"))
+                            # Robust percentage extraction using regex
+                            p_raw = str(s.get("percentage", "0"))
+                            p_match = _re.search(r"(\d+\.?\d*)", p_raw)
+                            if p_match:
+                                p = float(p_match.group(1))
+                                # Basic sanity check
+                                if 0 < p <= 100:
+                                    labels.append(s.get("name", "Unknown Shareholder"))
                                     values.append(p)
                                     total_p += p
                         except:
                             pass
 
+                    # If we have NO valid percentages but we DO have shareholders,
+                    # equal-weight them for the chart visual
+                    if not values and major_sh:
+                        for s in major_sh:
+                            labels.append(s.get("name", "Unknown Shareholder"))
+                            values.append(1)  # Equal weight
+                        total_p = 100 # Reset for logic below
+
                     if values:
+                        # Add 'Others/Minority' if not a full 100%
                         if total_p < 99.0:
                             labels.append("Others/Minority")
                             values.append(max(0, 100 - total_p))
@@ -565,7 +578,7 @@ def render_main_dashboard(placeholder=None):
                             f"""
                         <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 12px; height: 350px; display: flex; align-items: center; justify-content: center; flex-direction: column; color: #64748b;">
                             <span style="font-size: 32px; margin-bottom: 12px;">📊</span>
-                            <div style="font-family: 'Poppins', sans-serif; font-size: 13px;">No percentage data for visualization</div>
+                            <div style="font-family: 'Poppins', sans-serif; font-size: 13px;">No stakeholder data for visualization</div>
                         </div>
                         """
                         )
@@ -1172,7 +1185,7 @@ def render_main_dashboard(placeholder=None):
                 )
             )
 
-        st.plotly_chart(fig, width="stretch", key="dashboard_stock_performance")
+        st.plotly_chart(fig, use_container_width=True, key="dashboard_stock_performance")
     else:
         # Fallback to placeholder if no data
         st.html(

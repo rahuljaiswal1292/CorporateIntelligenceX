@@ -37,21 +37,23 @@ class ChatAgent(BaseAgent):
         """Handled by the main chat loop usually, but available for pipeline integration."""
         return {"status": "ready"}
 
-    def answer_query(self, query: str, ticker: str, history: List[Dict] = None) -> str:
+    def answer_query(self, query: str, ticker: str, history: List[Dict] = None, extra_context: str = None) -> str:
         """
-        RAG-enabled answering logic.
+        RAG-enabled answering logic with optional dashboard context.
         """
         self.log(f"Processing query for {ticker}: {query}")
 
         # 1. Retrieve relevant context from VectorDB
         context_results = self.vector_manager.query(ticker, query, n_results=5)
 
-        context_text = "\n\n".join(
-            [
-                f"[Source: {r['metadata']['source']}]\n{r['text']}"
-                for r in context_results
-            ]
-        )
+        context_blocks = []
+        if extra_context:
+            context_blocks.append(f"[Current Dashboard Discovery]\n{extra_context}")
+
+        for r in context_results:
+            context_blocks.append(f"[Source: {r['metadata']['source']}]\n{r['text']}")
+
+        context_text = "\n\n".join(context_blocks)
 
         if not context_text:
             context_text = "No direct information found in internalized documents."
@@ -62,12 +64,15 @@ class ChatAgent(BaseAgent):
             You are a Strategic Executive Assistant and Corporate Intelligence Expert.
             Your goal is to provide precise, data-backed insights about {self.company_name} ({ticker}).
             
+            PRIORITY SOURCE: The "Current Dashboard Discovery" block contains real-time findings from our latest investigation. If information is present there, it is the ABSOLUTE TRUTH and should be used before any other records.
+            
             Guidelines:
-            - Use the provided CONTEXT to answer the question.
-            - If the context doesn't contain the answer, say you don't have that specific data but mention what you DO know if relevant.
-            - Keep the tone professional, executive, and objective.
-            - If there are tables or financial figures in the context, synthesize them clearly.
-            - Always cite the source files mentioned in brackets like [Source: filename].
+            - ALWAYS ground your answer in the provided CONTEXT. 
+            - Use a concrete and authoritative tone. Start your answers or key points with phrases like "As per the primary dashboard data, I found..." or "According to the latest filings, {self.company_name} is...".
+            - Be specific with numbers, dates, and names.
+            - NO GENERIC FALLBACKS: Avoid phrases like "specific figures are not detailed" if there is ANY related figure in the context. If you see a percentage like "28%" for international operations, report it exactly.
+            - If details are missing, synthesize what IS available and offer the closest relevant information while clearly stating what specific detail is not present.
+            - Professionalism is key: You are advising a C-suite executive.
             
             CONTEXT:
             {context_text}

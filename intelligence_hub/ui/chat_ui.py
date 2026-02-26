@@ -316,7 +316,7 @@ def render_chatbot_panel(ticker: str, company_name: str):
             questions = [
                 ("Status of AED 2.5B Sukuk (Dec 2025)?", f"Tell me about Emaar's AED 2.5B Sukuk maturity in December 2025."),
                 ("Details on 'The Heights' masterplan?", f"What information is available regarding Emaar's new masterplan 'The Heights'?"),
-                ("Revenue split for Egypt and India?", f"How much of Emaar's revenue comes from international operations like Egypt and India? As per insights, it should be around 28%."),
+                ("Revenue split for Egypt and India?", f"How much of Emaar's revenue comes from international operations like Egypt and India?"),
                 ("Q3 2024 Revenue & Profit growth?", f"What was Emaar's revenue and profit growth in Q3 2024?"),
             ]
         elif "ENBD" in (ticker or "").upper() or "NBD" in (company_name or "").upper():

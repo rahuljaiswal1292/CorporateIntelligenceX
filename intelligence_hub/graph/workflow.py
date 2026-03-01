@@ -480,12 +480,15 @@ def create_enrichment_graph():
     workflow.add_edge("start_enrichment", "shareholders")
     workflow.add_edge("start_enrichment", "competitors")
 
-    # Convergence
-    workflow.add_edge("wikipedia", "scraper")
-    workflow.add_edge("news", "scraper")
-    workflow.add_edge("ded", "scraper")
-    workflow.add_edge("shareholders", "scraper")
-    workflow.add_edge("competitors", "scraper")
+    # Convergence: all parallel nodes → join_enrichment
+    workflow.add_edge("wikipedia", "join_enrichment")
+    workflow.add_edge("news", "join_enrichment")
+    workflow.add_edge("ded", "join_enrichment")
+    workflow.add_edge("shareholders", "join_enrichment")
+    workflow.add_edge("competitors", "join_enrichment")
+
+    # Final Join → Scraper
+    workflow.add_edge("join_enrichment", "scraper")
 
     # Sequential
     workflow.add_edge("scraper", "pdf_agent")

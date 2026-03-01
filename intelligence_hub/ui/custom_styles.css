@@ -30,7 +30,7 @@ div[data-testid="stStatusWidget"] {
 [data-testid="stExpandSidebarButton"] svg {
     fill: #FFFFFF !important;
     color: #FFFFFF !important;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
 }
 
 button[data-testid="stSidebarCollapseButton"] {
@@ -1410,17 +1410,109 @@ div.stButton>button:active {
     background: #FAFBFD !important;
 }
 
-/* ========================================
-   RELIABLE VISIBILITY FOR METRICS
-   ======================================== */
+/* --- METRIC CARD VISIBILITY ENHANCEMENTS --- */
+[data-testid="stMetric"] {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    padding: 14px 18px !important;
+    box-shadow: 0 4px 12px rgba(0, 51, 102, 0.08) !important;
+    min-height: 125px !important;
+    /* Slightly taller for wrapping */
+    height: 125px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    transition: all 0.3s ease !important;
+    overflow: hidden !important;
+}
+
+[data-testid="stMetric"]:hover {
+    box-shadow: 0 6px 16px rgba(0, 51, 102, 0.12) !important;
+    transform: translateY(-2px);
+    border-color: #0077ff !important;
+}
+
 [data-testid="stMetricLabel"] {
-    color: #475569 !important;
-    font-weight: 600 !important;
+    color: #64748b !important;
+    font-weight: 700 !important;
+    font-size: 10px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    margin-bottom: 4px !important;
     font-family: 'Poppins', sans-serif !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
 }
 
 [data-testid="stMetricValue"] {
-    color: #002D62 !important;
+    color: #003366 !important;
     font-weight: 800 !important;
+    font-size: 20px !important;
+    /* Reduced from 28px to prevent truncation */
+    letter-spacing: -0.5px !important;
     font-family: 'Poppins', sans-serif !important;
-}
+    line-height: 1.2 !important;
+    white-space: normal !important;
+    /* Allow wrapping for long addresses/industries */
+}
+
+/* Delta styling (the "Since..." part) */
+[data-testid="stMetricDelta"] {
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    background: #f0fdf4 !important;
+    color: #166534 !important;
+    padding: 2px 8px !important;
+    border-radius: 6px !important;
+    width: fit-content !important;
+    margin-top: 4px !important;
+}
+
+/* ── CHAT AVATAR STYLING ── */
+
+/* Assistant Avatar - Soft Light Blue */
+[data-testid="stChatMessageAvatarAssistant"],
+div[data-testid="stChatMessageAvatarAssistant"],
+[data-testid="stChatMessageAvatarAssistant"]>div {
+    background-color: #e0f2fe !important;
+    /* Soft light blue */
+    background: #e0f2fe !important;
+    color: #003366 !important;
+    border: 1px solid #bae6fd !important;
+    border-radius: 10px !important;
+}
+
+/* User Avatar - Clean White */
+[data-testid="stChatMessageAvatarUser"],
+div[data-testid="stChatMessageAvatarUser"],
+[data-testid="stChatMessageAvatarUser"]>div {
+    background-color: #ffffff !important;
+    /* Pure white */
+    background: #ffffff !important;
+    color: #475569 !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 10px !important;
+}
+
+/* Chat text improvement */
+[data-testid="stChatMessage"] p {
+    font-family: 'Poppins', sans-serif !important;
+    color: #1e293b !important;
+    line-height: 1.6 !important;
+    font-size: 15px !important;
+}
+
+/* Bullet points for lists */
+[data-testid="stChatMessage"] li {
+    font-family: 'Poppins', sans-serif !important;
+    color: #334155 !important;
+    margin-bottom: 6px !important;
+}
+
+/* Bold text in chat */
+[data-testid="stChatMessage"] strong {
+    color: #003366 !important;
+    font-weight: 700 !important;
+}

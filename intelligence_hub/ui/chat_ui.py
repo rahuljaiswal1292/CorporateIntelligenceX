@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import uuid
 from pathlib import Path
@@ -133,17 +134,56 @@ _PANEL_CSS = """
 
 /* ── Override Streamlit chat styling in the right panel ── */
 .ix-chat-area [data-testid="stChatMessage"] {
-    background: #F8FAFC !important;
-    border-radius: 10px !important;
-    border: 1px solid #E2E8F0 !important;
-    margin-bottom: 8px !important;
-    padding: 10px !important;
+    background: #ffffff !important;
+    border-radius: 12px !important;
+    border: 1px solid #e2e8f0 !important;
+    margin-bottom: 12px !important;
+    padding: 12px !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03) !important;
 }
+
+/* Avatar Containers */
+.ix-chat-area [data-testid="stChatMessageAvatarAssistant"] {
+    background: #e0f2fe !important;
+    color: #002D62 !important;
+    border: 1px solid #bae6fd !important;
+    box-shadow: 0 2px 6px rgba(0,45,98,0.1) !important;
+}
+
+.ix-chat-area [data-testid="stChatMessageAvatarUser"] {
+    background: #ffffff !important;
+    color: #475569 !important;
+    border: 1px solid #e2e8f0 !important;
+}
+
 .ix-chat-area [data-testid="stChatMessage"] p {
-    font-size: 0.85rem !important;
-    line-height: 1.5 !important;
+    font-size: 0.95rem !important;
+    line-height: 1.7 !important;
     color: #1E293B !important;
+    font-family: 'Poppins', sans-serif !important;
+    margin-bottom: 12px !important;
 }
+
+/* Ensure lists have proper indentation and spacing */
+.ix-chat-area [data-testid="stChatMessage"] ul, 
+.ix-chat-area [data-testid="stChatMessage"] ol {
+    padding-left: 20px !important;
+    margin-bottom: 15px !important;
+}
+
+.ix-chat-area [data-testid="stChatMessage"] li {
+    font-size: 0.95rem !important;
+    line-height: 1.6 !important;
+    margin-bottom: 8px !important;
+    color: #334155 !important;
+}
+
+/* Highlighted text in chat */
+.ix-chat-area [data-testid="stChatMessage"] strong {
+    color: #002D62 !important;
+    font-weight: 700 !important;
+}
+
 /* ── Quick Actions Grid ── */
 .ix-chat-area [data-testid="baseButton-secondary"] {
     text-align: left !important;
@@ -167,6 +207,7 @@ _PANEL_CSS = """
     color: #002D62 !important;
     box-shadow: 0 4px 6px rgba(0,45,98,0.05) !important;
 }
+
 </style>
 """
 
@@ -306,25 +347,61 @@ def render_chatbot_panel(ticker: str, company_name: str):
 
         # Dynamic questions based on company (Actual questions, no icons)
         questions = [
-            ("What are the latest revenue trends?", f"What are the latest revenue trends and financial performance for {company_name}?"),
-            ("What are the key risk factors?", f"What are the key risk factors and credit ratings for {company_name}?"),
-            ("What is the strategic vision?", f"What is the strategic vision and major masterplans for {company_name}?"),
-            ("Summarize recent project launches", f"Summarize the most recent news and project launches for {company_name}."),
+            (
+                "What are the latest revenue trends?",
+                f"What are the latest revenue trends and financial performance for {company_name}?",
+            ),
+            (
+                "What are the key risk factors?",
+                f"What are the key risk factors and credit ratings for {company_name}?",
+            ),
+            (
+                "What is the strategic vision?",
+                f"What is the strategic vision and major masterplans for {company_name}?",
+            ),
+            (
+                "Summarize recent project launches",
+                f"Summarize the most recent news and project launches for {company_name}.",
+            ),
         ]
 
         if "EMAAR" in (ticker or "").upper() or "EMAAR" in (company_name or "").upper():
             questions = [
-                ("Status of AED 2.5B Sukuk (Dec 2025)?", f"Tell me about Emaar's AED 2.5B Sukuk maturity in December 2025."),
-                ("Details on 'The Heights' masterplan?", f"What information is available regarding Emaar's new masterplan 'The Heights'?"),
-                ("Revenue split for Egypt and India?", f"How much of Emaar's revenue comes from international operations like Egypt and India?"),
-                ("Q3 2024 Revenue & Profit growth?", f"What was Emaar's revenue and profit growth in Q3 2024?"),
+                (
+                    "Status of AED 2.5B Sukuk (Dec 2025)?",
+                    f"Tell me about Emaar's AED 2.5B Sukuk maturity in December 2025.",
+                ),
+                (
+                    "Details on 'The Heights' masterplan?",
+                    f"What information is available regarding Emaar's new masterplan 'The Heights'?",
+                ),
+                (
+                    "Revenue split for Egypt and India?",
+                    f"How much of Emaar's revenue comes from international operations like Egypt and India?",
+                ),
+                (
+                    "Q3 2024 Revenue & Profit growth?",
+                    f"What was Emaar's revenue and profit growth in Q3 2024?",
+                ),
             ]
         elif "ENBD" in (ticker or "").upper() or "NBD" in (company_name or "").upper():
             questions = [
-                ("Growth in Saudi Arabia assets?", f"Tell me about Emirates NBD's 18% asset growth in Saudi Arabia."),
-                ("Digital impact on Cost-to-Income?", f"How has digital adoption impacted Emirates NBD's cost-to-income ratio?"),
-                ("Current Liquidity Coverage Ratio (LCR)?", f"What is the current Liquidity Coverage Ratio (LCR) for Emirates NBD?"),
-                ("FY 2024 Financial Results Summary", f"Summarize the FY 2024 financial results for Emirates NBD."),
+                (
+                    "Growth in Saudi Arabia assets?",
+                    f"Tell me about Emirates NBD's 18% asset growth in Saudi Arabia.",
+                ),
+                (
+                    "Digital impact on Cost-to-Income?",
+                    f"How has digital adoption impacted Emirates NBD's cost-to-income ratio?",
+                ),
+                (
+                    "Current Liquidity Coverage Ratio (LCR)?",
+                    f"What is the current Liquidity Coverage Ratio (LCR) for Emirates NBD?",
+                ),
+                (
+                    "FY 2024 Financial Results Summary",
+                    f"Summarize the FY 2024 financial results for Emirates NBD.",
+                ),
             ]
 
         # Render 2x2 grid (Questions now use full text labels)
@@ -385,10 +462,24 @@ def render_chatbot_panel(ticker: str, company_name: str):
         st.session_state.ix_inject = None
 
     if (send_clicked or prompt) and prompt and company_name:
-        st.session_state.ix_messages.append({"role": "user", "content": prompt})
+        # 1. Capture the query
+        user_query = str(prompt).strip()
+
+        # Guard: Check if we just handled this exact query to prevent loops
+        if (
+            st.session_state.ix_messages
+            and st.session_state.ix_messages[-1]["content"] == user_query
+            and st.session_state.ix_messages[-1]["role"] == "user"
+        ):
+            # Already handled in this session run, skip to avoid recursion
+            pass
+        else:
+            # 2. Add to message history
+            st.session_state.ix_messages.append({"role": "user", "content": user_query})
+
         with chat_container:
             with st.chat_message("user", avatar="👤"):
-                st.markdown(prompt)
+                st.markdown(user_query)
             with st.chat_message("assistant", avatar="🤖"):
                 placeholder = st.empty()
                 full_response = ""
@@ -396,7 +487,7 @@ def render_chatbot_panel(ticker: str, company_name: str):
                     vm = _get_vector_manager()
                     _ensure_vectors_ingested(ticker, vm)
                     agent = _get_chat_agent(company_name)
-                    
+
                     # Extract current dashboard data for immediate context
                     extra_ctx = ""
                     current_data = st.session_state.get("data", {})
@@ -410,21 +501,26 @@ def render_chatbot_panel(ticker: str, company_name: str):
                                         extra_ctx += f"- {ins.get('category')}: {ins.get('finding')} (Source: {ins.get('source')})\n"
                                     elif "text" in ins:
                                         extra_ctx += f"- {ins.get('category', 'Insight')}: {ins.get('text')}\n"
-                        
-                        financials = current_data.get("financials", {}).get("current", {})
+
+                        financials = current_data.get("financials", {}).get(
+                            "current", {}
+                        )
                         if financials:
                             extra_ctx += f"\nFinancial Context: Revenue {financials.get('rev')}, Profit {financials.get('profit')}, Period {financials.get('period')}\n"
-                    
+
                     response = agent.answer_query(
-                        query=prompt,
+                        query=user_query,
                         ticker=ticker,
                         history=st.session_state.ix_messages[:-1],
-                        extra_context=extra_ctx if extra_ctx else None
+                        extra_context=extra_ctx if extra_ctx else None,
                     )
-                for word in response.split():
-                    full_response += word + " "
-                    placeholder.markdown(full_response + "▌")
-                    time.sleep(0.005)
+                # Preserving vertical structure and newlines from the LLM
+                for part in re.split(r"(\s+)", response):
+                    full_response += part
+                    # To keep it smooth but respect Markdown rendering, update on words or non-space whitespace
+                    if part.strip() or "\n" in part:
+                        placeholder.markdown(full_response + "▌")
+                        time.sleep(0.005)
                 placeholder.markdown(full_response.strip())
 
         st.session_state.ix_messages.append(

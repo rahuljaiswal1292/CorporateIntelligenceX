@@ -344,23 +344,14 @@ def render_main_dashboard(placeholder=None):
             financials.get("current", {}).get("rev", "N/A") if financials else "N/A"
         )
         trend = financials.get("current", {}).get("trend", None) if financials else None
-        # Shorten revenue display
-        if len(revenue) > 12:
-            revenue = revenue[:12] + "..."
         st.metric("Revenue", revenue if revenue != "N/A" else "Pending", trend)
 
     with col3:
         hq = meta.get("headquarters", meta.get("hq", "N/A"))
-        # Shorten HQ display
-        if len(hq) > 15:
-            hq = hq[:15] + "..."
         st.metric("Headquarters", hq if hq != "N/A" else "N/A")
 
     with col4:
         industry = meta.get("sector", meta.get("industry", "N/A"))
-        # Shorten industry display
-        if len(industry) > 20:
-            industry = industry[:20] + "..."
         st.metric("Industry", industry if industry != "N/A" else "N/A")
 
     st.html("<div style='margin: 40px 0;'></div>")
@@ -526,7 +517,7 @@ def render_main_dashboard(placeholder=None):
                         for s in major_sh:
                             labels.append(s.get("name", "Unknown Shareholder"))
                             values.append(1)  # Equal weight
-                        total_p = 100 # Reset for logic below
+                        total_p = 100  # Reset for logic below
 
                     if values:
                         # Add 'Others/Minority' if not a full 100%
@@ -566,12 +557,14 @@ def render_main_dashboard(placeholder=None):
                                 y=-0.2,
                                 xanchor="center",
                                 x=0.5,
-                                font=dict(color="#003366")
+                                font=dict(color="#003366"),
                             ),
                             height=350,
                             paper_bgcolor="rgba(0,0,0,0)",
                             plot_bgcolor="rgba(0,0,0,0)",
-                            font=dict(family="Poppins, sans-serif", size=10, color="#003366"),
+                            font=dict(
+                                family="Poppins, sans-serif", size=10, color="#003366"
+                            ),
                         )
                         st.plotly_chart(fig, use_container_width=True)
                     else:
@@ -1186,7 +1179,9 @@ def render_main_dashboard(placeholder=None):
                 )
             )
 
-        st.plotly_chart(fig, use_container_width=True, key="dashboard_stock_performance")
+        st.plotly_chart(
+            fig, use_container_width=True, key="dashboard_stock_performance"
+        )
     else:
         # Fallback to placeholder if no data
         st.html(

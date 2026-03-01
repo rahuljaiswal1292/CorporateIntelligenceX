@@ -84,8 +84,14 @@ class ADXScraper:
             "CBD": "Commercial Bank of Dubai",
         }
 
-        # Concurrency control
-        self.semaphore = asyncio.Semaphore(6)
+        # Concurrency control (Initialized lazily to avoid loop errors in sync context)
+        self._semaphore = None
+
+    @property
+    def semaphore(self):
+        if self._semaphore is None:
+            self._semaphore = asyncio.Semaphore(6)
+        return self._semaphore
 
     async def _setup_browser(self):
         """Initialize Playwright browser with stealth settings"""

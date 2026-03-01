@@ -144,6 +144,29 @@ _PANEL_CSS = """
     line-height: 1.5 !important;
     color: #1E293B !important;
 }
+/* ── Quick Actions Grid ── */
+.ix-chat-area [data-testid="baseButton-secondary"] {
+    text-align: left !important;
+    height: auto !important;
+    min-height: 54px !important;
+    padding: 8px 12px !important;
+    white-space: normal !important;
+    line-height: 1.3 !important;
+    font-size: 0.8rem !important;
+    border: 1px solid #E2E8F0 !important;
+    background: #FFFFFF !important;
+    color: #475569 !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02) !important;
+    transition: all 0.2s ease !important;
+}
+.ix-chat-area [data-testid="baseButton-secondary"]:hover {
+    border-color: #002D62 !important;
+    background: #F8FAFC !important;
+    color: #002D62 !important;
+    box-shadow: 0 4px 6px rgba(0,45,98,0.05) !important;
+}
 </style>
 """
 
@@ -281,57 +304,41 @@ def render_chatbot_panel(ticker: str, company_name: str):
             unsafe_allow_html=True,
         )
 
+        # Dynamic questions based on company (Actual questions, no icons)
+        questions = [
+            ("What are the latest revenue trends?", f"What are the latest revenue trends and financial performance for {company_name}?"),
+            ("What are the key risk factors?", f"What are the key risk factors and credit ratings for {company_name}?"),
+            ("What is the strategic vision?", f"What is the strategic vision and major masterplans for {company_name}?"),
+            ("Summarize recent project launches", f"Summarize the most recent news and project launches for {company_name}."),
+        ]
+
+        if "EMAAR" in (ticker or "").upper() or "EMAAR" in (company_name or "").upper():
+            questions = [
+                ("Status of AED 2.5B Sukuk (Dec 2025)?", f"Tell me about Emaar's AED 2.5B Sukuk maturity in December 2025."),
+                ("Details on 'The Heights' masterplan?", f"What information is available regarding Emaar's new masterplan 'The Heights'?"),
+                ("Revenue split for Egypt and India?", f"How much of Emaar's revenue comes from international operations like Egypt and India?"),
+                ("Q3 2024 Revenue & Profit growth?", f"What was Emaar's revenue and profit growth in Q3 2024?"),
+            ]
+        elif "ENBD" in (ticker or "").upper() or "NBD" in (company_name or "").upper():
+            questions = [
+                ("Growth in Saudi Arabia assets?", f"Tell me about Emirates NBD's 18% asset growth in Saudi Arabia."),
+                ("Digital impact on Cost-to-Income?", f"How has digital adoption impacted Emirates NBD's cost-to-income ratio?"),
+                ("Current Liquidity Coverage Ratio (LCR)?", f"What is the current Liquidity Coverage Ratio (LCR) for Emirates NBD?"),
+                ("FY 2024 Financial Results Summary", f"Summarize the FY 2024 financial results for Emirates NBD."),
+            ]
+
+        # Render 2x2 grid (Questions now use full text labels)
         c1, c2 = st.columns(2)
         with c1:
-            if st.button("📊 Revenue", key="ix_btn_rev", width="stretch"):
-                st.session_state.ix_inject = (
-                    f"What are the latest revenue trends for {company_name}?"
-                )
+            if st.button(questions[0][0], key="ix_btn_1", use_container_width=True):
+                st.session_state.ix_inject = questions[0][1]
+            if st.button(questions[2][0], key="ix_btn_3", use_container_width=True):
+                st.session_state.ix_inject = questions[2][1]
         with c2:
-            if st.button("⚠️ Risks", key="ix_btn_risk", width="stretch"):
-                st.session_state.ix_inject = (
-                    f"What are the key risks for {company_name}?"
-                )
-
-        c3, c4 = st.columns(2)
-        with c3:
-            if st.button("🏛️ Strategy", key="ix_btn_strat", width="stretch"):
-                st.session_state.ix_inject = (
-                    f"What is the strategic vision for {company_name}?"
-                )
-        with c4:
-            if st.button("🗞️ News", key="ix_btn_news", width="stretch"):
-                st.session_state.ix_inject = (
-                    f"Summarize recent news for {company_name}."
-                )
-
-        # ── Knowledge Inventory ──
-        with st.expander("📂 Knowledge Base", expanded=False):
-            vm = _get_vector_manager()
-            try:
-                results = vm.collection.get(
-                    where={"ticker": ticker.upper()}, include=["metadatas"]
-                )
-                if results["metadatas"]:
-                    sources = {m.get("source", "Unknown") for m in results["metadatas"]}
-                    for src in sorted(list(sources)):
-                        icon = (
-                            "📄"
-                            if src.endswith(".pdf")
-                            else ("📊" if src.endswith(".csv") else "📝")
-                        )
-                        st.markdown(
-                            f'<div class="ix-inventory-item">{icon} {src}</div>',
-                            unsafe_allow_html=True,
-                        )
-                    st.markdown(
-                        f'<div class="ix-inventory-count">Total Chunks: {len(results["metadatas"])}</div>',
-                        unsafe_allow_html=True,
-                    )
-                else:
-                    st.caption("No sources indexed yet.")
-            except Exception:
-                st.caption("Indexing in progress...")
+            if st.button(questions[1][0], key="ix_btn_2", use_container_width=True):
+                st.session_state.ix_inject = questions[1][1]
+            if st.button(questions[3][0], key="ix_btn_4", use_container_width=True):
+                st.session_state.ix_inject = questions[3][1]
 
     # ── Separator ──
     st.markdown("---")
@@ -389,10 +396,30 @@ def render_chatbot_panel(ticker: str, company_name: str):
                     vm = _get_vector_manager()
                     _ensure_vectors_ingested(ticker, vm)
                     agent = _get_chat_agent(company_name)
+                    
+                    # Extract current dashboard data for immediate context
+                    extra_ctx = ""
+                    current_data = st.session_state.get("data", {})
+                    if current_data:
+                        insights = current_data.get("insights", [])
+                        if isinstance(insights, list):
+                            for ins in insights:
+                                if isinstance(ins, dict):
+                                    # Handle both structured and list formats
+                                    if "finding" in ins:
+                                        extra_ctx += f"- {ins.get('category')}: {ins.get('finding')} (Source: {ins.get('source')})\n"
+                                    elif "text" in ins:
+                                        extra_ctx += f"- {ins.get('category', 'Insight')}: {ins.get('text')}\n"
+                        
+                        financials = current_data.get("financials", {}).get("current", {})
+                        if financials:
+                            extra_ctx += f"\nFinancial Context: Revenue {financials.get('rev')}, Profit {financials.get('profit')}, Period {financials.get('period')}\n"
+                    
                     response = agent.answer_query(
                         query=prompt,
                         ticker=ticker,
                         history=st.session_state.ix_messages[:-1],
+                        extra_context=extra_ctx if extra_ctx else None
                     )
                 for word in response.split():
                     full_response += word + " "

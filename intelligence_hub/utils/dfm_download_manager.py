@@ -61,11 +61,17 @@ class DFMDownloadManager:
             "skipped_duplicate": 0,
         }
         self.active_writes = set()
-        self.file_lock = asyncio.Lock()
+        self._file_lock = None # Lazy init
 
         # Shared URL registries — set externally by DFMScraper for cross-system dedup
         self.global_attempted_urls = None  # Reference to DFMScraper.attempted_urls
         self.global_completed_urls = None  # Reference to DFMScraper.completed_urls
+
+    @property
+    def file_lock(self):
+        if self._file_lock is None:
+            self._file_lock = asyncio.Lock()
+        return self._file_lock
 
     async def download_with_retry(
         self, element, page: Page, doc_info: Dict, target_dir: str, max_retries: int = 3

@@ -1,0 +1,167 @@
+================================================================================
+CODEBASE STRUCTURE - USAGE STATUS DIAGRAM
+================================================================================
+
+CorporateIntelligenceX/
+│
+├── 📄 streamlit_app.py                    ✅ USED - Main entry point
+├── 📄 setup.py                            ⚠️  USED - But has BROKEN entry point
+├── 📄 requirements.txt                    ✅ USED
+├── 📄 README.md                           ⚠️  USED - But references MISSING files
+├── 📄 .env.example                        ✅ USED
+├── 📄 .gitignore                          ✅ USED
+│
+├── 📁 intelligence_hub/                   ✅ USED - Main package
+│   ├── 📄 __init__.py                     ✅ USED
+│   │
+│   ├── 📁 agents/                         ✅ USED - All 4 agents active
+│   │   ├── 📄 __init__.py                 ✅ USED
+│   │   ├── 📄 resolver.py                 ✅ USED
+│   │   ├── 📄 scraper_orchestrator.py     ✅ USED
+│   │   ├── 📄 vectorizer.py               ✅ USED
+│   │   └── 📄 analyst.py                  ✅ USED
+│   │
+│   ├── 📁 scrapers/                       ✅ USED - All 4 scrapers active
+│   │   ├── 📄 __init__.py                 ✅ USED
+│   │   ├── 📄 adx.py                      ✅ USED
+│   │   ├── 📄 dfm.py                      ✅ USED
+│   │   ├── 📄 wiki.py                     ✅ USED
+│   │   └── 📄 yahoo.py                    ✅ USED
+│   │
+│   ├── 📁 connectors/                     ✅ USED - All 3 connectors active
+│   │   ├── ❌ __init__.py                 ❌ MISSING - Should be added
+│   │   ├── 📄 llm.py                      ✅ USED
+│   │   ├── 📄 pinecone_client.py          ✅ USED
+│   │   └── 📄 scrapingbee.py              ✅ USED
+│   │
+│   ├── 📁 graph/                          ✅ USED - LangGraph workflow
+│   │   ├── 📄 workflow.py                 ✅ USED
+│   │   └── 📄 state.py                    ✅ USED
+│   │
+│   ├── 📁 ui/                             ✅ USED - Streamlit UI
+│   │   ├── 📄 __init__.py                 ✅ USED
+│   │   ├── 📄 components.py               ✅ USED
+│   │   └── 📄 styles.py                   ✅ USED
+│   │
+│   ├── 📁 config/                         ✅ USED
+│   │   ├── 📄 __init__.py                 ✅ USED
+│   │   └── 📄 settings.py                 ✅ USED
+│   │
+│   ├── 📁 utils/                          ✅ USED
+│   │   ├── 📄 __init__.py                 ✅ USED
+│   │   ├── 📄 storage_manager.py          ✅ USED
+│   │   └── ❌ helpers.py                  ❌ MISSING - Referenced in tests
+│   │
+│   ├── 📁 core/                           ✅ USED
+│   │   └── 📄 mock_data.py                ✅ USED
+│   │
+│   ├── 📁 prompts/                        ❌ REDUNDANT - Empty, not used
+│   │   └── 📄 __init__.py                 ❌ DELETE (only docstring)
+│   │
+│   └── 📁 models/                         ❌ REDUNDANT - Empty, broken refs
+│       ├── 📄 __init__.py                 ❌ DELETE (only docstring)
+│       └── ❌ state.py                     ❌ MISSING - Referenced in tests
+│
+├── 📁 tests/                              ✅ USED - All test files active
+│   ├── 📄 test_intelligence_hub.py        ⚠️  USED - But has BROKEN imports
+│   ├── 📄 test_pipeline.py                ✅ USED
+│   ├── 📄 verify_full_flow.py             ✅ USED
+│   ├── 📄 verify_tickers_and_scrapers.py  ✅ USED
+│   ├── 📄 verify_sukoon.py                ✅ USED
+│   ├── 📄 verify_mock_fallback.py         ✅ USED
+│   └── 📄 check_streamlit.py              ✅ USED
+│
+├── 📁 UI_SNAPSHOTS/                       ⚠️  POTENTIALLY REDUNDANT
+│   ├── 🖼️  Snap_0.png                     ⚠️  Not referenced in code
+│   ├── 🖼️  Snap_1.png                     ⚠️  Not referenced in code
+│   ├── 🖼️  Snap_2.png                     ⚠️  Not referenced in code
+│   ├── 🖼️  Snap_3.png                     ⚠️  Not referenced in code
+│   ├── ❌ Snap_4.png                      ❌ MISSING from sequence
+│   ├── 🖼️  Snap_5.png                     ⚠️  Not referenced in code
+│   ├── ❌ Snap_6.png                      ❌ MISSING from sequence
+│   └── 🖼️  Snap_7.png                     ⚠️  Not referenced in code
+│
+├── ❌ main.py                             ❌ MISSING - Referenced in setup.py, README
+└── ❌ 📁 scripts/                         ❌ MISSING - Referenced in README
+
+================================================================================
+LEGEND:
+================================================================================
+✅ USED            - File/directory is actively used in the codebase
+❌ REDUNDANT       - File/directory is not used and can be deleted
+❌ MISSING         - File/directory doesn't exist but is referenced
+⚠️  USED           - File exists and is used, BUT has issues
+⚠️  POTENTIALLY    - File exists but unclear if needed
+
+================================================================================
+SUMMARY OF ISSUES:
+================================================================================
+
+CRITICAL (Fix Immediately):
+  • tests/test_intelligence_hub.py has 3 broken imports
+  • setup.py console script points to non-existent main.py
+  • README.md references non-existent main.py and scripts/
+
+RECOMMENDED (Improve Structure):
+  • Add intelligence_hub/connectors/__init__.py
+  • Delete intelligence_hub/prompts/ (empty, unused)
+  • Delete intelligence_hub/models/ (empty, only broken references)
+
+OPTIONAL (Cleanup):
+  • Clarify purpose of UI_SNAPSHOTS/ or delete
+  • Complete missing snapshots or remove directory
+
+================================================================================
+DEPENDENCY FLOW (Active Code Only):
+================================================================================
+
+streamlit_app.py
+    ├─> ui/styles.py
+    ├─> ui/components.py
+    ├─> core/mock_data.py
+    └─> graph/workflow.py
+            ├─> graph/state.py
+            └─> agents/
+                ├─> resolver.py ──┐
+                │                 ├─> connectors/pinecone_client.py
+                │                 ├─> connectors/scrapingbee.py
+                │                 └─> scrapers/{adx,dfm}.py
+                │
+                ├─> scraper_orchestrator.py ──┐
+                │                             ├─> scrapers/{adx,dfm,wiki,yahoo}.py
+                │                             └─> connectors/{pinecone,scrapingbee}.py
+                │
+                ├─> vectorizer.py ──┐
+                │                   ├─> connectors/pinecone_client.py
+                │                   └─> connectors/llm.py
+                │
+                └─> analyst.py ──┐
+                                 ├─> connectors/llm.py
+                                 └─> connectors/pinecone_client.py
+
+================================================================================
+FILES TO DELETE (Safe to remove):
+================================================================================
+1. intelligence_hub/prompts/__init__.py
+2. intelligence_hub/prompts/                (directory)
+
+FILES TO DELETE (After fixing test references):
+================================================================================
+3. intelligence_hub/models/__init__.py
+4. intelligence_hub/models/                 (directory)
+
+FILES TO CREATE:
+================================================================================
+1. intelligence_hub/connectors/__init__.py  (empty file, for package structure)
+
+OPTIONAL CLEANUP:
+================================================================================
+1. UI_SNAPSHOTS/                           (move to docs/ or delete)
+
+FILES TO FIX:
+================================================================================
+1. tests/test_intelligence_hub.py          (fix 3 broken imports)
+2. setup.py                                (fix or remove entry point)
+3. README.md                               (remove refs to main.py, scripts/)
+
+================================================================================
